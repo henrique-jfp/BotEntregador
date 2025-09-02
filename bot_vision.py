@@ -69,15 +69,29 @@ def ensure_credentials_file() -> str:
     except Exception as e:
         raise RuntimeError(f"Falha ao decodificar JSON de credenciais: {e}") from e
 
-    # Corrigir private_key com '\n'
-    if 'private_key' in data and '\\n' in data['private_key']:
-        data['private_key'] = data['private_key'].replace('\\n', '\n')
+    # Corrigir private_key com '\n' - mais agressivo
+    if 'private_key' in data:
+        private_key = data['private_key']
+        # Se não tem quebras reais, mas tem \n literais, substituir
+        if '\\n' in private_key and '\n' not in private_key:
+            data['private_key'] = private_key.replace('\\n', '\n')
+        # Se tem quebras misturadas, normalizar
+        elif '\\n' in private_key:
+            data['private_key'] = private_key.replace('\\n', '\n')
+            
+        # Garantir formato correto: deve começar e terminar com headers
+        pk = data['private_key'].strip()
+        if not pk.startswith('-----BEGIN PRIVATE KEY-----'):
+            logger.warning("private_key não começa com header esperado")
+        if not pk.endswith('-----END PRIVATE KEY-----'):
+            logger.warning("private_key não termina com footer esperado")
 
     # Escrever arquivo temporário (estável durante o processo)
     path = 'temp_credentials.json'
     try:
         with open(path, 'w', encoding='utf-8') as f:
-            json.dump(data, f)
+            json.dump(data, f, indent=2)
+        logger.info(f"Arquivo de credenciais criado: {path}")
     except Exception as e:
         raise RuntimeError(f"Não foi possível escrever arquivo de credenciais: {e}") from e
     return path
