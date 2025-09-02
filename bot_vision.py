@@ -14,9 +14,12 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 logger = logging.getLogger(__name__)
 
 # Regex otimizado para extrair endereços brasileiros
-# Captura linhas que começam com palavras comuns de endereços, seguidas de texto
+# Captura endereços com padrões brasileiros mais flexíveis
 ADDRESS_REGEX = re.compile(
-    r'^(rua|av\.?|avenida|praça|alameda|travessa|beco|rodovia|estrada|bloco|apartamento|condomínio|vila|jardim|centro|setor|quadra|lote)\s+.*$',
+    r'(?:^|\n)(?:'
+    r'(?:rua?|r\.|av\.?|avenida|praça|alameda|travessa|tv\.|beco|rodovia|estrada|bloco|apartamento|condomínio|vila|jardim|centro|setor|quadra|lote|largo|passeio|viela)\s+.*?(?:,.*?)?(?:\s*-\s*.*?)?(?:,\s*\d{5}-?\d{3})?.*?(?:brasil?|brazil)?|'
+    r'.*?(?:rua|av\.?|avenida|praça|alameda|travessa|tv\.|r\.|gen\.).*?\d+.*?(?:-.*?)?(?:,.*?)?(?:\s*-\s*.*?)?(?:,\s*\d{5}-?\d{3})?.*?(?:brasil?|brazil)?'
+    r')(?=\n|$)',
     re.IGNORECASE | re.MULTILINE
 )
 
