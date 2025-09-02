@@ -20,6 +20,8 @@ import errno
 import math
 import httpx
 import urllib.parse
+import uuid
+import asyncio
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from datetime import datetime, timedelta
 from dataclasses import dataclass, asdict
@@ -311,10 +313,13 @@ class ImageProcessor:
                     prompt = ("Extraia SOMENTE o texto legível presente na imagem (endereços, linhas). "
                               "Não adicione interpretações. Retorne o texto cru exatamente.")
                     # API espera lista de partes: imagem e texto
-                    resp = gemini_model.generate_content([
-                        { 'mime_type': 'image/jpeg', 'data': b64 },
-                        prompt
-                    ])
+                    resp = await asyncio.to_thread(
+                        gemini_model.generate_content,
+                        [
+                            { 'mime_type': 'image/jpeg', 'data': b64 },
+                            prompt
+                        ]
+                    )
                     if hasattr(resp, 'text') and resp.text:
                         results.append(resp.text.strip())
                 except Exception as e:
@@ -403,6 +408,9 @@ async def compute_route_stats(addresses: List[DeliveryAddress]) -> Tuple[float, 
     return round(total_km, 2), round(driving_minutes, 1), round(service_minutes, 1), round(total_minutes, 1)
 
 user_sessions: Dict[int, UserSession] = {}
+# Armazena rotas para endpoint /circuit/<id>
+circuit_routes: Dict[str, List[str]] = {}
+BASE_URL: Optional[str] = None
 
 async def get_session(user_id: int) -> UserSession:
     if user_id not in user_sessions:
@@ -498,10 +506,25 @@ async def process_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         "\n� *Ordem das Entregas:*\n" + lista +
         "\n\n💡 _Distâncias reais podem variar. Otimização futura poderá reordenar para reduzir km._\n"
         "\nEscolha uma ação abaixo:" )
+    # Registra rota para deep-link via endpoint HTTP
+    route_id = uuid.uuid4().hex[:10]
+    circuit_routes[route_id] = [a.cleaned_address for a in session.addresses]
+    # Monta URL pública base
+    global BASE_URL
+    port = int(os.getenv('PORT', 8000))
+    host_env = os.getenv('RENDER_EXTERNAL_HOSTNAME')
+    if host_env:
+        if not host_env.startswith('http'):
+            BASE_URL = f"https://{host_env}"
+        else:
+            BASE_URL = host_env
+    else:
+        BASE_URL = BASE_URL or f"http://localhost:{port}"
+    circuit_http_link = f"{BASE_URL}/circuit/{route_id}"
     kb = InlineKeyboardMarkup([
         [InlineKeyboardButton("🚀 Navegar", callback_data="nav_start")],
         [InlineKeyboardButton("📤 Exportar Circuit (CSV)", callback_data="export_circuit")],
-        [InlineKeyboardButton("🔗 Link Circuit", callback_data="circuit_link")]
+        [InlineKeyboardButton("🔗 Abrir no Circuit", url=circuit_http_link)]
     ])
     await q.edit_message_text(text, reply_markup=kb, parse_mode='Markdown')
     session.state = BotStates.CONFIRMING_ROUTE
@@ -531,47 +554,7 @@ async def export_circuit_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     # Mantém mensagem original com botões (não edita) – oferece continuidade
     return BotStates.CONFIRMING_ROUTE.value
 
-def build_circuit_link(addresses: List[DeliveryAddress]) -> Tuple[str, str]:
-    """Gera tentativa de deep-link para Circuit e link alternativo Google Maps multi-stop.
-
-    Observação: Deep-link 'circuit://' não é documentado oficialmente; pode não funcionar em todos os dispositivos.
-    """
-    addr_list = [a.cleaned_address for a in addresses]
-    # Tentativa de esquema customizado (beta). Usamos pipe como separador.
-    joined = '|'.join(addr_list)
-    encoded = urllib.parse.quote(joined)
-    circuit_link = f"circuit://import?stops={encoded}"  # pode ou não abrir o app dependendo do suporte
-
-    # Google Maps multi-stop: primeiro -> destino final, middle como waypoints
-    if len(addr_list) >= 2:
-        origin = urllib.parse.quote(addr_list[0])
-        destination = urllib.parse.quote(addr_list[-1])
-        waypoints = urllib.parse.quote('|'.join(addr_list[1:-1])) if len(addr_list) > 2 else ''
-        maps_link = f"https://www.google.com/maps/dir/?api=1&origin={origin}&destination={destination}"
-        if waypoints:
-            maps_link += f"&waypoints={waypoints}"
-    else:
-        maps_link = f"https://www.google.com/maps/search/{urllib.parse.quote(addr_list[0])}" if addr_list else ''
-    return circuit_link, maps_link
-
-async def circuit_link_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    q = update.callback_query
-    await q.answer()
-    uid = q.from_user.id
-    session = await get_session(uid)
-    if not session.addresses:
-        await q.edit_message_text("Nenhum endereço disponível.")
-        return BotStates.CONFIRMING_ROUTE.value
-    circuit_link, maps_link = build_circuit_link(session.addresses)
-    texto = (
-        "*Links de Rota*\n\n"
-        "Circuit (beta – pode não abrir em todos os aparelhos):\n"
-        f"{circuit_link}\n\n"
-        "Google Maps multi-stop (alternativa):\n"
-        f"{maps_link}\n\n"
-        "Se o link Circuit não abrir o app: abra o Circuit > Import > Paste e use o arquivo exportado ou copie a lista de endereços." )
-    await q.message.reply_text(texto, parse_mode='Markdown', disable_web_page_preview=True)
-    return BotStates.CONFIRMING_ROUTE.value
+## Removido callback antigo de link Circuit / Maps
 
 async def nav_start_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     q = update.callback_query
@@ -640,6 +623,10 @@ async def cancel_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Sessão cancelada. /start para recomeçar.")
     return ConversationHandler.END
 
+# Alias /cancelar
+async def cancelar_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    return await cancel_cmd(update, context)
+
 conflict_counter = 0
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
@@ -652,6 +639,9 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
         if conflict_counter >= 6:
             logger.warning('Muitos conflitos 409. Encerrando esta instância para deixar somente a principal em execução.')
             raise SystemExit(0)
+        return
+    if 'Timed out' in err_str or 'Query is too old' in err_str:
+        logger.debug(f"Erro transitório supresso: {err_str}")
         return
     logger.error(f"Erro: {err_str}")
     try:
@@ -667,9 +657,37 @@ class HealthHandler(BaseHTTPRequestHandler):
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps({'status': 'ok'}).encode())
-        else:
-            self.send_response(404)
+            return
+        if self.path.startswith('/circuit/'):
+            route_id = self.path.split('/')[-1]
+            addresses = circuit_routes.get(route_id)
+            if not addresses:
+                self.send_response(404)
+                self.end_headers()
+                return
+            joined = '|'.join(addresses)
+            deep = f"circuit://import?stops={urllib.parse.quote(joined)}"
+            html = f"""<!DOCTYPE html><html lang='pt-br'><head><meta charset='utf-8'>
+<title>Rota Circuit</title>
+<meta http-equiv='refresh' content='0;url={deep}'>
+<script>window.location='{deep}';setTimeout(()=>{{document.getElementById('fb').style.display='block';}},1500);</script>
+<style>body{{font-family:Arial;margin:20px;}}pre{{white-space:pre-wrap;background:#f4f4f4;padding:10px;border-radius:6px;}}</style>
+</head><body>
+<h3>Abrindo no Circuit...</h3>
+<p>Se não abrir automaticamente em alguns segundos use o link ou copie os endereços.</p>
+<div id='fb' style='display:none'>
+<p><a href='{deep}'>Abrir no Circuit</a></p>
+<h4>Endereços</h4>
+<pre>{chr(10).join(addresses)}</pre>
+</div>
+</body></html>"""
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/html; charset=utf-8')
             self.end_headers()
+            self.wfile.write(html.encode('utf-8'))
+            return
+        self.send_response(404)
+        self.end_headers()
     def log_message(self, format, *args):
         return
 
@@ -737,7 +755,7 @@ def main():
                     CallbackQueryHandler(nav_start_cb, pattern='^nav_start$'),
                     CallbackQueryHandler(process_cb, pattern='^process$'),
                     CallbackQueryHandler(export_circuit_cb, pattern='^export_circuit$'),
-                    CallbackQueryHandler(circuit_link_cb, pattern='^circuit_link$')
+                    # Callback removido: link Circuit agora é botão URL direto
                 ],
                 BotStates.NAVIGATING.value: [
                     CallbackQueryHandler(delivered_cb, pattern='^delivered$'),
@@ -754,6 +772,7 @@ def main():
         app.add_handler(CommandHandler('help', help_cmd))
         app.add_handler(CommandHandler('status', status_cmd))
         app.add_handler(CommandHandler('cancel', cancel_cmd))
+        app.add_handler(CommandHandler('cancelar', cancelar_cmd))
         app.add_error_handler(error_handler)
 
         logger.info("Bot configurado, iniciando polling...")
