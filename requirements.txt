@@ -12,6 +12,5 @@ python-dotenv==1.0.0
 # Image Processing (versão compatível com Python 3.13)
 Pillow==10.4.0
 
-# Otimização de rotas
-ortools==9.14.6206
+# Otimização de rotas (heurística / Distance Matrix). OR-Tools removido por conflito protobuf.
 httpx==0.27.0
