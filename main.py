@@ -15,6 +15,7 @@ import re
 import json
 import logging
 import threading
+import base64
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from datetime import datetime, timedelta
 from dataclasses import dataclass, asdict
@@ -68,7 +69,7 @@ class UserSession:
     addresses: List[DeliveryAddress] = None
     optimized_route: List[str] = None
     current_delivery_index: int = 0
-    start_time: datetime = datetime.now()
+    start_time: datetime = None
     completed_deliveries: List[str] = None
     state: BotStates = BotStates.WAITING_PHOTOS
 
@@ -81,6 +82,8 @@ class UserSession:
             self.optimized_route = []
         if self.completed_deliveries is None:
             self.completed_deliveries = []
+        if self.start_time is None:
+            self.start_time = datetime.now()
 
 class Config:
     TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
@@ -124,6 +127,15 @@ class DataPersistence:
                 return None
             with open(p, 'r', encoding='utf-8') as f:
                 data = json.load(f)
+            
+            # Correção para parsing do datetime
+            start_time = datetime.now()
+            if data.get('start_time'):
+                try:
+                    start_time = datetime.fromisoformat(data['start_time'])
+                except (ValueError, TypeError):
+                    start_time = datetime.now()
+            
             session = UserSession(
                 user_id=user_id,
                 photos=data.get('photos', []),
@@ -131,7 +143,7 @@ class DataPersistence:
                 addresses=[DeliveryAddress(**a) for a in data.get('addresses', [])],
                 optimized_route=data.get('optimized_route', []),
                 current_delivery_index=data.get('current_delivery_index', 0),
-                start_time=datetime.fromisoformat(data.get('start_time')) if data.get('start_time') else datetime.now(),
+                start_time=start_time,
                 completed_deliveries=data.get('completed_deliveries', []),
                 state=BotStates[data.get('state', 'WAITING_PHOTOS')]
             )
@@ -169,21 +181,36 @@ def setup_vision_client():
         json_env = os.getenv('GOOGLE_VISION_CREDENTIALS_JSON')
         creds_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
         credentials = None
+        
         if json_env:
-            info = json.loads(json_env)
-            if 'private_key' in info and '\\n' in info['private_key'] and '\n' not in info['private_key']:
-                info['private_key'] = info['private_key'].replace('\\n', '\n')
-            credentials = service_account.Credentials.from_service_account_info(info)
+            try:
+                # Corrigir padding se necessário
+                missing_padding = len(json_env) % 4
+                if missing_padding:
+                    json_env += '=' * (4 - missing_padding)
+                
+                # Decodifica a string Base64
+                decoded_json = base64.b64decode(json_env).decode('utf-8')
+                info = json.loads(decoded_json)
+                credentials = service_account.Credentials.from_service_account_info(info)
+                logger.info("Credenciais Vision carregadas via JSON env")
+            except Exception as e:
+                logger.error(f"Erro ao processar credenciais JSON: {e}")
+                return None
+                
         elif creds_path and os.path.exists(creds_path):
             credentials = service_account.Credentials.from_service_account_file(creds_path)
+            logger.info("Credenciais Vision carregadas via arquivo")
         else:
             logger.warning("Credenciais do Vision não encontradas - OCR indisponível")
             return None
+            
         client = vision.ImageAnnotatorClient(credentials=credentials)
-        logger.info("Vision client pronto")
+        logger.info("Vision client configurado com sucesso")
         return client
+        
     except Exception as e:
-        logger.error(f"Falha configurar Vision: {e}")
+        logger.error(f"Falha ao configurar Vision client: {e}")
         return None
 
 vision_client = setup_vision_client()
@@ -204,6 +231,7 @@ class ImageProcessor:
     @staticmethod
     async def ocr(bot, photo_ids: List[str]) -> str:
         if not vision_client:
+            logger.warning("Vision client não disponível - OCR desabilitado")
             return ""
         texts = []
         for fid in photo_ids:
@@ -393,7 +421,7 @@ async def cancel_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
     logger.error(f"Erro: {context.error}")
     try:
-        if update and getattr(update, 'effective_message', None):
+        if update and hasattr(update, 'effective_message') and update.effective_message:
             await update.effective_message.reply_text("Erro interno. Tente novamente.")
     except Exception:
         pass
@@ -413,44 +441,56 @@ class HealthHandler(BaseHTTPRequestHandler):
 
 def start_health_server():
     port = int(os.getenv('PORT', 8000))
-    server = HTTPServer(('0.0.0.0', port), HealthHandler)
-    t = threading.Thread(target=server.serve_forever, daemon=True)
-    t.start()
-    logger.info(f"Health server na porta {port}")
-    return server
+    try:
+        server = HTTPServer(('0.0.0.0', port), HealthHandler)
+        t = threading.Thread(target=server.serve_forever, daemon=True)
+        t.start()
+        logger.info(f"Health server na porta {port}")
+        return server
+    except Exception as e:
+        logger.error(f"Erro ao iniciar health server: {e}")
+        return None
 
 def main():
     logger.info("Iniciando bot simplificado...")
     start_health_server()
-    app = Application.builder().token(Config.TELEGRAM_BOT_TOKEN).build()
+    
+    try:
+        # Configuração mais robusta do Application
+        app = Application.builder().token(Config.TELEGRAM_BOT_TOKEN).build()
 
-    conv = ConversationHandler(
-        entry_points=[CommandHandler('start', start)],
-        states={
-            BotStates.WAITING_PHOTOS.value: [
-                MessageHandler(filters.PHOTO, photo_handler),
-                CallbackQueryHandler(start_photos_cb, pattern='^start_photos$'),
-                CallbackQueryHandler(process_cb, pattern='^process$')
-            ],
-            BotStates.CONFIRMING_ROUTE.value: [
-                CallbackQueryHandler(nav_start_cb, pattern='^nav_start$'),
-                CallbackQueryHandler(process_cb, pattern='^process$')
-            ],
-            BotStates.NAVIGATING.value: [
-                CallbackQueryHandler(delivered_cb, pattern='^delivered$'),
-                CallbackQueryHandler(start_photos_cb, pattern='^start_photos$')
-            ]
-        },
-        fallbacks=[CommandHandler('cancel', cancel_cmd)]
-    )
+        conv = ConversationHandler(
+            entry_points=[CommandHandler('start', start)],
+            states={
+                BotStates.WAITING_PHOTOS.value: [
+                    MessageHandler(filters.PHOTO, photo_handler),
+                    CallbackQueryHandler(start_photos_cb, pattern='^start_photos$'),
+                    CallbackQueryHandler(process_cb, pattern='^process$')
+                ],
+                BotStates.CONFIRMING_ROUTE.value: [
+                    CallbackQueryHandler(nav_start_cb, pattern='^nav_start$'),
+                    CallbackQueryHandler(process_cb, pattern='^process$')
+                ],
+                BotStates.NAVIGATING.value: [
+                    CallbackQueryHandler(delivered_cb, pattern='^delivered$'),
+                    CallbackQueryHandler(start_photos_cb, pattern='^start_photos$')
+                ]
+            },
+            fallbacks=[CommandHandler('cancel', cancel_cmd)]
+        )
 
-    app.add_handler(conv)
-    app.add_handler(CommandHandler('help', help_cmd))
-    app.add_handler(CommandHandler('status', status_cmd))
-    app.add_handler(CommandHandler('cancel', cancel_cmd))
-    app.add_error_handler(error_handler)
+        app.add_handler(conv)
+        app.add_handler(CommandHandler('help', help_cmd))
+        app.add_handler(CommandHandler('status', status_cmd))
+        app.add_handler(CommandHandler('cancel', cancel_cmd))
+        app.add_error_handler(error_handler)
 
-    app.run_polling(drop_pending_updates=True)
+        logger.info("Bot configurado, iniciando polling...")
+        app.run_polling(drop_pending_updates=True)
+        
+    except Exception as e:
+        logger.error(f"Erro crítico ao inicializar bot: {e}")
+        raise
 
 if __name__ == '__main__':
     main()
