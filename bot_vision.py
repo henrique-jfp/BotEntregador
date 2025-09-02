@@ -13,8 +13,8 @@ logger = logging.getLogger(__name__)
 # Regex otimizado para extrair endereços brasileiros
 # Captura linhas que começam com palavras comuns de endereços, seguidas de texto
 ADDRESS_REGEX = re.compile(
-    r'^(?i)(rua|av\.?|avenida|praça|alameda|travessa|beco|rodovia|estrada|bloco|apartamento|condomínio|vila|jardim|centro|setor|quadra|lote)\s+.*$',
-    re.MULTILINE
+    r'^(rua|av\.?|avenida|praça|alameda|travessa|beco|rodovia|estrada|bloco|apartamento|condomínio|vila|jardim|centro|setor|quadra|lote)\s+.*$',
+    re.IGNORECASE | re.MULTILINE
 )
 
 # Função para extrair texto da imagem usando Google Vision
