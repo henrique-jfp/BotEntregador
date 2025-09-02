@@ -67,6 +67,8 @@ class DeliveryAddress:
     original_text: str
     cleaned_address: str
     confidence: float = 0.7
+    lat: Optional[float] = None
+    lng: Optional[float] = None
 
 @dataclass
 class UserSession:
@@ -194,11 +196,17 @@ def setup_vision_client():
         if json_base64:
             try:
                 # Remove espaços, quebras de linha e aspas acidentais
-                json_base64 = json_base64.strip().strip('"').replace('\n', '').replace('\r', '')
-                # Corrigir padding se necessário
+                json_base64 = json_base64.strip().strip('"').replace('\n', '').replace('\r', '').replace(' ', '')
+                # Corrigir padding se necessário - Base64 deve ser múltiplo de 4
                 missing_padding = len(json_base64) % 4
                 if missing_padding:
                     json_base64 += '=' * (4 - missing_padding)
+                
+                # Valida se é Base64 válido antes de decodificar
+                import string
+                valid_chars = string.ascii_letters + string.digits + '+/='
+                if not all(c in valid_chars for c in json_base64):
+                    raise ValueError("Base64 contém caracteres inválidos")
                 
                 # Decodifica a string Base64
                 decoded_json = base64.b64decode(json_base64).decode('utf-8')
@@ -230,6 +238,7 @@ def setup_vision_client():
             credentials = service_account.Credentials.from_service_account_file(creds_path)
             logger.info("Credenciais Vision carregadas via arquivo")
             client = vision.ImageAnnotatorClient(credentials=credentials)
+            return client
             
         logger.warning("Credenciais do Vision não encontradas - OCR indisponível")
         logger.info("Variáveis disponíveis: GOOGLE_VISION_CREDENTIALS_JSON_BASE64, GOOGLE_VISION_CREDENTIALS_JSON, GOOGLE_APPLICATION_CREDENTIALS")
@@ -258,69 +267,58 @@ def setup_gemini_model():
 
 gemini_model = setup_gemini_model()
 
-ADDRESS_REGEX = re.compile(r'(rua|r\.|r |avenida|av\.|av |travessa|tv\.|tv |alameda|praça|praca|rodovia|estrada|beco|cond|condominio|condomínio)\s+[^\n]{3,}', re.IGNORECASE)
+ADDRESS_REGEX = re.compile(r'(rua|r\.|avenida|av\.|travessa|tv\.|alameda|praça|praca|rodovia|estrada|beco)\s+[^\n]{3,}', re.IGNORECASE)
 
-def normalize_address(address: str) -> str:
-    """Normaliza endereços expandindo abreviações comuns."""
-    # Dicionário de abreviações
-    abbreviations = {
-        # Tipos de logradouro
-        r'\br\.?\s+': 'Rua ',
-        r'\bav\.?\s+': 'Avenida ',
-        r'\btv\.?\s+': 'Travessa ',
-        r'\bal\.?\s+': 'Alameda ',
-        r'\bpç\.?\s+': 'Praça ',
-        r'\bpraca\s+': 'Praça ',
-        r'\brod\.?\s+': 'Rodovia ',
-        r'\best\.?\s+': 'Estrada ',
-        r'\bcond\.?\s+': 'Condomínio ',
-        r'\bcondominio\s+': 'Condomínio ',
-        
-        # Direções e complementos
-        r'\bn\.?\s*º?\s+': 'Nº ',
-        r'\bnum\.?\s+': 'Nº ',
-        r'\bnr\.?\s+': 'Nº ',
-        r'\blt\.?\s+': 'Lote ',
-        r'\bqd\.?\s+': 'Quadra ',
-        r'\bbl\.?\s+': 'Bloco ',
-        r'\bapt\.?\s+': 'Apto ',
-        r'\bap\.?\s+': 'Apto ',
-        r'\bsl\.?\s+': 'Sala ',
-        r'\bcj\.?\s+': 'Conjunto ',
-        r'\bconj\.?\s+': 'Conjunto ',
-        
-        # Estados (alguns comuns)
-        r'\brj\b': 'Rio de Janeiro',
-        r'\bsp\b': 'São Paulo',
-        r'\bmg\b': 'Minas Gerais',
-        r'\bpr\b': 'Paraná',
-        r'\brs\b': 'Rio Grande do Sul',
-        r'\bsc\b': 'Santa Catarina',
-        r'\bgo\b': 'Goiás',
-        r'\bdf\b': 'Distrito Federal',
-        r'\bba\b': 'Bahia',
-        r'\bpe\b': 'Pernambuco',
-        r'\bce\b': 'Ceará',
-    }
-    
-    normalized = address.strip()
-    
-    # Aplica normalizações
-    for pattern, replacement in abbreviations.items():
-        normalized = re.sub(pattern, replacement, normalized, flags=re.IGNORECASE)
-    
-    # Capitaliza primeira letra de cada palavra (exceto conectores)
-    words = normalized.split()
-    connectors = {'de', 'da', 'do', 'das', 'dos', 'e', 'em', 'na', 'no', 'com', 'para'}
-    capitalized = []
-    
-    for i, word in enumerate(words):
-        if i == 0 or word.lower() not in connectors:
-            capitalized.append(word.capitalize())
-        else:
-            capitalized.append(word.lower())
-    
-    return ' '.join(capitalized)
+# ===== Normalização de Abreviações de Logradouros =====
+ABBREV_MAP = [
+    (r'^r\b\.?:?', 'Rua '),
+    (r'^av\b\.?:?', 'Avenida '),
+    (r'^avenida\b', 'Avenida '),
+    (r'^tv\b\.?:?', 'Travessa '),
+    (r'^trav\b\.?:?', 'Travessa '),
+    (r'^al\b\.?:?', 'Alameda '),
+    (r'^pça\b\.?:?', 'Praça '),
+    (r'^praca\b\.?:?', 'Praça '),
+    (r'^praça\b\.?:?', 'Praça '),
+    (r'^rod\b\.?:?', 'Rodovia '),
+    (r'^estr\b\.?:?', 'Estrada '),
+    (r'^est\b\.?:?', 'Estrada '),
+    (r'^bec\b\.?:?', 'Beco '),
+    (r'^cond\b\.?:?', 'Condomínio '),
+    (r'^jd\b\.?:?', 'Jardim '),
+    (r'^lote\b\.?:?', 'Loteamento '),
+]
+
+def normalize_address(text: str) -> str:
+    """Expande abreviações iniciais e faz limpeza básica.
+
+    Regras:
+    - Expande abreviações mapeadas
+    - Remove duplicação de espaços
+    - Remove pontuação solta no final
+    - Mantém caixa original restante, apenas capitalizando logradouro
+    """
+    raw = text.strip().lower()
+    # Remove emojis ou caracteres de controle
+    raw = re.sub(r'[\u2600-\u27BF]', '', raw)
+    expanded = raw
+    for pattern, repl in ABBREV_MAP:
+        if re.match(pattern, expanded, flags=re.IGNORECASE):
+            expanded = re.sub(pattern, repl, expanded, flags=re.IGNORECASE)
+            break
+    # Capitalização do primeiro termo já substituído
+    expanded = expanded.strip()
+    expanded = re.sub(r'\s+', ' ', expanded)
+    # Remove traços ou vírgulas isolados no fim
+    expanded = re.sub(r'[-,;:]\s*$', '', expanded)
+    # Primeira letra maiúscula de cada palavra relevante
+    def title_preserve(m: re.Match):
+        w = m.group(0)
+        if len(w) <= 2:  # siglas (ex: RJ)
+            return w.upper()
+        return w.capitalize()
+    expanded = re.sub(r'[A-Za-zÀ-ÖØ-öø-ÿ]+', title_preserve, expanded)
+    return expanded
 
 class ImageProcessor:
     @staticmethod
@@ -395,81 +393,148 @@ class ImageProcessor:
         return ''
 
 def extract_addresses(raw_text: str) -> List[DeliveryAddress]:
-    found = []
+    found: List[DeliveryAddress] = []
     seen = set()
     for line in raw_text.splitlines():
         line_clean = line.strip()
         if not line_clean:
             continue
-        if ADDRESS_REGEX.search(line_clean.lower()) and len(line_clean) > 8:
-            # Normaliza o endereço expandindo abreviações
+        if ADDRESS_REGEX.search(line_clean.lower()) and len(line_clean) > 5:
             normalized = normalize_address(line_clean)
             key = normalized.lower()
             if key not in seen:
                 seen.add(key)
-                found.append(DeliveryAddress(
-                    original_text=line_clean, 
-                    cleaned_address=normalized
-                ))
+                found.append(DeliveryAddress(original_text=line_clean, cleaned_address=normalized))
     return found[:Config.MAX_ADDRESSES_PER_ROUTE]
 
-def optimize_route(addresses: List[DeliveryAddress]) -> List[str]:
-    # Placeholder: mantém ordem original (minimiza mudanças)
-    return [a.cleaned_address for a in addresses]
+class Geocoder:
+    cache: Dict[str, Tuple[float, float]] = {}
+    cache_path = Path('geocode_cache.json')
 
-async def compute_route_stats(addresses: List[DeliveryAddress]) -> Tuple[float, float, float, float]:
-    """Calcula distância e tempo estimado.
+    @classmethod
+    def load_cache(cls):
+        if cls.cache_path.exists():
+            try:
+                cls.cache.update(json.loads(cls.cache_path.read_text(encoding='utf-8')))
+            except Exception:
+                pass
 
-    Retorna (total_km, driving_minutes, service_minutes, total_minutes)
-    Usa Google Distance Matrix pairwise se GOOGLE_API_KEY disponível; senão heurística.
+    @classmethod
+    def save_cache(cls):
+        try:
+            cls.cache_path.write_text(json.dumps(cls.cache, ensure_ascii=False, indent=2), encoding='utf-8')
+        except Exception:
+            pass
+
+    @classmethod
+    async def geocode(cls, address: str) -> Optional[Tuple[float, float]]:
+        key = address.lower()
+        if key in cls.cache:
+            return cls.cache[key]
+        api_key = os.getenv('GOOGLE_API_KEY')
+        if not api_key:
+            return None
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                r = await client.get('https://maps.googleapis.com/maps/api/geocode/json', params={'address': address, 'language': 'pt-BR', 'key': api_key})
+                data = r.json()
+                if data.get('status') == 'OK' and data.get('results'):
+                    loc = data['results'][0]['geometry']['location']
+                    latlng = (loc['lat'], loc['lng'])
+                    cls.cache[key] = latlng
+                    return latlng
+        except Exception as e:
+            logger.warning(f'Geocode falhou para {address}: {e}')
+        return None
+
+def haversine(lat1, lon1, lat2, lon2):
+    R = 6371.0
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1))*math.cos(math.radians(lat2))*math.sin(dlon/2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+    return R * c
+
+async def optimize_route(addresses: List[DeliveryAddress]) -> List[DeliveryAddress]:
+    """Otimiza rota mantendo o primeiro endereço como origem fixa.
+
+    Estratégia: geocoding + nearest neighbor + 2-opt simples.
+    Se geocoding falhar para muitos pontos, mantém ordem original.
     """
-    n = len(addresses)
+    if len(addresses) <= 2:
+        return addresses
+    Geocoder.load_cache()
+    # Geocode sequencial (poderia paralelizar, mas evita estourar quota)
+    geocoded = 0
+    for a in addresses:
+        if a.lat is None or a.lng is None:
+            coord = await Geocoder.geocode(a.cleaned_address)
+            if coord:
+                a.lat, a.lng = coord
+                geocoded += 1
+    if geocoded:
+        Geocoder.save_cache()
+    # Verifica se temos coordenadas suficientes
+    if sum(1 for a in addresses if a.lat and a.lng) < max(3, len(addresses)//2):
+        logger.warning('Poucos endereços geocodificados - mantendo ordem original.')
+        return addresses
+    origin = addresses[0]  # fixo
+    remaining = addresses[1:]
+    # Nearest neighbor a partir da origem
+    route = [origin]
+    current = origin
+    rem = remaining.copy()
+    while rem:
+        # Escolhe próximo mais perto
+        nxt = min(rem, key=lambda x: haversine(current.lat, current.lng, x.lat, x.lng) if x.lat and x.lng else 1e9)
+        route.append(nxt)
+        rem.remove(nxt)
+        current = nxt
+    # 2-opt simples para tentar melhorar
+    improved = True
+    def total_dist(seq):
+        d=0
+        for i in range(len(seq)-1):
+            a,b=seq[i],seq[i+1]
+            if a.lat and b.lat:
+                d+=haversine(a.lat,a.lng,b.lat,b.lng)
+        return d
+    while improved:
+        improved = False
+        best = total_dist(route)
+        for i in range(1, len(route)-2):
+            for j in range(i+1, len(route)-1):
+                if j - i == 1:
+                    continue
+                new_route = route[:]
+                new_route[i:j] = reversed(new_route[i:j])
+                dist = total_dist(new_route)
+                if dist + 0.01 < best:  # tolerância
+                    route = new_route
+                    best = dist
+                    improved = True
+    logger.info('Rota otimizada (heurística) concluída.')
+    return route
+
+async def compute_route_stats(ordered: List[DeliveryAddress]) -> Tuple[float, float, float, float]:
+    """Calcula distância real em km e tempos a partir da rota otimizada.
+
+    Se possuir coordenadas (lat/lng) soma haversine; caso contrário devolve heurística.
+    """
+    n = len(ordered)
     if n <= 1:
         service = n * Config.SERVICE_TIME_PER_STOP_MIN
         return 0.0, 0.0, service, service
-
-    api_key = os.getenv('GOOGLE_API_KEY')
-    total_meters = 0
-    total_seconds = 0
-    use_api = bool(api_key)
-    if use_api:
-        try:
-            async with httpx.AsyncClient(timeout=15) as client:
-                for i in range(n - 1):
-                    origin = addresses[i].cleaned_address
-                    dest = addresses[i + 1].cleaned_address
-                    params = {
-                        'origins': origin,
-                        'destinations': dest,
-                        'mode': 'driving',
-                        'language': 'pt-BR',
-                        'key': api_key
-                    }
-                    r = await client.get('https://maps.googleapis.com/maps/api/distancematrix/json', params=params)
-                    data = r.json()
-                    if data.get('status') != 'OK':
-                        logger.warning(f"DistanceMatrix status global não OK: {data.get('status')} - fallback heurístico")
-                        use_api = False
-                        break
-                    row = data['rows'][0]['elements'][0]
-                    if row.get('status') != 'OK':
-                        logger.warning(f"DistanceMatrix status elemento não OK: {row.get('status')} - fallback heurístico")
-                        use_api = False
-                        break
-                    total_meters += row['distance']['value']
-                    total_seconds += row['duration']['value']
-        except Exception as e:
-            logger.warning(f"Falha Distance Matrix ({e}) - usando heurística.")
-            use_api = False
-
-    if not use_api:
-        # Heurística: 1.2 km por segmento * (n-1)
+    have_coords = all(a.lat is not None and a.lng is not None for a in ordered)
+    if have_coords:
+        total_km = 0.0
+        for i in range(n-1):
+            a, b = ordered[i], ordered[i+1]
+            total_km += haversine(a.lat, a.lng, b.lat, b.lng)
+        driving_minutes = (total_km / Config.AVERAGE_SPEED_KMH) * 60  # aproximação; poderia usar API de duração
+    else:
         total_km = 1.2 * (n - 1)
         driving_minutes = (total_km / Config.AVERAGE_SPEED_KMH) * 60
-    else:
-        total_km = total_meters / 1000.0
-        driving_minutes = total_seconds / 60.0
-
     service_minutes = n * Config.SERVICE_TIME_PER_STOP_MIN
     total_minutes = driving_minutes + service_minutes
     return round(total_km, 2), round(driving_minutes, 1), round(service_minutes, 1), round(total_minutes, 1)
@@ -552,7 +617,11 @@ async def process_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not session.addresses:
         await q.edit_message_text("Nenhum endereço reconhecido. Verifique se aparecem 'Rua', 'Av', etc.")
         return BotStates.WAITING_PHOTOS.value
-    session.optimized_route = optimize_route(session.addresses)
+    # Otimiza rota (mantendo primeiro endereço como origem / coleta)
+    optimized_objs = await optimize_route(session.addresses)
+    session.optimized_route = [o.cleaned_address for o in optimized_objs]
+    # Reordena lista de objetos para refletir a otimização
+    session.addresses = optimized_objs
     session.processed = True
     await DataPersistence.save(session)
     # Estatísticas da rota
@@ -782,6 +851,24 @@ def ensure_single_instance() -> bool:
         if not tmpdir.exists():
             return True
         lock_path = Path(LOCK_FILE)
+        
+        # Verifica se lock antigo existe e remove se processo não existe mais
+        if lock_path.exists():
+            try:
+                with open(lock_path, 'r') as f:
+                    old_pid = int(f.read().strip())
+                # Tenta verificar se processo ainda existe
+                try:
+                    os.kill(old_pid, 0)  # Não mata, só verifica se existe
+                    logger.warning(f'Processo {old_pid} ainda ativo. Aguardando...')
+                    return False
+                except ProcessLookupError:
+                    logger.info(f'Lock órfão encontrado (PID {old_pid} morto). Removendo...')
+                    lock_path.unlink()
+            except (ValueError, FileNotFoundError):
+                logger.info('Lock file corrompido. Removendo...')
+                lock_path.unlink(missing_ok=True)
+        
         fd = os.open(str(lock_path), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
         with os.fdopen(fd, 'w') as f:
             f.write(str(os.getpid()))
@@ -796,6 +883,16 @@ def ensure_single_instance() -> bool:
 
 def main():
     logger.info("Iniciando bot simplificado...")
+    
+    # Limpa lock órfão caso exista de deploy anterior que falhou
+    try:
+        lock_path = Path('/tmp/bot_entregador.lock')
+        if lock_path.exists():
+            logger.info("Removendo lock órfão de deploy anterior...")
+            lock_path.unlink()
+    except Exception as e:
+        logger.debug(f"Erro ao limpar lock órfão: {e}")
+    
     start_health_server()
 
     if not ensure_single_instance():
@@ -804,10 +901,11 @@ def main():
     try:
         builder = Application.builder().token(Config.TELEGRAM_BOT_TOKEN)
         # Define timeouts via builder (evita DeprecationWarning de run_polling)
-        builder.get_updates_read_timeout(30)
+        # Aumenta timeouts para evitar falha inicial
+        builder.get_updates_read_timeout(60)
         builder.get_updates_write_timeout(30)
-        builder.get_updates_connect_timeout(30)
-        builder.get_updates_pool_timeout(30)
+        builder.get_updates_connect_timeout(60)
+        builder.get_updates_pool_timeout(60)
         app = builder.build()
 
         conv = ConversationHandler(
