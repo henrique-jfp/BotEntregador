@@ -25,8 +25,17 @@ ADDRESS_REGEX = re.compile(
 # 2) Variável GOOGLE_APPLICATION_CREDENTIALS apontando para um arquivo json no disco
 def extract_text_from_image(image_path):
     credentials_path = ensure_credentials_file()
-    credentials = service_account.Credentials.from_service_account_file(credentials_path)
-    client = vision.ImageAnnotatorClient(credentials=credentials)
+    try:
+        credentials = service_account.Credentials.from_service_account_file(credentials_path)
+    except Exception as e:
+        logger.error(f"Falha ao carregar credenciais: {e}")
+        raise RuntimeError("Erro nas credenciais do Google Vision. Recrie a chave ou use Base64.") from e
+
+    try:
+        client = vision.ImageAnnotatorClient(credentials=credentials)
+    except Exception as e:
+        logger.error(f"Falha ao instanciar cliente Vision: {e}")
+        raise RuntimeError("Erro ao inicializar cliente Vision.") from e
     with open(image_path, 'rb') as image_file:
         content = image_file.read()
 
@@ -114,7 +123,11 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     await file.download_to_drive(image_path)
 
     # Extrair texto
-    text = extract_text_from_image(image_path)
+    try:
+        text = extract_text_from_image(image_path)
+    except RuntimeError as e:
+        await update.message.reply_text(str(e))
+        return
     os.remove(image_path)  # Limpar arquivo temporário
 
     if not text:
