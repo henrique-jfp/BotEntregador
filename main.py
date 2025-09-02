@@ -183,6 +183,8 @@ def setup_vision_client():
         json_base64 = os.getenv('GOOGLE_VISION_CREDENTIALS_JSON_BASE64')
         if json_base64:
             try:
+                # Remove espaços, quebras de linha e aspas acidentais
+                json_base64 = json_base64.strip().strip('"').replace('\n', '').replace('\r', '')
                 # Corrigir padding se necessário
                 missing_padding = len(json_base64) % 4
                 if missing_padding:
@@ -432,11 +434,18 @@ async def cancel_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Sessão cancelada. /start para recomeçar.")
     return ConversationHandler.END
 
+conflict_counter = 0
+
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
+    global conflict_counter
     err_str = str(context.error)
     if 'Conflict: terminated by other getUpdates request' in err_str:
-        # Outra instância está fazendo polling. Silencia para evitar spam.
-        logger.info('Conflito 409 detectado: outra instância ativa. Esta instância ficará passiva.')
+        conflict_counter += 1
+        logger.info(f'Conflito 409 detectado ({conflict_counter}). Outra instância ativa.')
+        # Após vários conflitos seguidos encerra para liberar recursos
+        if conflict_counter >= 6:
+            logger.warning('Muitos conflitos 409. Encerrando esta instância para deixar somente a principal em execução.')
+            raise SystemExit(0)
         return
     logger.error(f"Erro: {err_str}")
     try:
@@ -528,7 +537,7 @@ def main():
                 ]
             },
             fallbacks=[CommandHandler('cancel', cancel_cmd)],
-            per_message=True,  # remove warning e garante callbacks por mensagem
+            per_message=False,  # volta para False para permitir CommandHandler /start sem warning crítico
             per_chat=True,
             per_user=True
         )
