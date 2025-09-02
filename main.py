@@ -27,6 +27,7 @@ from typing import List, Dict, Optional, Tuple
 from dotenv import load_dotenv
 from google.cloud import vision
 from google.oauth2 import service_account
+import google.generativeai as genai
 from PIL import Image
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -231,6 +232,23 @@ def setup_vision_client():
 
 vision_client = setup_vision_client()
 
+def setup_gemini_model():
+    api_key = os.getenv('GOOGLE_API_KEY')
+    if not api_key:
+        logger.info('GOOGLE_API_KEY não configurada - fallback Gemini indisponível')
+        return None
+    try:
+        genai.configure(api_key=api_key)
+        # Modelos possíveis: gemini-1.5-flash (rápido) ou gemini-1.5-pro (mais caro). Usamos flash.
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        logger.info('Modelo Gemini configurado para fallback OCR.')
+        return model
+    except Exception as e:
+        logger.error(f'Falha ao configurar modelo Gemini: {e}')
+        return None
+
+gemini_model = setup_gemini_model()
+
 ADDRESS_REGEX = re.compile(r'(rua|r\.|avenida|av\.|travessa|tv\.|alameda|praça|praca|rodovia|estrada|beco)\s+[^\n]{3,}', re.IGNORECASE)
 
 class ImageProcessor:
@@ -246,27 +264,61 @@ class ImageProcessor:
 
     @staticmethod
     async def ocr(bot, photo_ids: List[str]) -> str:
-        if not vision_client:
-            logger.warning("Vision client não disponível - OCR desabilitado")
-            return ""
-        texts = []
-        for fid in photo_ids:
-            img_bytes = await ImageProcessor.download(bot, fid)
-            if not img_bytes:
-                continue
-            if not await SecurityValidator.validate_image(img_bytes):
-                continue
-            image = vision.Image(content=img_bytes)
-            try:
-                resp = vision_client.text_detection(image=image)
-                if resp.error.message:
-                    logger.warning(f"Vision erro: {resp.error.message}")
+        # 1) Tenta Google Vision
+        if vision_client:
+            texts = []
+            for fid in photo_ids:
+                img_bytes = await ImageProcessor.download(bot, fid)
+                if not img_bytes:
                     continue
-                if resp.text_annotations:
-                    texts.append(resp.text_annotations[0].description)
-            except Exception as e:
-                logger.error(f"OCR falhou: {e}")
-        return '\n'.join(texts)
+                if not await SecurityValidator.validate_image(img_bytes):
+                    continue
+                image = vision.Image(content=img_bytes)
+                try:
+                    resp = vision_client.text_detection(image=image)
+                    if resp.error.message:
+                        logger.warning(f"Vision erro: {resp.error.message}")
+                        continue
+                    if resp.text_annotations:
+                        texts.append(resp.text_annotations[0].description)
+                except Exception as e:
+                    logger.error(f"OCR (Vision) falhou: {e}")
+            if texts:
+                return '\n'.join(texts)
+            logger.info('Vision retornou vazio; tentando fallback Gemini se disponível.')
+        else:
+            logger.warning('Vision client não disponível - tentando fallback Gemini.')
+
+        # 2) Fallback Gemini Vision
+        if gemini_model:
+            results = []
+            for fid in photo_ids:
+                img_bytes = await ImageProcessor.download(bot, fid)
+                if not img_bytes:
+                    continue
+                if not await SecurityValidator.validate_image(img_bytes):
+                    continue
+                try:
+                    b64 = base64.b64encode(img_bytes).decode('utf-8')
+                    # Prompt para extrair somente texto
+                    prompt = ("Extraia SOMENTE o texto legível presente na imagem (endereços, linhas). "
+                              "Não adicione interpretações. Retorne o texto cru exatamente.")
+                    # API espera lista de partes: imagem e texto
+                    resp = gemini_model.generate_content([
+                        { 'mime_type': 'image/jpeg', 'data': b64 },
+                        prompt
+                    ])
+                    if hasattr(resp, 'text') and resp.text:
+                        results.append(resp.text.strip())
+                except Exception as e:
+                    logger.error(f"OCR (Gemini) falhou: {e}")
+            if results:
+                logger.info('OCR realizado via Gemini.')
+                return '\n'.join(results)
+            logger.warning('Fallback Gemini não retornou texto.')
+        else:
+            logger.warning('Modelo Gemini indisponível.')
+        return ''
 
 def extract_addresses(raw_text: str) -> List[DeliveryAddress]:
     found = []
