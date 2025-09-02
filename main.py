@@ -500,7 +500,7 @@ async def process_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         "\nEscolha uma ação abaixo:" )
     kb = InlineKeyboardMarkup([
         [InlineKeyboardButton("🚀 Navegar", callback_data="nav_start")],
-        [InlineKeyboardButton("📤 Exportar Circuit (arquivo)", callback_data="export_circuit")],
+        [InlineKeyboardButton("📤 Exportar Circuit (CSV)", callback_data="export_circuit")],
         [InlineKeyboardButton("🔗 Link Circuit", callback_data="circuit_link")]
     ])
     await q.edit_message_text(text, reply_markup=kb, parse_mode='Markdown')
@@ -515,12 +515,19 @@ async def export_circuit_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     if not session.addresses:
         await q.edit_message_text("Nenhum endereço para exportar.")
         return BotStates.CONFIRMING_ROUTE.value
-    # Gera conteúdo simples: uma linha por endereço (formato que Circuit aceita via colar/importar)
-    content = '\n'.join(a.cleaned_address for a in session.addresses)
+    # CSV: ordem, endereço
+    lines = ["ordem,endereco"]
+    for i, a in enumerate(session.addresses, start=1):
+        addr = a.cleaned_address.replace('"', '""')
+        lines.append(f'{i},"{addr}"')
+    content = '\n'.join(lines)
     from io import BytesIO
     bio = BytesIO(content.encode('utf-8'))
-    bio.name = f"rota_{datetime.now().strftime('%Y%m%d_%H%M')}.txt"
-    await q.message.reply_document(InputFile(bio), caption="Arquivo de endereços para importar no Circuit. \nNo app Circuit: Import > Paste/Upload e selecione este arquivo.")
+    bio.name = f"rota_{datetime.now().strftime('%Y%m%d_%H%M')}.csv"
+    await q.message.reply_document(
+        InputFile(bio),
+        caption=("CSV para Circuit gerado.\nNo app Circuit: Import > File Upload (ou Paste) e selecione este CSV.\nColunas: ordem, endereco.")
+    )
     # Mantém mensagem original com botões (não edita) – oferece continuidade
     return BotStates.CONFIRMING_ROUTE.value
 
