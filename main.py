@@ -17,6 +17,8 @@ import logging
 import threading
 import base64
 import errno
+import math
+import httpx
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from datetime import datetime, timedelta
 from dataclasses import dataclass, asdict
@@ -30,7 +32,7 @@ from google.oauth2 import service_account
 import google.generativeai as genai
 from PIL import Image
 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputFile
 from telegram.ext import (
     Application, CommandHandler, MessageHandler, CallbackQueryHandler,
     ConversationHandler, ContextTypes, filters
@@ -93,6 +95,8 @@ class Config:
     MAX_ADDRESSES_PER_ROUTE = int(os.getenv('MAX_ADDRESSES_PER_ROUTE', '20'))
     MAX_IMAGE_SIZE_MB = 20
     RATE_LIMIT_PER_HOUR = 50
+    SERVICE_TIME_PER_STOP_MIN = float(os.getenv('SERVICE_TIME_PER_STOP_MIN', '1'))  # tempo médio para deixar pacote
+    AVERAGE_SPEED_KMH = float(os.getenv('AVERAGE_SPEED_KMH', '25'))  # velocidade urbana média fallback
     user_requests: Dict[int, List[datetime]] = {}
 
 if not Config.TELEGRAM_BOT_TOKEN:
@@ -338,6 +342,63 @@ def optimize_route(addresses: List[DeliveryAddress]) -> List[str]:
     # Placeholder: mantém ordem original (minimiza mudanças)
     return [a.cleaned_address for a in addresses]
 
+async def compute_route_stats(addresses: List[DeliveryAddress]) -> Tuple[float, float, float, float]:
+    """Calcula distância e tempo estimado.
+
+    Retorna (total_km, driving_minutes, service_minutes, total_minutes)
+    Usa Google Distance Matrix pairwise se GOOGLE_API_KEY disponível; senão heurística.
+    """
+    n = len(addresses)
+    if n <= 1:
+        service = n * Config.SERVICE_TIME_PER_STOP_MIN
+        return 0.0, 0.0, service, service
+
+    api_key = os.getenv('GOOGLE_API_KEY')
+    total_meters = 0
+    total_seconds = 0
+    use_api = bool(api_key)
+    if use_api:
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                for i in range(n - 1):
+                    origin = addresses[i].cleaned_address
+                    dest = addresses[i + 1].cleaned_address
+                    params = {
+                        'origins': origin,
+                        'destinations': dest,
+                        'mode': 'driving',
+                        'language': 'pt-BR',
+                        'key': api_key
+                    }
+                    r = await client.get('https://maps.googleapis.com/maps/api/distancematrix/json', params=params)
+                    data = r.json()
+                    if data.get('status') != 'OK':
+                        logger.warning(f"DistanceMatrix status global não OK: {data.get('status')} - fallback heurístico")
+                        use_api = False
+                        break
+                    row = data['rows'][0]['elements'][0]
+                    if row.get('status') != 'OK':
+                        logger.warning(f"DistanceMatrix status elemento não OK: {row.get('status')} - fallback heurístico")
+                        use_api = False
+                        break
+                    total_meters += row['distance']['value']
+                    total_seconds += row['duration']['value']
+        except Exception as e:
+            logger.warning(f"Falha Distance Matrix ({e}) - usando heurística.")
+            use_api = False
+
+    if not use_api:
+        # Heurística: 1.2 km por segmento * (n-1)
+        total_km = 1.2 * (n - 1)
+        driving_minutes = (total_km / Config.AVERAGE_SPEED_KMH) * 60
+    else:
+        total_km = total_meters / 1000.0
+        driving_minutes = total_seconds / 60.0
+
+    service_minutes = n * Config.SERVICE_TIME_PER_STOP_MIN
+    total_minutes = driving_minutes + service_minutes
+    return round(total_km, 2), round(driving_minutes, 1), round(service_minutes, 1), round(total_minutes, 1)
+
 user_sessions: Dict[int, UserSession] = {}
 
 async def get_session(user_id: int) -> UserSession:
@@ -407,16 +468,48 @@ async def process_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         return BotStates.WAITING_PHOTOS.value
     session.optimized_route = optimize_route(session.addresses)
     await DataPersistence.save(session)
-    text = "📍 Endereços extraídos:\n" + '\n'.join(
-        f"{i+1}. {a.cleaned_address}" for i, a in enumerate(session.addresses)
-    )
-    text += "\n\nClique em Navegar para iniciar a sequência."
+    # Estatísticas da rota
+    total = len(session.addresses)
+    total_km, driving_min, service_min, total_min = await compute_route_stats(session.addresses)
+    primeira = session.addresses[0].cleaned_address
+    ultima = session.addresses[-1].cleaned_address
+
+    lista = '\n'.join(f"{i+1:02d}. {a.cleaned_address}" for i, a in enumerate(session.addresses))
+    text = (
+        "🚀 *Resumo Profissional da Rota*\n"
+        f"🔢 Entregas: *{total}*\n"
+        f"🧭 Início: {primeira}\n🏁 Fim: {ultima}\n"
+        f"�️ Distância estimada: *{total_km} km*\n"
+        f"⏱️ Tempo de condução: ~{driving_min} min\n"
+        f"📦 Tempo de manuseio (@{Config.SERVICE_TIME_PER_STOP_MIN} min/entrega): {service_min} min\n"
+        f"⏳ Tempo total estimado: *{total_min} min*\n"
+        "\n� *Ordem das Entregas:*\n" + lista +
+        "\n\n💡 _Distâncias reais podem variar. Otimização futura poderá reordenar para reduzir km._\n"
+        "\nEscolha uma ação abaixo:" )
     kb = InlineKeyboardMarkup([
         [InlineKeyboardButton("🚀 Navegar", callback_data="nav_start")],
-        [InlineKeyboardButton("🔄 Reprocessar", callback_data="process")]
+        [InlineKeyboardButton("� Exportar Circuit", callback_data="export_circuit")],
+        [InlineKeyboardButton("�🔄 Reprocessar", callback_data="process")]
     ])
-    await q.edit_message_text(text, reply_markup=kb)
+    await q.edit_message_text(text, reply_markup=kb, parse_mode='Markdown')
     session.state = BotStates.CONFIRMING_ROUTE
+    return BotStates.CONFIRMING_ROUTE.value
+
+async def export_circuit_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    q = update.callback_query
+    await q.answer()
+    uid = q.from_user.id
+    session = await get_session(uid)
+    if not session.addresses:
+        await q.edit_message_text("Nenhum endereço para exportar.")
+        return BotStates.CONFIRMING_ROUTE.value
+    # Gera conteúdo simples: uma linha por endereço (formato que Circuit aceita via colar/importar)
+    content = '\n'.join(a.cleaned_address for a in session.addresses)
+    from io import BytesIO
+    bio = BytesIO(content.encode('utf-8'))
+    bio.name = f"rota_{datetime.now().strftime('%Y%m%d_%H%M')}.txt"
+    await q.message.reply_document(InputFile(bio), caption="Arquivo de endereços para importar no Circuit. \nNo app Circuit: Import > Paste/Upload e selecione este arquivo.")
+    # Mantém mensagem original com botões (não edita) – oferece continuidade
     return BotStates.CONFIRMING_ROUTE.value
 
 async def nav_start_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -581,7 +674,8 @@ def main():
                 ],
                 BotStates.CONFIRMING_ROUTE.value: [
                     CallbackQueryHandler(nav_start_cb, pattern='^nav_start$'),
-                    CallbackQueryHandler(process_cb, pattern='^process$')
+                    CallbackQueryHandler(process_cb, pattern='^process$'),
+                    CallbackQueryHandler(export_circuit_cb, pattern='^export_circuit$')
                 ],
                 BotStates.NAVIGATING.value: [
                     CallbackQueryHandler(delivered_cb, pattern='^delivered$'),
