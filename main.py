@@ -6,7 +6,7 @@ Versão: 2.0 - Profissional
 Desenvolvido para auxiliar entregadores a otimizar suas rotas diárias
 através de inteligência artificial, OCR e navegação GPS integrada.
 
-Author: GitHub Copilot
+Author: Henrique de Jesus
 Date: 2025-09-02
 """
 
@@ -17,6 +17,8 @@ import logging
 import asyncio
 import aiohttp
 import base64
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Tuple, Any
 from dataclasses import dataclass, asdict
@@ -308,15 +310,13 @@ class SecurityValidator:
 def setup_vision_client():
     """Configurar cliente do Google Cloud Vision."""
     try:
-        # Tentar carregar credenciais de diferentes formas
+        # Usar JSON diretamente (método que já funciona em outros bots)
         json_env = os.getenv('GOOGLE_VISION_CREDENTIALS_JSON')
-        json_b64 = os.getenv('GOOGLE_VISION_CREDENTIALS_JSON_BASE64')
         creds_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
         
-        if json_b64:
-            # Decodificar Base64
-            decoded = base64.b64decode(json_b64).decode('utf-8')
-            creds_info = json.loads(decoded)
+        if json_env:
+            # Usar JSON diretamente das variáveis de ambiente
+            creds_info = json.loads(json_env)
             
             # Corrigir private_key se necessário
             if 'private_key' in creds_info:
@@ -324,10 +324,6 @@ def setup_vision_client():
                 if '\\n' in private_key and '\n' not in private_key:
                     creds_info['private_key'] = private_key.replace('\\n', '\n')
             
-            credentials = service_account.Credentials.from_service_account_info(creds_info)
-            
-        elif json_env:
-            creds_info = json.loads(json_env)
             credentials = service_account.Credentials.from_service_account_info(creds_info)
             
         elif creds_path and os.path.exists(creds_path):
