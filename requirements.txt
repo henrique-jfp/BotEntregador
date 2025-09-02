@@ -1,3 +1,16 @@
-python-telegram-bot==21.4
-google-cloud-vision==3.7.2
+# Bot Framework
+python-telegram-bot==20.7
+
+# Google Cloud APIs
+google-cloud-vision==3.4.5
+google-generativeai==0.3.2
 google-auth==2.29.0
+
+# Environment & Security
+python-dotenv==1.0.0
+
+# Image Processing
+Pillow==10.1.0
+
+# HTTP Async
+aiohttp==3.9.1
