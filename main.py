@@ -22,6 +22,7 @@ import httpx
 import urllib.parse
 import uuid
 import asyncio
+import itertools
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from datetime import datetime, timedelta
 from dataclasses import dataclass, asdict
@@ -40,6 +41,13 @@ from telegram.ext import (
     Application, CommandHandler, MessageHandler, CallbackQueryHandler,
     ConversationHandler, ContextTypes, filters
 )
+
+# OR-Tools (pode falhar em ambiente local sem instalação; fallback ativo)
+try:
+    from ortools.constraint_solver import pywrapcp, routing_enums_pb2
+    ORTOOLS_AVAILABLE = True
+except Exception:
+    ORTOOLS_AVAILABLE = False
 
 load_dotenv()
 
@@ -516,6 +524,251 @@ async def optimize_route(addresses: List[DeliveryAddress]) -> List[DeliveryAddre
     logger.info('Rota otimizada (heurística) concluída.')
     return route
 
+# ================= ROTAS COM MATRIZ DE DISTÂNCIA (Google Distance Matrix) =================
+class DistanceMatrixBuilder:
+    cache_file = Path('distance_cache.json')
+    cache: Dict[str, Dict[str, Dict[str, float]]] = {}
+
+    @classmethod
+    def load(cls):
+        if not cls.cache and cls.cache_file.exists():
+            try:
+                cls.cache = json.loads(cls.cache_file.read_text(encoding='utf-8'))
+            except Exception:
+                cls.cache = {}
+
+    @classmethod
+    def save(cls):
+        try:
+            cls.cache_file.write_text(json.dumps(cls.cache, ensure_ascii=False, indent=2), encoding='utf-8')
+        except Exception:
+            pass
+
+    @classmethod
+    def get_cached(cls, o: str, d: str):
+        okey = o.lower(); dkey = d.lower()
+        if okey in cls.cache and dkey in cls.cache[okey]:
+            return cls.cache[okey][dkey]
+        return None
+
+    @classmethod
+    def set_cached(cls, o: str, d: str, dist: float, dur: float):
+        okey = o.lower(); dkey = d.lower()
+        cls.cache.setdefault(okey, {})[dkey] = {'distance': dist, 'duration': dur}
+
+async def build_distance_duration_matrix(addresses: List[DeliveryAddress]) -> Tuple[List[List[float]], List[List[float]], bool]:
+    """Retorna (matriz_dist_m, matriz_dur_s, via_api).
+
+    Faz chamadas individuais por origem (n chamadas) para n<=25.
+    Usa cache para reduzir consumo.
+    """
+    api_key = os.getenv('GOOGLE_API_KEY')
+    n = len(addresses)
+    DistanceMatrixBuilder.load()
+    if not api_key:
+        return [], [], False
+    dmat = [[0.0]*n for _ in range(n)]
+    tmat = [[0.0]*n for _ in range(n)]
+    async with httpx.AsyncClient(timeout=15) as client:
+        for i, origin_obj in enumerate(addresses):
+            origin = origin_obj.cleaned_address
+            # Verifica cache para todos destinos
+            missing = []
+            for j, dest_obj in enumerate(addresses):
+                if i == j:
+                    continue
+                cached = DistanceMatrixBuilder.get_cached(origin, dest_obj.cleaned_address)
+                if cached:
+                    dmat[i][j] = cached['distance']
+                    tmat[i][j] = cached['duration']
+                else:
+                    missing.append((j, dest_obj.cleaned_address))
+            if missing:
+                destinations_str = '|'.join(m[1] for m in missing)
+                params = {
+                    'origins': origin,
+                    'destinations': destinations_str,
+                    'mode': 'driving',
+                    'language': 'pt-BR',
+                    'key': api_key
+                }
+                try:
+                    r = await client.get('https://maps.googleapis.com/maps/api/distancematrix/json', params=params)
+                    data = r.json()
+                    if data.get('status') != 'OK':
+                        logger.warning(f"Distance Matrix status global {data.get('status')} - fallback")
+                        return [], [], False
+                    elements = data['rows'][0]['elements']
+                    for idx, el in enumerate(elements):
+                        j = missing[idx][0]
+                        if el.get('status') == 'OK':
+                            dist = el['distance']['value']  # metros
+                            dur = el['duration']['value']    # segundos
+                            dmat[i][j] = dist
+                            tmat[i][j] = dur
+                            DistanceMatrixBuilder.set_cached(origin, addresses[j].cleaned_address, dist, dur)
+                        else:
+                            logger.warning(f"Elemento DM não OK {origin} -> {addresses[j].cleaned_address}: {el.get('status')}")
+                            return [], [], False
+                except Exception as e:
+                    logger.warning(f"Falha Distance Matrix origem {origin}: {e}")
+                    return [], [], False
+    DistanceMatrixBuilder.save()
+    return dmat, tmat, True
+
+def tsp_exact(distance_matrix: List[List[float]]) -> List[int]:
+    """Held-Karp exato para n<=12."""
+    n = len(distance_matrix)
+    if n <= 2:
+        return list(range(n))
+    # DP: dict[(mask,last)] = (cost, prev)
+    dp: Dict[Tuple[int,int], Tuple[float,int]] = {}
+    for i in range(1, n):
+        dp[(1<<i, i)] = (distance_matrix[0][i], 0)
+    for mask in range(1, 1<<n):
+        if not (mask & 1):
+            # garantimos que bit 0 é origem fora das máscaras parciais
+            for last in range(1, n):
+                if mask & (1<<last):
+                    prev_mask = mask ^ (1<<last)
+                    if prev_mask == 0:
+                        continue
+                    best = dp.get((mask, last), (float('inf'), -1))[0]
+                    for k in range(1, n):
+                        if prev_mask & (1<<k):
+                            prev_cost = dp.get((prev_mask, k))
+                            if not prev_cost:
+                                continue
+                            cand = prev_cost[0] + distance_matrix[k][last]
+                            if cand < best:
+                                dp[(mask, last)] = (cand, k)
+                                best = cand
+    full_mask = (1<<n) - 1
+    # Escolhe melhor fim (não retorna à origem)
+    best_end = None
+    best_cost = float('inf')
+    for last in range(1, n):
+        entry = dp.get((full_mask ^ 1, last)) or dp.get((full_mask-1, last)) or dp.get((full_mask, last))
+        if not entry:
+            continue
+        if entry[0] < best_cost:
+            best_cost = entry[0]
+            best_end = last
+    if best_end is None:
+        return list(range(n))
+    # Reconstrói
+    path = [best_end]
+    mask = full_mask ^ 1  # remove bit origem
+    last = best_end
+    while mask:
+        entry = dp.get((mask, last))
+        if not entry:
+            break
+        prev = entry[1]
+        path.append(prev)
+        mask ^= (1<<last)
+        last = prev
+        if prev == 0:
+            break
+    path.append(0)
+    path.reverse()
+    return path
+
+def tsp_heuristic(distance_matrix: List[List[float]]) -> List[int]:
+    n = len(distance_matrix)
+    if n <= 2:
+        return list(range(n))
+    unvisited = set(range(1, n))
+    path = [0]
+    current = 0
+    while unvisited:
+        nxt = min(unvisited, key=lambda j: distance_matrix[current][j] if distance_matrix[current][j] > 0 else 1e12)
+        path.append(nxt)
+        unvisited.remove(nxt)
+        current = nxt
+    # 2-opt melhoria
+    improved = True
+    def total(p):
+        return sum(distance_matrix[p[i]][p[i+1]] for i in range(len(p)-1))
+    while improved:
+        improved = False
+        base = total(path)
+        for i in range(1, len(path)-2):
+            for j in range(i+1, len(path)-1):
+                if j-i == 1:
+                    continue
+                newp = path[:i] + list(reversed(path[i:j])) + path[j:]
+                d = total(newp)
+                if d + 1 < base:
+                    path = newp
+                    base = d
+                    improved = True
+    return path
+
+def optimize_with_distance_matrix(distance_matrix: List[List[float]]) -> List[int]:
+    n = len(distance_matrix)
+    if ORTOOLS_AVAILABLE and n <= 25:
+        try:
+            manager = pywrapcp.RoutingIndexManager(n, 1, 0)
+            routing = pywrapcp.RoutingModel(manager)
+            def distance_cb(from_index, to_index):
+                f = manager.IndexToNode(from_index); t = manager.IndexToNode(to_index)
+                return int(distance_matrix[f][t])
+            transit_index = routing.RegisterTransitCallback(distance_cb)
+            routing.SetArcCostEvaluatorOfAllVehicles(transit_index)
+            search_params = pywrapcp.DefaultRoutingSearchParameters()
+            search_params.first_solution_strategy = routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC
+            search_params.local_search_metaheuristic = routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH
+            search_params.time_limit.FromSeconds(5)
+            solution = routing.SolveWithParameters(search_params)
+            if solution:
+                index = routing.Start(0)
+                order = []
+                while not routing.IsEnd(index):
+                    node = manager.IndexToNode(index)
+                    order.append(node)
+                    index = solution.Value(routing.NextVar(index))
+                # Remove possível retorno à origem duplicado
+                if len(order) > 1 and order[-1] == 0:
+                    order = order[:-1]
+                return order
+        except Exception as e:
+            logger.warning(f"Falha OR-Tools: {e} - fallback heurístico")
+    # Exact DP for small n
+    if n <= 12:
+        return tsp_exact(distance_matrix)
+    return tsp_heuristic(distance_matrix)
+
+async def optimize_and_compute(addresses: List[DeliveryAddress]) -> Tuple[List[DeliveryAddress], float, float, float, float, bool]:
+    """Produz rota otimizada e estatísticas.
+
+    Retorna (addresses_ordenados, total_km, driving_min, service_min, total_min, via_api)
+    via_api=True indica uso Distance Matrix real; False = fallback heurístico/geocoding.
+    """
+    if len(addresses) <= 1:
+        service = len(addresses) * Config.SERVICE_TIME_PER_STOP_MIN
+        return addresses, 0.0, 0.0, service, service, False
+    dmat, tmat, ok = await build_distance_duration_matrix(addresses)
+    if ok:
+        order_idx = optimize_with_distance_matrix(dmat)
+        ordered = [addresses[i] for i in order_idx]
+        # Distância e duração reais
+        total_m = 0.0
+        total_s = 0.0
+        for i in range(len(order_idx)-1):
+            a = order_idx[i]; b = order_idx[i+1]
+            total_m += dmat[a][b]
+            total_s += tmat[a][b]
+        # Tempo de serviço (não conta origem coleta)
+        service_min = (len(ordered)-1) * Config.SERVICE_TIME_PER_STOP_MIN
+        driving_min = total_s / 60.0 if total_s > 0 else (total_m/1000.0)/Config.AVERAGE_SPEED_KMH*60
+        total_min = driving_min + service_min
+        return ordered, round(total_m/1000.0, 2), round(driving_min, 1), round(service_min,1), round(total_min,1), True
+    # Fallback: usar heurística geocoding existente
+    ordered = await optimize_route(addresses)
+    total_km, driving_min, service_min, total_min = await compute_route_stats(ordered)
+    return ordered, total_km, driving_min, service_min, total_min, False
+
 async def compute_route_stats(ordered: List[DeliveryAddress]) -> Tuple[float, float, float, float]:
     """Calcula distância real em km e tempos a partir da rota otimizada.
 
@@ -617,16 +870,14 @@ async def process_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not session.addresses:
         await q.edit_message_text("Nenhum endereço reconhecido. Verifique se aparecem 'Rua', 'Av', etc.")
         return BotStates.WAITING_PHOTOS.value
-    # Otimiza rota (mantendo primeiro endereço como origem / coleta)
-    optimized_objs = await optimize_route(session.addresses)
+    # Otimiza rota com Distance Matrix (se disponível) e calcula métricas reais
+    optimized_objs, total_km, driving_min, service_min, total_min, via_api = await optimize_and_compute(session.addresses)
     session.optimized_route = [o.cleaned_address for o in optimized_objs]
-    # Reordena lista de objetos para refletir a otimização
     session.addresses = optimized_objs
     session.processed = True
     await DataPersistence.save(session)
     # Estatísticas da rota
     total = len(session.addresses)
-    total_km, driving_min, service_min, total_min = await compute_route_stats(session.addresses)
     primeira = session.addresses[0].cleaned_address
     ultima = session.addresses[-1].cleaned_address
 
@@ -635,12 +886,12 @@ async def process_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         "🚀 *Resumo Profissional da Rota*\n"
         f"🔢 Entregas: *{total}*\n"
         f"🧭 Início: {primeira}\n🏁 Fim: {ultima}\n"
-        f"�️ Distância estimada: *{total_km} km*\n"
-        f"⏱️ Tempo de condução: ~{driving_min} min\n"
-        f"📦 Tempo de manuseio (@{Config.SERVICE_TIME_PER_STOP_MIN} min/entrega): {service_min} min\n"
-        f"⏳ Tempo total estimado: *{total_min} min*\n"
+    f"📏 Distância {'real' if via_api else 'estimada'}: *{total_km} km*\n"
+    f"⏱️ Condução: ~{driving_min} min\n"
+    f"📦 Manuseio (@{Config.SERVICE_TIME_PER_STOP_MIN} min/entrega): {service_min} min\n"
+    f"⏳ Total estimado: *{total_min} min*\n"
         "\n� *Ordem das Entregas:*\n" + lista +
-        "\n\n💡 _Distâncias reais podem variar. Otimização futura poderá reordenar para reduzir km._\n"
+    ("\n\n✅ Distância calculada via Google Distance Matrix." if via_api else "\n\n💡 Fallback heurístico usado (API indisponível).") +
         "\nEscolha uma ação abaixo:" )
     # Registra rota para deep-link via endpoint HTTP
     route_id = uuid.uuid4().hex[:10]
