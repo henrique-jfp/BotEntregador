@@ -24,18 +24,13 @@ ADDRESS_REGEX = re.compile(
 # 1) Variável GOOGLE_VISION_CREDENTIALS_JSON contendo o JSON inteiro (mais seguro em Render)
 # 2) Variável GOOGLE_APPLICATION_CREDENTIALS apontando para um arquivo json no disco
 def extract_text_from_image(image_path):
-    credentials_path = ensure_credentials_file()
     try:
+        credentials_path = ensure_credentials_file()
         credentials = service_account.Credentials.from_service_account_file(credentials_path)
-    except Exception as e:
-        logger.error(f"Falha ao carregar credenciais: {e}")
-        raise RuntimeError("Erro nas credenciais do Google Vision. Recrie a chave ou use Base64.") from e
-
-    try:
         client = vision.ImageAnnotatorClient(credentials=credentials)
     except Exception as e:
-        logger.error(f"Falha ao instanciar cliente Vision: {e}")
-        raise RuntimeError("Erro ao inicializar cliente Vision.") from e
+        logger.error(f"Falha ao configurar Google Vision: {e}")
+        raise RuntimeError("Erro nas credenciais do Google Vision. Recrie a chave ou use Base64.") from e
     with open(image_path, 'rb') as image_file:
         content = image_file.read()
 
@@ -92,10 +87,12 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     logger.exception("Erro não tratado durante processamento de update")
     try:
         if update and update.effective_chat:
-            await context.bot.send_message(chat_id=update.effective_chat.id,
-                                           text="Ocorreu um erro interno ao processar sua solicitação. Tente novamente em instantes.")
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text="Ocorreu um erro interno. Tente novamente em instantes."
+            )
     except Exception:
-        pass
+        logger.exception("Falha ao enviar mensagem de erro")
 
     # (bloco movido para extract_text_from_image)
 
@@ -115,47 +112,50 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "Olá! Envie uma foto (print) da lista de endereços do seu app de entregas, e eu extrairei os endereços e criarei rotas otimizadas para você."
     )
 
-# Handler para mensagens de foto
+    # Handler para mensagens de foto
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    photo = update.message.photo[-1]  # Maior resolução
-    file = await context.bot.get_file(photo.file_id)
-    image_path = f"temp_{update.message.from_user.id}.jpg"
-    await file.download_to_drive(image_path)
-
-    # Extrair texto
     try:
+        photo = update.message.photo[-1]  # Maior resolução
+        file = await context.bot.get_file(photo.file_id)
+        image_path = f"temp_{update.message.from_user.id}.jpg"
+        await file.download_to_drive(image_path)
+
+        # Extrair texto
         text = extract_text_from_image(image_path)
+        os.remove(image_path)  # Limpar arquivo temporário
+
+        if not text:
+            await update.message.reply_text("Não consegui extrair texto da imagem. Tente novamente com uma foto mais clara.")
+            return
+
+        # Filtrar endereços
+        addresses = filter_addresses(text)
+
+        if not addresses:
+            await update.message.reply_text("Nenhum endereço encontrado na imagem. Verifique se a foto contém endereços visíveis.")
+            return
+
+        # Salvar endereços no contexto para uso posterior
+        context.user_data['addresses'] = addresses
+
+        # Responder com lista de endereços
+        address_list = "\n".join(f"{i+1}. {addr}" for i, addr in enumerate(addresses))
+        await update.message.reply_text(f"Endereços extraídos:\n{address_list}")
+
+        # Criar keyboard inline
+        keyboard = [
+            [InlineKeyboardButton("🗺️ Google Maps", callback_data='maps')],
+            [InlineKeyboardButton("🚗 Waze", callback_data='waze')],
+            [InlineKeyboardButton("📋 Circuit (Copiar)", callback_data='circuit')]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text("Escolha uma opção para gerar a rota:", reply_markup=reply_markup)
+
     except RuntimeError as e:
         await update.message.reply_text(str(e))
-        return
-    os.remove(image_path)  # Limpar arquivo temporário
-
-    if not text:
-        await update.message.reply_text("Não consegui extrair texto da imagem. Tente novamente com uma foto mais clara.")
-        return
-
-    # Filtrar endereços
-    addresses = filter_addresses(text)
-
-    if not addresses:
-        await update.message.reply_text("Nenhum endereço encontrado na imagem. Verifique se a foto contém endereços visíveis.")
-        return
-
-    # Salvar endereços no contexto para uso posterior
-    context.user_data['addresses'] = addresses
-
-    # Responder com lista de endereços
-    address_list = "\n".join(f"{i+1}. {addr}" for i, addr in enumerate(addresses))
-    await update.message.reply_text(f"Endereços extraídos:\n{address_list}")
-
-    # Criar keyboard inline
-    keyboard = [
-        [InlineKeyboardButton("🗺️ Google Maps", callback_data='maps')],
-        [InlineKeyboardButton("🚗 Waze", callback_data='waze')],
-        [InlineKeyboardButton("📋 Circuit (Copiar)", callback_data='circuit')]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text("Escolha uma opção para gerar a rota:", reply_markup=reply_markup)
+    except Exception as e:
+        logger.exception("Erro inesperado ao processar foto")
+        await update.message.reply_text("Erro inesperado ao processar a imagem. Tente novamente.")
 
 # Handler para callback queries
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
