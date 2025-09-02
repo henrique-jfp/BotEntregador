@@ -1,1 +1,1 @@
-worker: python bot_vision.py
+worker: python3 bot_vision.py
