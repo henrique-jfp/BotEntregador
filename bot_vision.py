@@ -1,6 +1,8 @@
 import os
 import re
 import logging
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
 from google.cloud import vision
@@ -17,7 +19,9 @@ ADDRESS_REGEX = re.compile(
     re.IGNORECASE | re.MULTILINE
 )
 
-# Função para extrair texto da imagem usando Google Vision
+# Função para extrair texto da imagem usando Google Vision. Aceita credencial via:
+# 1) Variável GOOGLE_VISION_CREDENTIALS_JSON contendo o JSON inteiro (mais seguro em Render)
+# 2) Variável GOOGLE_APPLICATION_CREDENTIALS apontando para um arquivo json no disco
 def extract_text_from_image(image_path):
     credentials_json = os.getenv('GOOGLE_VISION_CREDENTIALS_JSON')
     if credentials_json:
@@ -126,12 +130,45 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         address_list = "\n".join(addresses)
         await query.edit_message_text(f"Lista de endereços para copiar no Circuit:\n{address_list}")
 
-# Função principal
-def main():
-    token = os.getenv('TELEGRAM_TOKEN')
-    if not token:
-        logger.error("TELEGRAM_TOKEN não definido.")
+class _HealthHandler(BaseHTTPRequestHandler):
+    def do_GET(self):  # noqa: N802 método padrão http.server
+        if self.path not in ('/', '/health', '/healthz'):
+            self.send_response(404)
+            self.end_headers()
+            return
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/plain; charset=utf-8')
+        self.end_headers()
+        self.wfile.write(b'OK')
+
+    # Silenciar logs padrão do http.server para não poluir Render logs
+    def log_message(self, format, *args):  # noqa: A003 (nome herdado)
         return
+
+
+def start_health_server():
+    """Inicia um pequeno servidor HTTP para satisfazer verificação de porta do Render.
+    Caso o serviço esteja configurado como Web Service, o Render exige uma porta aberta.
+    """
+    try:
+        port = int(os.getenv('PORT', '10000'))  # Render define PORT para Web Service.
+        server = HTTPServer(('0.0.0.0', port), _HealthHandler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        logger.info(f"Servidor de health iniciado na porta {port}.")
+    except Exception as e:  # pragma: no cover (melhor esforço)
+        logger.error(f"Falha ao iniciar servidor de health: {e}")
+
+
+def main():
+    # Suporta tanto TELEGRAM_TOKEN (recomendado) quanto BOT_TOKEN (legacy)
+    token = os.getenv('TELEGRAM_TOKEN') or os.getenv('BOT_TOKEN')
+    if not token:
+        logger.error("Nenhum token encontrado (TELEGRAM_TOKEN / BOT_TOKEN).")
+        return
+
+    # Inicia servidor de health se estivermos em ambiente que requer porta (Web Service)
+    start_health_server()
 
     application = Application.builder().token(token).build()
 
@@ -139,7 +176,8 @@ def main():
     application.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     application.add_handler(CallbackQueryHandler(handle_callback))
 
-    application.run_polling()
+    # Execução de polling (bloqueante)
+    application.run_polling(drop_pending_updates=True)
 
 if __name__ == '__main__':
     main()
