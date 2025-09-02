@@ -76,6 +76,7 @@ class UserSession:
     start_time: datetime = None
     completed_deliveries: List[str] = None
     state: BotStates = BotStates.WAITING_PHOTOS
+    processed: bool = False
 
     def __post_init__(self):
         if self.photos is None:
@@ -151,7 +152,8 @@ class DataPersistence:
                 current_delivery_index=data.get('current_delivery_index', 0),
                 start_time=start_time,
                 completed_deliveries=data.get('completed_deliveries', []),
-                state=BotStates[data.get('state', 'WAITING_PHOTOS')]
+                state=BotStates[data.get('state', 'WAITING_PHOTOS')],
+                processed=data.get('processed', False)
             )
             return session
         except Exception as e:
@@ -415,7 +417,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not await SecurityValidator.rate_limit(uid):
         await update.message.reply_text("⚠️ Limite por hora atingido. Tente depois.")
         return ConversationHandler.END
-    user_sessions[uid] = UserSession(user_id=uid, photos=[])
+    user_sessions[uid] = UserSession(user_id=uid, photos=[], processed=False)
     msg = (
         "🚚 Olá! Envie fotos (até 8) com os endereços. Depois clique em Processar."
     )
@@ -433,15 +435,20 @@ async def start_photos_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 async def photo_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     uid = update.effective_user.id
     session = await get_session(uid)
+    if session.processed:
+        await update.message.reply_text("Rota já processada. Use 🚀 Navegar ou /start para nova rota.")
+        return BotStates.CONFIRMING_ROUTE.value if session.addresses else BotStates.WAITING_PHOTOS.value
     if len(session.photos) >= Config.MAX_PHOTOS_PER_REQUEST:
         await update.message.reply_text("⚠️ Limite de fotos atingido.")
         return BotStates.WAITING_PHOTOS.value
     fid = update.message.photo[-1].file_id
     session.photos.append(fid)
     await DataPersistence.save(session)
-    buttons = [[InlineKeyboardButton("✅ Processar", callback_data="process")]]
+    buttons = []
     if len(session.photos) < Config.MAX_PHOTOS_PER_REQUEST:
         buttons.append([InlineKeyboardButton("➕ Mais fotos", callback_data="start_photos")])
+    if len(session.photos) >= 1:
+        buttons.append([InlineKeyboardButton("✅ Finalizar fotos", callback_data="process")])
     await update.message.reply_text(
         f"Foto {len(session.photos)}/{Config.MAX_PHOTOS_PER_REQUEST} recebida.",
         reply_markup=InlineKeyboardMarkup(buttons)
@@ -453,6 +460,9 @@ async def process_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await q.answer()
     uid = q.from_user.id
     session = await get_session(uid)
+    if session.processed:
+        await q.edit_message_text("Rota já processada. Use os botões existentes abaixo.")
+        return BotStates.CONFIRMING_ROUTE.value
     if not session.photos:
         await q.edit_message_text("Envie ao menos 1 foto primeiro.")
         return BotStates.WAITING_PHOTOS.value
@@ -467,6 +477,7 @@ async def process_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         await q.edit_message_text("Nenhum endereço reconhecido. Verifique se aparecem 'Rua', 'Av', etc.")
         return BotStates.WAITING_PHOTOS.value
     session.optimized_route = optimize_route(session.addresses)
+    session.processed = True
     await DataPersistence.save(session)
     # Estatísticas da rota
     total = len(session.addresses)
@@ -488,8 +499,7 @@ async def process_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         "\nEscolha uma ação abaixo:" )
     kb = InlineKeyboardMarkup([
         [InlineKeyboardButton("🚀 Navegar", callback_data="nav_start")],
-        [InlineKeyboardButton("� Exportar Circuit", callback_data="export_circuit")],
-        [InlineKeyboardButton("�🔄 Reprocessar", callback_data="process")]
+        [InlineKeyboardButton("📤 Exportar Circuit", callback_data="export_circuit")]
     ])
     await q.edit_message_text(text, reply_markup=kb, parse_mode='Markdown')
     session.state = BotStates.CONFIRMING_ROUTE
