@@ -1,5 +1,6 @@
 import os
 import re
+import json
 import logging
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -23,18 +24,9 @@ ADDRESS_REGEX = re.compile(
 # 1) Variável GOOGLE_VISION_CREDENTIALS_JSON contendo o JSON inteiro (mais seguro em Render)
 # 2) Variável GOOGLE_APPLICATION_CREDENTIALS apontando para um arquivo json no disco
 def extract_text_from_image(image_path):
-    credentials_json = os.getenv('GOOGLE_VISION_CREDENTIALS_JSON')
-    if credentials_json:
-        # Escrever o JSON em um arquivo temporário
-        with open('temp_credentials.json', 'w') as f:
-            f.write(credentials_json)
-        credentials_path = 'temp_credentials.json'
-    else:
-        credentials_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS', 'google-credentials.json')
-    
+    credentials_path = ensure_credentials_file()
     credentials = service_account.Credentials.from_service_account_file(credentials_path)
     client = vision.ImageAnnotatorClient(credentials=credentials)
-
     with open(image_path, 'rb') as image_file:
         content = image_file.read()
 
@@ -45,6 +37,58 @@ def extract_text_from_image(image_path):
     if texts:
         return texts[0].description
     return ""
+def ensure_credentials_file() -> str:
+    """Garante que existe um arquivo de credenciais local e retorna o caminho.
+    Suporta:
+      - GOOGLE_VISION_CREDENTIALS_JSON (JSON bruto)
+      - GOOGLE_VISION_CREDENTIALS_JSON_BASE64 (JSON inteiro base64)
+      - GOOGLE_APPLICATION_CREDENTIALS (caminho já existente)
+    Corrige o campo private_key substituindo sequências \n literais por novas linhas reais.
+    """
+    # Caminho explícito já fornecido
+    explicit_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+    if explicit_path and os.path.isfile(explicit_path):
+        return explicit_path
+
+    json_env = os.getenv('GOOGLE_VISION_CREDENTIALS_JSON')
+    json_b64 = os.getenv('GOOGLE_VISION_CREDENTIALS_JSON_BASE64')
+    if not json_env and not json_b64:
+        raise RuntimeError("Nenhuma credencial encontrada nas variáveis de ambiente.")
+
+    try:
+        if json_b64:
+            import base64  # lazy import
+            decoded = base64.b64decode(json_b64).decode('utf-8')
+            data = json.loads(decoded)
+        else:
+            data = json.loads(json_env)
+    except Exception as e:
+        raise RuntimeError(f"Falha ao decodificar JSON de credenciais: {e}") from e
+
+    # Corrigir private_key com '\n'
+    if 'private_key' in data and '\\n' in data['private_key']:
+        data['private_key'] = data['private_key'].replace('\\n', '\n')
+
+    # Escrever arquivo temporário (estável durante o processo)
+    path = 'temp_credentials.json'
+    try:
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump(data, f)
+    except Exception as e:
+        raise RuntimeError(f"Não foi possível escrever arquivo de credenciais: {e}") from e
+    return path
+
+async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:  # noqa: D401
+    """Handler global de erros: loga e avisa o usuário de forma amigável."""
+    logger.exception("Erro não tratado durante processamento de update")
+    try:
+        if update and update.effective_chat:
+            await context.bot.send_message(chat_id=update.effective_chat.id,
+                                           text="Ocorreu um erro interno ao processar sua solicitação. Tente novamente em instantes.")
+    except Exception:
+        pass
+
+    # (bloco movido para extract_text_from_image)
 
 # Função para filtrar endereços usando regex
 def filter_addresses(text):
@@ -175,6 +219,7 @@ def main():
     application.add_handler(CommandHandler("start", start))
     application.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     application.add_handler(CallbackQueryHandler(handle_callback))
+    application.add_error_handler(error_handler)
 
     # Execução de polling (bloqueante)
     application.run_polling(drop_pending_updates=True)
