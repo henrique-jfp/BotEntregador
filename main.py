@@ -194,17 +194,11 @@ def setup_vision_client():
         if json_base64:
             try:
                 # Remove espaços, quebras de linha e aspas acidentais
-                json_base64 = json_base64.strip().strip('"').replace('\n', '').replace('\r', '').replace(' ', '')
-                # Corrigir padding se necessário - Base64 deve ser múltiplo de 4
+                json_base64 = json_base64.strip().strip('"').replace('\n', '').replace('\r', '')
+                # Corrigir padding se necessário
                 missing_padding = len(json_base64) % 4
                 if missing_padding:
                     json_base64 += '=' * (4 - missing_padding)
-                
-                # Valida se é Base64 válido antes de decodificar
-                import string
-                valid_chars = string.ascii_letters + string.digits + '+/='
-                if not all(c in valid_chars for c in json_base64):
-                    raise ValueError("Base64 contém caracteres inválidos")
                 
                 # Decodifica a string Base64
                 decoded_json = base64.b64decode(json_base64).decode('utf-8')
@@ -236,7 +230,6 @@ def setup_vision_client():
             credentials = service_account.Credentials.from_service_account_file(creds_path)
             logger.info("Credenciais Vision carregadas via arquivo")
             client = vision.ImageAnnotatorClient(credentials=credentials)
-            return client
             
         logger.warning("Credenciais do Vision não encontradas - OCR indisponível")
         logger.info("Variáveis disponíveis: GOOGLE_VISION_CREDENTIALS_JSON_BASE64, GOOGLE_VISION_CREDENTIALS_JSON, GOOGLE_APPLICATION_CREDENTIALS")
@@ -265,7 +258,69 @@ def setup_gemini_model():
 
 gemini_model = setup_gemini_model()
 
-ADDRESS_REGEX = re.compile(r'(rua|r\.|avenida|av\.|travessa|tv\.|alameda|praça|praca|rodovia|estrada|beco)\s+[^\n]{3,}', re.IGNORECASE)
+ADDRESS_REGEX = re.compile(r'(rua|r\.|r |avenida|av\.|av |travessa|tv\.|tv |alameda|praça|praca|rodovia|estrada|beco|cond|condominio|condomínio)\s+[^\n]{3,}', re.IGNORECASE)
+
+def normalize_address(address: str) -> str:
+    """Normaliza endereços expandindo abreviações comuns."""
+    # Dicionário de abreviações
+    abbreviations = {
+        # Tipos de logradouro
+        r'\br\.?\s+': 'Rua ',
+        r'\bav\.?\s+': 'Avenida ',
+        r'\btv\.?\s+': 'Travessa ',
+        r'\bal\.?\s+': 'Alameda ',
+        r'\bpç\.?\s+': 'Praça ',
+        r'\bpraca\s+': 'Praça ',
+        r'\brod\.?\s+': 'Rodovia ',
+        r'\best\.?\s+': 'Estrada ',
+        r'\bcond\.?\s+': 'Condomínio ',
+        r'\bcondominio\s+': 'Condomínio ',
+        
+        # Direções e complementos
+        r'\bn\.?\s*º?\s+': 'Nº ',
+        r'\bnum\.?\s+': 'Nº ',
+        r'\bnr\.?\s+': 'Nº ',
+        r'\blt\.?\s+': 'Lote ',
+        r'\bqd\.?\s+': 'Quadra ',
+        r'\bbl\.?\s+': 'Bloco ',
+        r'\bapt\.?\s+': 'Apto ',
+        r'\bap\.?\s+': 'Apto ',
+        r'\bsl\.?\s+': 'Sala ',
+        r'\bcj\.?\s+': 'Conjunto ',
+        r'\bconj\.?\s+': 'Conjunto ',
+        
+        # Estados (alguns comuns)
+        r'\brj\b': 'Rio de Janeiro',
+        r'\bsp\b': 'São Paulo',
+        r'\bmg\b': 'Minas Gerais',
+        r'\bpr\b': 'Paraná',
+        r'\brs\b': 'Rio Grande do Sul',
+        r'\bsc\b': 'Santa Catarina',
+        r'\bgo\b': 'Goiás',
+        r'\bdf\b': 'Distrito Federal',
+        r'\bba\b': 'Bahia',
+        r'\bpe\b': 'Pernambuco',
+        r'\bce\b': 'Ceará',
+    }
+    
+    normalized = address.strip()
+    
+    # Aplica normalizações
+    for pattern, replacement in abbreviations.items():
+        normalized = re.sub(pattern, replacement, normalized, flags=re.IGNORECASE)
+    
+    # Capitaliza primeira letra de cada palavra (exceto conectores)
+    words = normalized.split()
+    connectors = {'de', 'da', 'do', 'das', 'dos', 'e', 'em', 'na', 'no', 'com', 'para'}
+    capitalized = []
+    
+    for i, word in enumerate(words):
+        if i == 0 or word.lower() not in connectors:
+            capitalized.append(word.capitalize())
+        else:
+            capitalized.append(word.lower())
+    
+    return ' '.join(capitalized)
 
 class ImageProcessor:
     @staticmethod
@@ -347,10 +402,15 @@ def extract_addresses(raw_text: str) -> List[DeliveryAddress]:
         if not line_clean:
             continue
         if ADDRESS_REGEX.search(line_clean.lower()) and len(line_clean) > 8:
-            key = line_clean.lower()
+            # Normaliza o endereço expandindo abreviações
+            normalized = normalize_address(line_clean)
+            key = normalized.lower()
             if key not in seen:
                 seen.add(key)
-                found.append(DeliveryAddress(original_text=line_clean, cleaned_address=line_clean))
+                found.append(DeliveryAddress(
+                    original_text=line_clean, 
+                    cleaned_address=normalized
+                ))
     return found[:Config.MAX_ADDRESSES_PER_ROUTE]
 
 def optimize_route(addresses: List[DeliveryAddress]) -> List[str]:
@@ -722,24 +782,6 @@ def ensure_single_instance() -> bool:
         if not tmpdir.exists():
             return True
         lock_path = Path(LOCK_FILE)
-        
-        # Verifica se lock antigo existe e remove se processo não existe mais
-        if lock_path.exists():
-            try:
-                with open(lock_path, 'r') as f:
-                    old_pid = int(f.read().strip())
-                # Tenta verificar se processo ainda existe
-                try:
-                    os.kill(old_pid, 0)  # Não mata, só verifica se existe
-                    logger.warning(f'Processo {old_pid} ainda ativo. Aguardando...')
-                    return False
-                except ProcessLookupError:
-                    logger.info(f'Lock órfão encontrado (PID {old_pid} morto). Removendo...')
-                    lock_path.unlink()
-            except (ValueError, FileNotFoundError):
-                logger.info('Lock file corrompido. Removendo...')
-                lock_path.unlink(missing_ok=True)
-        
         fd = os.open(str(lock_path), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
         with os.fdopen(fd, 'w') as f:
             f.write(str(os.getpid()))
@@ -754,16 +796,6 @@ def ensure_single_instance() -> bool:
 
 def main():
     logger.info("Iniciando bot simplificado...")
-    
-    # Limpa lock órfão caso exista de deploy anterior que falhou
-    try:
-        lock_path = Path('/tmp/bot_entregador.lock')
-        if lock_path.exists():
-            logger.info("Removendo lock órfão de deploy anterior...")
-            lock_path.unlink()
-    except Exception as e:
-        logger.debug(f"Erro ao limpar lock órfão: {e}")
-    
     start_health_server()
 
     if not ensure_single_instance():
@@ -772,11 +804,10 @@ def main():
     try:
         builder = Application.builder().token(Config.TELEGRAM_BOT_TOKEN)
         # Define timeouts via builder (evita DeprecationWarning de run_polling)
-        # Aumenta timeouts para evitar falha inicial
-        builder.get_updates_read_timeout(60)
+        builder.get_updates_read_timeout(30)
         builder.get_updates_write_timeout(30)
-        builder.get_updates_connect_timeout(60)
-        builder.get_updates_pool_timeout(60)
+        builder.get_updates_connect_timeout(30)
+        builder.get_updates_pool_timeout(30)
         app = builder.build()
 
         conv = ConversationHandler(
