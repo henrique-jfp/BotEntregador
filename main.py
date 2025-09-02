@@ -194,11 +194,17 @@ def setup_vision_client():
         if json_base64:
             try:
                 # Remove espaços, quebras de linha e aspas acidentais
-                json_base64 = json_base64.strip().strip('"').replace('\n', '').replace('\r', '')
-                # Corrigir padding se necessário
+                json_base64 = json_base64.strip().strip('"').replace('\n', '').replace('\r', '').replace(' ', '')
+                # Corrigir padding se necessário - Base64 deve ser múltiplo de 4
                 missing_padding = len(json_base64) % 4
                 if missing_padding:
                     json_base64 += '=' * (4 - missing_padding)
+                
+                # Valida se é Base64 válido antes de decodificar
+                import string
+                valid_chars = string.ascii_letters + string.digits + '+/='
+                if not all(c in valid_chars for c in json_base64):
+                    raise ValueError("Base64 contém caracteres inválidos")
                 
                 # Decodifica a string Base64
                 decoded_json = base64.b64decode(json_base64).decode('utf-8')
@@ -230,6 +236,7 @@ def setup_vision_client():
             credentials = service_account.Credentials.from_service_account_file(creds_path)
             logger.info("Credenciais Vision carregadas via arquivo")
             client = vision.ImageAnnotatorClient(credentials=credentials)
+            return client
             
         logger.warning("Credenciais do Vision não encontradas - OCR indisponível")
         logger.info("Variáveis disponíveis: GOOGLE_VISION_CREDENTIALS_JSON_BASE64, GOOGLE_VISION_CREDENTIALS_JSON, GOOGLE_APPLICATION_CREDENTIALS")
@@ -715,6 +722,24 @@ def ensure_single_instance() -> bool:
         if not tmpdir.exists():
             return True
         lock_path = Path(LOCK_FILE)
+        
+        # Verifica se lock antigo existe e remove se processo não existe mais
+        if lock_path.exists():
+            try:
+                with open(lock_path, 'r') as f:
+                    old_pid = int(f.read().strip())
+                # Tenta verificar se processo ainda existe
+                try:
+                    os.kill(old_pid, 0)  # Não mata, só verifica se existe
+                    logger.warning(f'Processo {old_pid} ainda ativo. Aguardando...')
+                    return False
+                except ProcessLookupError:
+                    logger.info(f'Lock órfão encontrado (PID {old_pid} morto). Removendo...')
+                    lock_path.unlink()
+            except (ValueError, FileNotFoundError):
+                logger.info('Lock file corrompido. Removendo...')
+                lock_path.unlink(missing_ok=True)
+        
         fd = os.open(str(lock_path), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
         with os.fdopen(fd, 'w') as f:
             f.write(str(os.getpid()))
@@ -729,6 +754,16 @@ def ensure_single_instance() -> bool:
 
 def main():
     logger.info("Iniciando bot simplificado...")
+    
+    # Limpa lock órfão caso exista de deploy anterior que falhou
+    try:
+        lock_path = Path('/tmp/bot_entregador.lock')
+        if lock_path.exists():
+            logger.info("Removendo lock órfão de deploy anterior...")
+            lock_path.unlink()
+    except Exception as e:
+        logger.debug(f"Erro ao limpar lock órfão: {e}")
+    
     start_health_server()
 
     if not ensure_single_instance():
@@ -737,10 +772,11 @@ def main():
     try:
         builder = Application.builder().token(Config.TELEGRAM_BOT_TOKEN)
         # Define timeouts via builder (evita DeprecationWarning de run_polling)
-        builder.get_updates_read_timeout(30)
+        # Aumenta timeouts para evitar falha inicial
+        builder.get_updates_read_timeout(60)
         builder.get_updates_write_timeout(30)
-        builder.get_updates_connect_timeout(30)
-        builder.get_updates_pool_timeout(30)
+        builder.get_updates_connect_timeout(60)
+        builder.get_updates_pool_timeout(60)
         app = builder.build()
 
         conv = ConversationHandler(
