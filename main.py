@@ -16,6 +16,7 @@ import json
 import logging
 import threading
 import base64
+import errno
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from datetime import datetime, timedelta
 from dataclasses import dataclass, asdict
@@ -432,7 +433,12 @@ async def cancel_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
-    logger.error(f"Erro: {context.error}")
+    err_str = str(context.error)
+    if 'Conflict: terminated by other getUpdates request' in err_str:
+        # Outra instância está fazendo polling. Silencia para evitar spam.
+        logger.info('Conflito 409 detectado: outra instância ativa. Esta instância ficará passiva.')
+        return
+    logger.error(f"Erro: {err_str}")
     try:
         if update and hasattr(update, 'effective_message') and update.effective_message:
             await update.effective_message.reply_text("Erro interno. Tente novamente.")
@@ -464,13 +470,45 @@ def start_health_server():
         logger.error(f"Erro ao iniciar health server: {e}")
         return None
 
+LOCK_FILE = '/tmp/bot_entregador.lock'
+
+def ensure_single_instance() -> bool:
+    """Evita múltiplas instâncias concorrentes em produção criando um arquivo de lock.
+
+    Retorna True se lock obtido ou ambiente sem /tmp (Windows dev). False se já existe outra instância.
+    """
+    try:
+        tmpdir = Path('/tmp')
+        if not tmpdir.exists():
+            return True
+        lock_path = Path(LOCK_FILE)
+        fd = os.open(str(lock_path), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        with os.fdopen(fd, 'w') as f:
+            f.write(str(os.getpid()))
+        logger.info('Lock de instância adquirido.')
+        return True
+    except OSError as e:
+        if e.errno == errno.EEXIST:
+            logger.warning('Outra instância já está rodando (lock file presente). Abortando polling desta instância.')
+            return False
+        logger.error(f'Falha ao criar lock file: {e}')
+        return True
+
 def main():
     logger.info("Iniciando bot simplificado...")
     start_health_server()
-    
+
+    if not ensure_single_instance():
+        return
+
     try:
-        # Configuração mais robusta do Application
-        app = Application.builder().token(Config.TELEGRAM_BOT_TOKEN).build()
+        builder = Application.builder().token(Config.TELEGRAM_BOT_TOKEN)
+        # Define timeouts via builder (evita DeprecationWarning de run_polling)
+        builder.get_updates_read_timeout(30)
+        builder.get_updates_write_timeout(30)
+        builder.get_updates_connect_timeout(30)
+        builder.get_updates_pool_timeout(30)
+        app = builder.build()
 
         conv = ConversationHandler(
             entry_points=[CommandHandler('start', start)],
@@ -490,7 +528,7 @@ def main():
                 ]
             },
             fallbacks=[CommandHandler('cancel', cancel_cmd)],
-            per_message=False,
+            per_message=True,  # remove warning e garante callbacks por mensagem
             per_chat=True,
             per_user=True
         )
@@ -502,16 +540,8 @@ def main():
         app.add_error_handler(error_handler)
 
         logger.info("Bot configurado, iniciando polling...")
-        app.run_polling(
-            drop_pending_updates=True,
-            poll_interval=2.0,
-            timeout=30,
-            read_timeout=30,
-            write_timeout=30,
-            connect_timeout=30,
-            pool_timeout=30
-        )
-        
+        app.run_polling(drop_pending_updates=True, poll_interval=2.0)
+
     except Exception as e:
         logger.error(f"Erro crítico ao inicializar bot: {e}")
         raise
