@@ -12,779 +12,457 @@ Date: 2025-09-02
 
 import os
 import re
+#!/usr/bin/env python3
+"""Bot de Otimização de Rotas - Versão simplificada estável.
+
+Esta versão remove partes incompletas e funcionalidades quebradas (Gemini, Base64)
+para colocar o bot online novamente com OCR + extração simples de endereços.
+"""
+
+import os
+import re
 import json
 import logging
-import asyncio
-import aiohttp
-import base64
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from datetime import datetime, timedelta
-from typing import List, Dict, Optional, Tuple, Any
 from dataclasses import dataclass, asdict
 from enum import Enum
 from pathlib import Path
+from typing import List, Dict, Optional, Tuple
 
-# Telegram imports
-from telegram import (
-    Update, InlineKeyboardButton, InlineKeyboardMarkup, 
-    ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
-)
+from dotenv import load_dotenv
+from google.cloud import vision
+from google.oauth2 import service_account
+from PIL import Image
+
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application, CommandHandler, MessageHandler, CallbackQueryHandler,
     ConversationHandler, ContextTypes, filters
 )
-from telegram.error import NetworkError, TimedOut, BadRequest
 
-# Google Cloud imports
-from google.cloud import vision
-from google.oauth2 import service_account
-import google.generativeai as genai
-from google.generativeai.types import HarmCategory, HarmBlockThreshold
-
-# Image processing
-from PIL import Image
-import io
-
-# Environment and utilities
-from dotenv import load_dotenv
-
-# Load environment variables
 load_dotenv()
 
-# ==================== CONFIGURAÇÃO DE LOGGING ====================
-def setup_logging() -> logging.Logger:
-    """Configuração avançada de logging com múltiplos handlers."""
-    
-    # Criar diretório de logs se não existir
-    logs_dir = Path("logs")
-    logs_dir.mkdir(exist_ok=True)
-    
-    # Configuração do logger principal
-    logger = logging.getLogger('bot_delivery')
-    logger.setLevel(logging.INFO)
-    
-    # Remover handlers existentes para evitar duplicação
-    for handler in logger.handlers[:]:
-        logger.removeHandler(handler)
-    
-    # Formatter padrão
-    formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s'
-    )
-    
-    # Handler para console
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.INFO)
-    console_handler.setFormatter(formatter)
-    logger.addHandler(console_handler)
-    
-    # Handler para arquivo geral
-    file_handler = logging.FileHandler(logs_dir / 'bot.log', encoding='utf-8')
-    file_handler.setLevel(logging.INFO)
-    file_handler.setFormatter(formatter)
-    logger.addHandler(file_handler)
-    
-    # Handler para erros
-    error_handler = logging.FileHandler(logs_dir / 'errors.log', encoding='utf-8')
-    error_handler.setLevel(logging.ERROR)
-    error_handler.setFormatter(formatter)
-    logger.addHandler(error_handler)
-    
-    return logger
+LOG_DIR = Path("logs")
+LOG_DIR.mkdir(exist_ok=True)
 
-# Inicializar logger
-logger = setup_logging()
-
-# ==================== ESTADOS E ESTRUTURAS DE DADOS ====================
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler(LOG_DIR / 'bot.log', encoding='utf-8')
+    ]
+)
+logger = logging.getLogger("bot_delivery")
 
 class BotStates(Enum):
-    """Estados da máquina de estados do bot."""
     WAITING_PHOTOS = 1
     PROCESSING = 2
     CONFIRMING_ROUTE = 3
     NAVIGATING = 4
-    PAUSED = 5
 
 @dataclass
 class DeliveryAddress:
-    """Estrutura de dados para um endereço de entrega."""
     original_text: str
     cleaned_address: str
-    confidence: float
-    delivery_index: Optional[int] = None
-    completed: bool = False
-    start_time: Optional[datetime] = None
-    completion_time: Optional[datetime] = None
+    confidence: float = 0.7
 
 @dataclass
 class UserSession:
-    """Estrutura de dados para sessão do usuário."""
     user_id: int
-    photos: List[str] = None  # file_ids
+    photos: List[str]
     raw_text: str = ""
     addresses: List[DeliveryAddress] = None
     optimized_route: List[str] = None
     current_delivery_index: int = 0
-    start_time: Optional[datetime] = None
+    start_time: datetime = datetime.now()
     completed_deliveries: List[str] = None
     state: BotStates = BotStates.WAITING_PHOTOS
-    
+
     def __post_init__(self):
         if self.photos is None:
             self.photos = []
         if self.addresses is None:
             self.addresses = []
+        if self.optimized_route is None:
+            self.optimized_route = []
         if self.completed_deliveries is None:
             self.completed_deliveries = []
-        if self.start_time is None:
-            self.start_time = datetime.now()
-
-# ==================== CONFIGURAÇÕES E CONSTANTES ====================
 
 class Config:
-    """Configurações do bot."""
-    TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
-    GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
+    TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
     MAX_PHOTOS_PER_REQUEST = int(os.getenv('MAX_PHOTOS_PER_REQUEST', '8'))
     MAX_ADDRESSES_PER_ROUTE = int(os.getenv('MAX_ADDRESSES_PER_ROUTE', '20'))
-    DEBUG_MODE = os.getenv('DEBUG_MODE', 'False').lower() == 'true'
     MAX_IMAGE_SIZE_MB = 20
     RATE_LIMIT_PER_HOUR = 50
-    
-    # Rate limiting storage
     user_requests: Dict[int, List[datetime]] = {}
 
-# Validar configurações obrigatórias
 if not Config.TELEGRAM_BOT_TOKEN:
-    raise ValueError("TELEGRAM_BOT_TOKEN não encontrado nas variáveis de ambiente")
-
-# Configurar Gemini
-if Config.GOOGLE_API_KEY:
-    genai.configure(api_key=Config.GOOGLE_API_KEY)
-else:
-    logger.warning("GOOGLE_API_KEY não encontrado - funcionalidades de IA limitadas")
-
-# ==================== SISTEMA DE PERSISTÊNCIA ====================
+    raise RuntimeError("TELEGRAM_BOT_TOKEN não configurado")
 
 class DataPersistence:
-    """Sistema de persistência de dados."""
-    
     DATA_DIR = Path("user_data")
-    
-    @classmethod
-    def ensure_data_dir(cls):
-        """Garantir que o diretório de dados existe."""
-        cls.DATA_DIR.mkdir(exist_ok=True)
-    
-    @classmethod
-    async def save_user_session(cls, session: UserSession) -> bool:
-        """Salvar sessão do usuário."""
-        try:
-            cls.ensure_data_dir()
-            file_path = cls.DATA_DIR / f"user_{session.user_id}.json"
-            
-            # Converter dataclass para dict, tratando objetos não serializáveis
-            session_dict = asdict(session)
-            
-            # Converter datetime para string
-            if session_dict['start_time']:
-                session_dict['start_time'] = session_dict['start_time'].isoformat()
-            
-            # Tratar endereços
-            for addr in session_dict['addresses']:
-                if addr['start_time']:
-                    addr['start_time'] = addr['start_time'].isoformat()
-                if addr['completion_time']:
-                    addr['completion_time'] = addr['completion_time'].isoformat()
-            
-            # Converter enum para string
-            session_dict['state'] = session.state.name
-            
-            with open(file_path, 'w', encoding='utf-8') as f:
-                json.dump(session_dict, f, ensure_ascii=False, indent=2)
-            
-            logger.info(f"Sessão salva para usuário {session.user_id}")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Erro ao salvar sessão do usuário {session.user_id}: {e}")
-            return False
-    
-    @classmethod
-    async def load_user_session(cls, user_id: int) -> Optional[UserSession]:
-        """Carregar sessão do usuário."""
-        try:
-            cls.ensure_data_dir()
-            file_path = cls.DATA_DIR / f"user_{user_id}.json"
-            
-            if not file_path.exists():
-                return None
-            
-            with open(file_path, 'r', encoding='utf-8') as f:
-                session_dict = json.load(f)
-            
-            # Converter string para datetime
-            if session_dict['start_time']:
-                session_dict['start_time'] = datetime.fromisoformat(session_dict['start_time'])
-            
-            # Tratar endereços
-            addresses = []
-            for addr_data in session_dict['addresses']:
-                if addr_data['start_time']:
-                    addr_data['start_time'] = datetime.fromisoformat(addr_data['start_time'])
-                if addr_data['completion_time']:
-                    addr_data['completion_time'] = datetime.fromisoformat(addr_data['completion_time'])
-                
-                addresses.append(DeliveryAddress(**addr_data))
-            
-            session_dict['addresses'] = addresses
-            
-            # Converter string para enum
-            session_dict['state'] = BotStates[session_dict['state']]
-            
-            session = UserSession(**session_dict)
-            logger.info(f"Sessão carregada para usuário {user_id}")
-            return session
-            
-        except Exception as e:
-            logger.error(f"Erro ao carregar sessão do usuário {user_id}: {e}")
-            return None
 
-# ==================== UTILITÁRIOS E VALIDAÇÕES ====================
+    @classmethod
+    def ensure(cls):
+        cls.DATA_DIR.mkdir(exist_ok=True)
+
+    @classmethod
+    def path(cls, user_id: int) -> Path:
+        return cls.DATA_DIR / f"user_{user_id}.json"
+
+    @classmethod
+    async def save(cls, session: UserSession):
+        try:
+            cls.ensure()
+            data = asdict(session)
+            data['state'] = session.state.name
+            data['start_time'] = session.start_time.isoformat()
+            with open(cls.path(session.user_id), 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            logger.warning(f"Falha ao salvar sessão {session.user_id}: {e}")
+
+    @classmethod
+    async def load(cls, user_id: int) -> Optional[UserSession]:
+        try:
+            p = cls.path(user_id)
+            if not p.exists():
+                return None
+            with open(p, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            session = UserSession(
+                user_id=user_id,
+                photos=data.get('photos', []),
+                raw_text=data.get('raw_text', ''),
+                addresses=[DeliveryAddress(**a) for a in data.get('addresses', [])],
+                optimized_route=data.get('optimized_route', []),
+                current_delivery_index=data.get('current_delivery_index', 0),
+                start_time=datetime.fromisoformat(data.get('start_time')) if data.get('start_time') else datetime.now(),
+                completed_deliveries=data.get('completed_deliveries', []),
+                state=BotStates[data.get('state', 'WAITING_PHOTOS')]
+            )
+            return session
+        except Exception as e:
+            logger.warning(f"Falha ao carregar sessão {user_id}: {e}")
+            return None
 
 class SecurityValidator:
-    """Validações de segurança."""
-    
     @staticmethod
-    async def validate_image_safety(image_bytes: bytes) -> bool:
-        """Verificar se imagem não contém conteúdo malicioso."""
+    async def validate_image(image_bytes: bytes) -> bool:
+        if len(image_bytes) > Config.MAX_IMAGE_SIZE_MB * 1024 * 1024:
+            return False
         try:
-            # Verificar se é uma imagem válida
-            with Image.open(io.BytesIO(image_bytes)) as img:
-                # Verificar formato
-                if img.format not in ['JPEG', 'PNG', 'WEBP']:
-                    return False
-                
-                # Verificar tamanho
-                if len(image_bytes) > Config.MAX_IMAGE_SIZE_MB * 1024 * 1024:
-                    return False
-                
-                # Verificar dimensões razoáveis
-                width, height = img.size
-                if width * height > 50_000_000:  # 50MP max
-                    return False
-                
-                return True
-                
-        except Exception as e:
-            logger.error(f"Erro na validação de imagem: {e}")
+            from io import BytesIO
+            with Image.open(BytesIO(image_bytes)) as im:
+                im.verify()
+            return True
+        except Exception:
             return False
-    
+
     @staticmethod
-    async def rate_limit_check(user_id: int) -> bool:
-        """Verificar limite de requisições por usuário."""
+    async def rate_limit(user_id: int) -> bool:
         now = datetime.now()
-        hour_ago = now - timedelta(hours=1)
-        
-        # Inicializar se necessário
-        if user_id not in Config.user_requests:
-            Config.user_requests[user_id] = []
-        
-        # Limpar requisições antigas
-        Config.user_requests[user_id] = [
-            req_time for req_time in Config.user_requests[user_id]
-            if req_time > hour_ago
-        ]
-        
-        # Verificar limite
-        if len(Config.user_requests[user_id]) >= Config.RATE_LIMIT_PER_HOUR:
+        one_hour = now - timedelta(hours=1)
+        lst = Config.user_requests.setdefault(user_id, [])
+        lst[:] = [t for t in lst if t > one_hour]
+        if len(lst) >= Config.RATE_LIMIT_PER_HOUR:
             return False
-        
-        # Registrar nova requisição
-        Config.user_requests[user_id].append(now)
+        lst.append(now)
         return True
 
-# ==================== GOOGLE CLOUD VISION SETUP ====================
-
 def setup_vision_client():
-    """Configurar cliente do Google Cloud Vision."""
     try:
-        # Usar JSON diretamente (método que já funciona em outros bots)
         json_env = os.getenv('GOOGLE_VISION_CREDENTIALS_JSON')
         creds_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
-        
+        credentials = None
         if json_env:
-            # Usar JSON diretamente das variáveis de ambiente
-            creds_info = json.loads(json_env)
-            
-            # Corrigir private_key se necessário
-            if 'private_key' in creds_info:
-                private_key = creds_info['private_key']
-                if '\\n' in private_key and '\n' not in private_key:
-                    creds_info['private_key'] = private_key.replace('\\n', '\n')
-            
-            credentials = service_account.Credentials.from_service_account_info(creds_info)
-            
+            info = json.loads(json_env)
+            if 'private_key' in info and '\\n' in info['private_key'] and '\n' not in info['private_key']:
+                info['private_key'] = info['private_key'].replace('\\n', '\n')
+            credentials = service_account.Credentials.from_service_account_info(info)
         elif creds_path and os.path.exists(creds_path):
             credentials = service_account.Credentials.from_service_account_file(creds_path)
-            
         else:
-            logger.warning("Credenciais do Google Cloud Vision não encontradas")
+            logger.warning("Credenciais do Vision não encontradas - OCR indisponível")
             return None
-        
         client = vision.ImageAnnotatorClient(credentials=credentials)
-        logger.info("Cliente Google Cloud Vision configurado com sucesso")
+        logger.info("Vision client pronto")
         return client
-        
     except Exception as e:
-        logger.error(f"Erro ao configurar Google Cloud Vision: {e}")
+        logger.error(f"Falha configurar Vision: {e}")
         return None
 
-# Inicializar cliente Vision
 vision_client = setup_vision_client()
 
-# ==================== PROCESSAMENTO DE IMAGENS E OCR ====================
+ADDRESS_REGEX = re.compile(r'(rua|r\.|avenida|av\.|travessa|tv\.|alameda|praça|praca|rodovia|estrada|beco)\s+[^\n]{3,}', re.IGNORECASE)
 
 class ImageProcessor:
-    """Processador de imagens e OCR."""
-    
     @staticmethod
-    async def download_telegram_image(bot, file_id: str) -> Optional[bytes]:
-        """Download assíncrono de imagem do Telegram."""
+    async def download(bot, file_id: str) -> Optional[bytes]:
         try:
             file = await bot.get_file(file_id)
-            file_bytes = await file.download_as_bytearray()
-            return bytes(file_bytes)
+            ba = await file.download_as_bytearray()
+            return bytes(ba)
         except Exception as e:
-            logger.error(f"Erro ao baixar imagem {file_id}: {e}")
+            logger.error(f"Erro download imagem {file_id}: {e}")
             return None
-    
+
     @staticmethod
-    async def extract_text_from_images(bot, photo_files: List[str]) -> Tuple[str, float]:
-        """Extração de texto com Google Vision API."""
+    async def ocr(bot, photo_ids: List[str]) -> str:
         if not vision_client:
-            logger.error("Cliente Google Vision não disponível")
-            return "", 0.0
-        
-        all_text = []
-        total_confidence = 0.0
-        processed_images = 0
-        
-        try:
-            for file_id in photo_files:
-                logger.info(f"Processando imagem: {file_id}")
-                
-                # Download da imagem
-                image_bytes = await ImageProcessor.download_telegram_image(bot, file_id)
-                if not image_bytes:
+            return ""
+        texts = []
+        for fid in photo_ids:
+            img_bytes = await ImageProcessor.download(bot, fid)
+            if not img_bytes:
+                continue
+            if not await SecurityValidator.validate_image(img_bytes):
+                continue
+            image = vision.Image(content=img_bytes)
+            try:
+                resp = vision_client.text_detection(image=image)
+                if resp.error.message:
+                    logger.warning(f"Vision erro: {resp.error.message}")
                     continue
-                
-                # Validação de segurança
-                if not await SecurityValidator.validate_image_safety(image_bytes):
-                    logger.warning(f"Imagem {file_id} falhou na validação de segurança")
-                    continue
-                
-                # Processamento OCR
-                image = vision.Image(content=image_bytes)
-                response = vision_client.text_detection(image=image)
-                
-                if response.error.message:
-                    logger.error(f"Erro do Google Vision: {response.error.message}")
-                    continue
-                
-                # Extrair texto
-                texts = response.text_annotations
-                if texts:
-                    detected_text = texts[0].description
-                    confidence = sum(
-                        vertex.confidence if hasattr(vertex, 'confidence') else 0.8
-                        for vertex in texts
-                    ) / len(texts)
-                    
-                    if confidence > 0.7:  # Apenas textos com alta confiança
-                        all_text.append(detected_text)
-                        total_confidence += confidence
-                        processed_images += 1
-                        
-                        logger.info(f"Texto extraído da imagem {file_id} (confidence: {confidence:.2f})")
-                
-        except Exception as e:
-            logger.error(f"Erro durante extração de texto: {e}")
-        
-        # Calcular confiança média
-        avg_confidence = total_confidence / processed_images if processed_images > 0 else 0.0
-        combined_text = "\n\n".join(all_text)
-        
-        logger.info(f"OCR completo: {processed_images} imagens processadas, confiança média: {avg_confidence:.2f}")
-        return combined_text, avg_confidence
+                if resp.text_annotations:
+                    texts.append(resp.text_annotations[0].description)
+            except Exception as e:
+                logger.error(f"OCR falhou: {e}")
+        return '\n'.join(texts)
 
-# ==================== INTELIGÊNCIA ARTIFICIAL - GEMINI ====================
+def extract_addresses(raw_text: str) -> List[DeliveryAddress]:
+    found = []
+    seen = set()
+    for line in raw_text.splitlines():
+        line_clean = line.strip()
+        if not line_clean:
+            continue
+        if ADDRESS_REGEX.search(line_clean.lower()) and len(line_clean) > 8:
+            key = line_clean.lower()
+            if key not in seen:
+                seen.add(key)
+                found.append(DeliveryAddress(original_text=line_clean, cleaned_address=line_clean))
+    return found[:Config.MAX_ADDRESSES_PER_ROUTE]
 
-class AIProcessor:
-    """Processador de IA usando Gemini Pro."""
-    
-    @staticmethod
-    def get_gemini_model():
-        """Obter modelo Gemini configurado."""
-        try:
-            model = genai.GenerativeModel(
-                'gemini-pro',
-                safety_settings={
-                    HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-                    HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-                    HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-                    HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
-                }
-            )
-            return model
-        except Exception as e:
-            logger.error(f"Erro ao configurar modelo Gemini: {e}")
-            return None
-    
-    @staticmethod
-    async def clean_and_extract_addresses(raw_text: str) -> Tuple[List[DeliveryAddress], Dict]:
-        """Limpeza inteligente e extração de endereços."""
-        if not Config.GOOGLE_API_KEY:
-            logger.warning("Google API Key não disponível - usando regex simples")
-            return AIProcessor._fallback_address_extraction(raw_text)
-        
-        model = AIProcessor.get_gemini_model()
-        if not model:
-            return AIProcessor._fallback_address_extraction(raw_text)
-        
-        prompt = f"""
-Você é um especialista em logística brasileira. Analise o texto abaixo extraído de screenshots de aplicativos de entrega (iFood, Rappi, Uber Eats, etc.).
+def optimize_route(addresses: List[DeliveryAddress]) -> List[str]:
+    # Placeholder: mantém ordem original (minimiza mudanças)
+    return [a.cleaned_address for a in addresses]
 
-TAREFA:
-1. Identifique APENAS endereços completos de entrega
-2. Ignore: nomes de clientes, valores, instruções de entrega, números de pedido
-3. Padronize o formato: "Rua/Av Nome, Número, Bairro, Cidade - UF"
-4. Valide se o endereço está completo e faz sentido
-5. Remova duplicatas
-
-FORMATO DE SAÍDA (JSON):
-{{
-    "addresses": [
-        "Rua das Flores, 123, Centro, São Paulo - SP",
-        "Avenida Paulista, 456, Bela Vista, São Paulo - SP"
-    ],
-    "confidence": 0.95,
-    "rejected_entries": ["texto inválido encontrado"]
-}}
-
-TEXTO A ANALISAR:
-{raw_text[:3000]}
-"""
-
-        try:
-            response = model.generate_content(prompt)
-            result_text = response.text
-            
-            # Extrair JSON da resposta
-            json_start = result_text.find('{')
-            json_end = result_text.rfind('}') + 1
-            
-            if json_start >= 0 and json_end > json_start:
-                json_text = result_text[json_start:json_end]
-                result = json.loads(json_text)
-                
-                addresses = []
-                for addr_text in result.get('addresses', []):
-                    address = DeliveryAddress(
-                        original_text=addr_text,
-                        cleaned_address=addr_text,
-                        confidence=result.get('confidence', 0.8)
-                    )
-                    addresses.append(address)
-                
-                logger.info(f"IA extraiu {len(addresses)} endereços com confiança {result.get('confidence', 0):.2f}")
-                return addresses, result
-            else:
-                logger.error("Resposta da IA não contém JSON válido")
-                return AIProcessor._fallback_address_extraction(raw_text)
-                
-        except Exception as e:
-            logger.error(f"Erro na extração de endereços com IA: {e}")
-            return AIProcessor._fallback_address_extraction(raw_text)
-    
-    @staticmethod
-    def _fallback_address_extraction(raw_text: str) -> Tuple[List[DeliveryAddress], Dict]:
-        """Extração de endereços usando regex como fallback."""
-        address_patterns = [
-            r'(?:rua?|r\.|av\.?|avenida|praça|alameda|travessa|tv\.|gen\.)\s+[^,\n]+(?:,\s*\d+)?[^,\n]*(?:,\s*[^,\n]+)*',
-            r'[^,\n]*(?:rua|av\.?|avenida|praça|alameda|travessa|tv\.|r\.|gen\.)[^,\n]*\d+[^,\n]*'
-        ]
-        
-        addresses = []
-        found_addresses = set()
-        
-        for pattern in address_patterns:
-            matches = re.findall(pattern, raw_text, re.IGNORECASE | re.MULTILINE)
-            for match in matches:
-                cleaned = match.strip()
-                if len(cleaned) > 10 and cleaned.lower() not in found_addresses:
-                    address = DeliveryAddress(
-                        original_text=cleaned,
-                        cleaned_address=cleaned,
-                        confidence=0.7
-                    )
-                    addresses.append(address)
-                    found_addresses.add(cleaned.lower())
-        
-        result = {
-            "addresses": [addr.cleaned_address for addr in addresses],
-            "confidence": 0.7,
-            "rejected_entries": []
-        }
-        
-        logger.info(f"Regex extraiu {len(addresses)} endereços")
-        return addresses, result
-    
-    @staticmethod
-    async def optimize_delivery_route(addresses: List[str]) -> Dict:
-        """Otimização de rota usando IA."""
-        if not Config.GOOGLE_API_KEY or len(addresses) <= 1:
-            return {
-                "optimized_route": addresses,
-                "estimated_distance_km": 0,
-                "estimated_time_minutes": 0,
-                "optimization_notes": "Otimização não necessária ou IA indisponível",
-                "fuel_savings_percentage": 0
-            }
-        
-        model = AIProcessor.get_gemini_model()
-        if not model:
-            return {"optimized_route": addresses, "estimated_distance_km": 0, "estimated_time_minutes": 0, "optimization_notes": "IA indisponível", "fuel_savings_percentage": 0}
-        
-        prompt = f"""
-Você é um especialista em otimização de rotas com 15 anos de experiência em logística urbana brasileira.
-
-CONTEXTO: Otimizar rota de entregas para minimizar:
-- Distância total percorrida
-- Tempo em trânsito
-- Consumo de combustível
-- Considerar trânsito típico brasileiro
-
-REGRAS:
-1. NUNCA altere, adicione ou remova endereços
-2. Considere proximidade geográfica
-3. Evite voltas desnecessárias
-4. Priorize fluxo de trânsito unidirecional quando possível
-
-DADOS:
-Endereços: {json.dumps(addresses, ensure_ascii=False)}
-
-RETORNO (JSON):
-{{
-    "optimized_route": ["endereço1", "endereço2", ...],
-    "estimated_distance_km": 25.3,
-    "estimated_time_minutes": 180,
-    "optimization_notes": "Rota otimizada considerando...",
-    "fuel_savings_percentage": 23
-}}
-"""
-
-        try:
-            response = model.generate_content(prompt)
-            result_text = response.text
-            
-            # Extrair JSON da resposta
-            json_start = result_text.find('{')
-            json_end = result_text.rfind('}') + 1
-            
-            if json_start >= 0 and json_end > json_start:
-                json_text = result_text[json_start:json_end]
-                result = json.loads(json_text)
-                
-                # Validar que todos os endereços estão presentes
-                if len(result.get('optimized_route', [])) == len(addresses):
-                    logger.info("Rota otimizada com sucesso pela IA")
-                    return result
-            
-            # Fallback se a IA falhar
-            logger.warning("IA falhou na otimização - usando ordem original")
-            return {
-                "optimized_route": addresses,
-                "estimated_distance_km": len(addresses) * 3.5,
-                "estimated_time_minutes": len(addresses) * 25,
-                "optimization_notes": "Ordem original mantida (IA indisponível)",
-                "fuel_savings_percentage": 0
-            }
-            
-        except Exception as e:
-            logger.error(f"Erro na otimização de rota: {e}")
-            return {
-                "optimized_route": addresses,
-                "estimated_distance_km": len(addresses) * 3.5,
-                "estimated_time_minutes": len(addresses) * 25,
-                "optimization_notes": f"Erro na otimização: {str(e)}",
-                "fuel_savings_percentage": 0
-            }
-
-# ==================== HANDLERS DO BOT ====================
-
-# Dicionário global para sessões de usuários
 user_sessions: Dict[int, UserSession] = {}
 
-async def get_user_session(user_id: int) -> UserSession:
-    """Obter ou criar sessão do usuário."""
+async def get_session(user_id: int) -> UserSession:
     if user_id not in user_sessions:
-        # Tentar carregar sessão salva
-        saved_session = await DataPersistence.load_user_session(user_id)
-        if saved_session:
-            user_sessions[user_id] = saved_session
+        loaded = await DataPersistence.load(user_id)
+        if loaded:
+            user_sessions[user_id] = loaded
         else:
-            user_sessions[user_id] = UserSession(user_id=user_id)
-    
+            user_sessions[user_id] = UserSession(user_id=user_id, photos=[])
     return user_sessions[user_id]
 
-async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Comando /start - Ponto de entrada."""
-    user_id = update.effective_user.id
-    logger.info(f"Usuário {user_id} iniciou o bot")
-    
-    # Verificar rate limiting
-    if not await SecurityValidator.rate_limit_check(user_id):
-        await update.message.reply_text(
-            "⚠️ Limite de requisições atingido. Tente novamente em 1 hora."
-        )
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    uid = update.effective_user.id
+    if not await SecurityValidator.rate_limit(uid):
+        await update.message.reply_text("⚠️ Limite por hora atingido. Tente depois.")
         return ConversationHandler.END
-    
-    # Criar nova sessão
-    user_sessions[user_id] = UserSession(user_id=user_id)
-    
-    welcome_message = """
-🚚 **Olá, entregador! Pronto para otimizar suas rotas hoje?**
-
-🎯 **Como funciona:**
-1️⃣ Envie fotos do seu roteiro de entregas
-2️⃣ Aguarde a IA extrair os endereços
-3️⃣ Receba sua rota otimizada
-4️⃣ Navegue com GPS integrado
-
-📱 **Suporta:** iFood, Rappi, Uber Eats e outros apps
-
-⚡ **Vantagens:**
-• Economia de combustível
-• Menos tempo no trânsito
-• Mais entregas por dia
-• Navegação passo a passo
-
-👇 **Clique no botão abaixo para começar!**
-"""
-    
-    keyboard = InlineKeyboardMarkup([[
-        InlineKeyboardButton("📸 Enviar Fotos do Roteiro", callback_data="start_photos")
-    ]])
-    
-    await update.message.reply_text(
-        welcome_message,
-        reply_markup=keyboard,
-        parse_mode='Markdown'
+    user_sessions[uid] = UserSession(user_id=uid, photos=[])
+    msg = (
+        "🚚 Olá! Envie fotos (até 8) com os endereços. Depois clique em Processar."
     )
-    
+    kb = InlineKeyboardMarkup([[InlineKeyboardButton("📸 Enviar Fotos", callback_data="start_photos")]])
+    await update.message.reply_text(msg, reply_markup=kb)
     return BotStates.WAITING_PHOTOS.value
 
-async def start_photos_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Callback para iniciar envio de fotos."""
-    query = update.callback_query
-    await query.answer()
-    
-    user_id = query.from_user.id
-    session = await get_user_session(user_id)
-    session.state = BotStates.WAITING_PHOTOS
-    
-    await query.edit_message_text(
-        "📸 **ENVIO DE FOTOS**\n\n"
-        "🔹 Envie até 8 fotos do seu roteiro de entregas\n"
-        "🔹 Formatos aceitos: JPG, PNG, WEBP\n"
-        "🔹 Tamanho máximo: 20MB por foto\n\n"
-        "💡 **Dica:** Tire fotos claras dos endereços para melhor resultado!",
-        parse_mode='Markdown'
-    )
-    
+async def start_photos_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    q = update.callback_query
+    await q.answer()
+    await q.edit_message_text(
+        "Envie agora suas fotos (JPG/PNG). Quando terminar clique em Processar.")
     return BotStates.WAITING_PHOTOS.value
 
-async def handle_photo_upload(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Handler para recebimento de fotos."""
-    user_id = update.effective_user.id
-    session = await get_user_session(user_id)
-    
-    # Verificar se ainda pode receber fotos
+async def photo_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    uid = update.effective_user.id
+    session = await get_session(uid)
     if len(session.photos) >= Config.MAX_PHOTOS_PER_REQUEST:
-        await update.message.reply_text(
-            f"⚠️ Limite de {Config.MAX_PHOTOS_PER_REQUEST} fotos atingido. Use o botão 'Processar Fotos' para continuar."
-        )
+        await update.message.reply_text("⚠️ Limite de fotos atingido.")
         return BotStates.WAITING_PHOTOS.value
-    
-    # Obter maior resolução disponível
-    photo = update.message.photo[-1]
-    session.photos.append(photo.file_id)
-    
-    # Salvar progresso
-    await DataPersistence.save_user_session(session)
-    
-    # Criar botões dinâmicos
-    buttons = []
-    if len(session.photos) >= 1:
-        buttons.append([InlineKeyboardButton("✅ Processar Fotos", callback_data="process_photos")])
-    
+    fid = update.message.photo[-1].file_id
+    session.photos.append(fid)
+    await DataPersistence.save(session)
+    buttons = [[InlineKeyboardButton("✅ Processar", callback_data="process")]]
     if len(session.photos) < Config.MAX_PHOTOS_PER_REQUEST:
-        buttons.append([InlineKeyboardButton("📸 Enviar Mais Fotos", callback_data="add_more_photos")])
-    
-    keyboard = InlineKeyboardMarkup(buttons)
-    
+        buttons.append([InlineKeyboardButton("➕ Mais fotos", callback_data="start_photos")])
     await update.message.reply_text(
-        f"📸 **Foto {len(session.photos)}/{Config.MAX_PHOTOS_PER_REQUEST} recebida!**\n\n"
-        f"✅ Fotos coletadas: {len(session.photos)}\n"
-        f"⏳ Restantes: {Config.MAX_PHOTOS_PER_REQUEST - len(session.photos)}\n\n"
-        "👇 Escolha uma opção:",
-        reply_markup=keyboard,
-        parse_mode='Markdown'
+        f"Foto {len(session.photos)}/{Config.MAX_PHOTOS_PER_REQUEST} recebida.",
+        reply_markup=InlineKeyboardMarkup(buttons)
     )
-    
     return BotStates.WAITING_PHOTOS.value
 
-async def process_photos_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Callback para processar fotos."""
-    query = update.callback_query
-    await query.answer()
-    
-    user_id = query.from_user.id
-    session = await get_user_session(user_id)
-    session.state = BotStates.PROCESSING
-    
+async def process_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    q = update.callback_query
+    await q.answer()
+    uid = q.from_user.id
+    session = await get_session(uid)
     if not session.photos:
-        await query.edit_message_text("⚠️ Nenhuma foto encontrada. Envie fotos primeiro!")
+        await q.edit_message_text("Envie ao menos 1 foto primeiro.")
         return BotStates.WAITING_PHOTOS.value
-    
-    # Mensagem de processamento
-    processing_msg = await query.edit_message_text(
-        "🔄 **PROCESSANDO SUAS FOTOS...**\n\n"
-        "⏳ Extraindo texto das imagens...\n"
-        "🤖 Analisando endereços com IA...\n"
-        "🗺️ Otimizando rota...\n\n"
-        "📱 *Isso pode levar alguns segundos...*",
-        parse_mode='Markdown'
+    await q.edit_message_text("🔄 Processando fotos (OCR)...")
+    raw = await ImageProcessor.ocr(context.bot, session.photos)
+    if not raw.strip():
+        await q.edit_message_text("Nenhum texto encontrado. Envie fotos mais nítidas.")
+        return BotStates.WAITING_PHOTOS.value
+    session.raw_text = raw
+    session.addresses = extract_addresses(raw)
+    if not session.addresses:
+        await q.edit_message_text("Nenhum endereço reconhecido. Verifique se aparecem 'Rua', 'Av', etc.")
+        return BotStates.WAITING_PHOTOS.value
+    session.optimized_route = optimize_route(session.addresses)
+    await DataPersistence.save(session)
+    text = "📍 Endereços extraídos:\n" + '\n'.join(
+        f"{i+1}. {a.cleaned_address}" for i, a in enumerate(session.addresses)
     )
-    
+    text += "\n\nClique em Navegar para iniciar a sequência."
+    kb = InlineKeyboardMarkup([
+        [InlineKeyboardButton("🚀 Navegar", callback_data="nav_start")],
+        [InlineKeyboardButton("🔄 Reprocessar", callback_data="process")]
+    ])
+    await q.edit_message_text(text, reply_markup=kb)
+    session.state = BotStates.CONFIRMING_ROUTE
+    return BotStates.CONFIRMING_ROUTE.value
+
+async def nav_start_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    q = update.callback_query
+    await q.answer()
+    uid = q.from_user.id
+    session = await get_session(uid)
+    session.state = BotStates.NAVIGATING
+    session.current_delivery_index = 0
+    return await show_current_stop(q, context, session)
+
+async def show_current_stop(q_or_update, context, session: UserSession) -> int:
+    idx = session.current_delivery_index
+    total = len(session.optimized_route)
+    if idx >= total:
+        return await finish_route(q_or_update, context, session)
+    addr = session.optimized_route[idx]
+    enc = addr.replace(' ', '+').replace(',', '%2C')
+    msg = (f"Entrega {idx+1}/{total}\n\n{addr}\n\n"
+           f"Concluídas: {idx} | Restantes: {total - idx - 1}")
+    kb = InlineKeyboardMarkup([
+        [InlineKeyboardButton("Maps", url=f"https://www.google.com/maps/search/{enc}"),
+         InlineKeyboardButton("Waze", url=f"https://waze.com/ul?q={enc}")],
+        [InlineKeyboardButton("✅ Entregue", callback_data="delivered")]
+    ])
+    if hasattr(q_or_update, 'edit_message_text'):
+        await q_or_update.edit_message_text(msg, reply_markup=kb)
+    else:
+        await q_or_update.message.reply_text(msg, reply_markup=kb)
+    return BotStates.NAVIGATING.value
+
+async def delivered_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    q = update.callback_query
+    await q.answer("Marcado!")
+    uid = q.from_user.id
+    session = await get_session(uid)
+    if session.current_delivery_index < len(session.optimized_route):
+        session.completed_deliveries.append(session.optimized_route[session.current_delivery_index])
+        session.current_delivery_index += 1
+    await DataPersistence.save(session)
+    return await show_current_stop(q, context, session)
+
+async def finish_route(q_or_update, context, session: UserSession) -> int:
+    msg = ("🎉 Rota concluída!\n\n" f"Total entregas: {len(session.completed_deliveries)}")
+    kb = InlineKeyboardMarkup([[InlineKeyboardButton("Nova Rota", callback_data="start_photos")]])
+    user_sessions[session.user_id] = UserSession(user_id=session.user_id, photos=[])
+    if hasattr(q_or_update, 'edit_message_text'):
+        await q_or_update.edit_message_text(msg, reply_markup=kb)
+    else:
+        await q_or_update.message.reply_text(msg, reply_markup=kb)
+    return BotStates.WAITING_PHOTOS.value
+
+async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Envie /start para iniciar uma nova rota.")
+
+async def status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    uid = update.effective_user.id
+    session = await get_session(uid)
+    await update.message.reply_text(
+        f"Fotos: {len(session.photos)} | Endereços: {len(session.addresses)} | Estado: {session.state.name}"
+    )
+
+async def cancel_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    uid = update.effective_user.id
+    if uid in user_sessions:
+        del user_sessions[uid]
+    await update.message.reply_text("Sessão cancelada. /start para recomeçar.")
+    return ConversationHandler.END
+
+async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
+    logger.error(f"Erro: {context.error}")
     try:
-        # Etapa 1: Extração de texto
-        await context.bot.edit_message_text(
-            "🔄 **PROCESSANDO SUAS FOTOS...**\n\n"
-            "✅ Extraindo texto das imagens...\n"
-            "⏳ Analisando endereços com IA...\n"
-            "🗺️ Otimizando rota...\n\n"
-            "📱 *Processando...*",
-            chat_id=query.message.chat_id,
-            message_id=processing_msg.message_id,
-            parse_mode='Markdown'
-        )
-        
-        raw_text, ocr_confidence = await ImageProcessor.extract_text_from_images(
-            context.bot, session.photos
-        )
+        if update and getattr(update, 'effective_message', None):
+            await update.effective_message.reply_text("Erro interno. Tente novamente.")
+    except Exception:
+        pass
+
+class HealthHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path == '/health':
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'status': 'ok'}).encode())
+        else:
+            self.send_response(404)
+            self.end_headers()
+    def log_message(self, format, *args):
+        return
+
+def start_health_server():
+    port = int(os.getenv('PORT', 8000))
+    server = HTTPServer(('0.0.0.0', port), HealthHandler)
+    t = threading.Thread(target=server.serve_forever, daemon=True)
+    t.start()
+    logger.info(f"Health server na porta {port}")
+    return server
+
+def main():
+    logger.info("Iniciando bot simplificado...")
+    start_health_server()
+    app = Application.builder().token(Config.TELEGRAM_BOT_TOKEN).build()
+
+    conv = ConversationHandler(
+        entry_points=[CommandHandler('start', start)],
+        states={
+            BotStates.WAITING_PHOTOS.value: [
+                MessageHandler(filters.PHOTO, photo_handler),
+                CallbackQueryHandler(start_photos_cb, pattern='^start_photos$'),
+                CallbackQueryHandler(process_cb, pattern='^process$')
+            ],
+            BotStates.CONFIRMING_ROUTE.value: [
+                CallbackQueryHandler(nav_start_cb, pattern='^nav_start$'),
+                CallbackQueryHandler(process_cb, pattern='^process$')
+            ],
+            BotStates.NAVIGATING.value: [
+                CallbackQueryHandler(delivered_cb, pattern='^delivered$'),
+                CallbackQueryHandler(start_photos_cb, pattern='^start_photos$')
+            ]
+        },
+        fallbacks=[CommandHandler('cancel', cancel_cmd)]
+    )
+
+    app.add_handler(conv)
+    app.add_handler(CommandHandler('help', help_cmd))
+    app.add_handler(CommandHandler('status', status_cmd))
+    app.add_handler(CommandHandler('cancel', cancel_cmd))
+    app.add_error_handler(error_handler)
+
+    app.run_polling(drop_pending_updates=True)
+
+if __name__ == '__main__':
+    main()
         
         if not raw_text.strip():
             await context.bot.edit_message_text(
