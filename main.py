@@ -178,36 +178,49 @@ class SecurityValidator:
 
 def setup_vision_client():
     try:
-        json_env = os.getenv('GOOGLE_VISION_CREDENTIALS_JSON')
-        creds_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
-        credentials = None
-        
-        if json_env:
+        # Tenta Base64 primeiro
+        json_base64 = os.getenv('GOOGLE_VISION_CREDENTIALS_JSON_BASE64')
+        if json_base64:
             try:
                 # Corrigir padding se necessário
-                missing_padding = len(json_env) % 4
+                missing_padding = len(json_base64) % 4
                 if missing_padding:
-                    json_env += '=' * (4 - missing_padding)
+                    json_base64 += '=' * (4 - missing_padding)
                 
                 # Decodifica a string Base64
-                decoded_json = base64.b64decode(json_env).decode('utf-8')
+                decoded_json = base64.b64decode(json_base64).decode('utf-8')
                 info = json.loads(decoded_json)
                 credentials = service_account.Credentials.from_service_account_info(info)
-                logger.info("Credenciais Vision carregadas via JSON env")
+                logger.info("Credenciais Vision carregadas via Base64")
+                client = vision.ImageAnnotatorClient(credentials=credentials)
+                logger.info("Vision client configurado com sucesso")
+                return client
+            except Exception as e:
+                logger.error(f"Erro ao processar credenciais Base64: {e}")
+        
+        # Tenta JSON direto
+        json_env = os.getenv('GOOGLE_VISION_CREDENTIALS_JSON')
+        if json_env:
+            try:
+                info = json.loads(json_env)
+                credentials = service_account.Credentials.from_service_account_info(info)
+                logger.info("Credenciais Vision carregadas via JSON direto")
+                client = vision.ImageAnnotatorClient(credentials=credentials)
+                logger.info("Vision client configurado com sucesso")
+                return client
             except Exception as e:
                 logger.error(f"Erro ao processar credenciais JSON: {e}")
-                return None
-                
-        elif creds_path and os.path.exists(creds_path):
+        
+        # Tenta arquivo
+        creds_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+        if creds_path and os.path.exists(creds_path):
             credentials = service_account.Credentials.from_service_account_file(creds_path)
             logger.info("Credenciais Vision carregadas via arquivo")
-        else:
-            logger.warning("Credenciais do Vision não encontradas - OCR indisponível")
-            return None
+            client = vision.ImageAnnotatorClient(credentials=credentials)
             
-        client = vision.ImageAnnotatorClient(credentials=credentials)
-        logger.info("Vision client configurado com sucesso")
-        return client
+        logger.warning("Credenciais do Vision não encontradas - OCR indisponível")
+        logger.info("Variáveis disponíveis: GOOGLE_VISION_CREDENTIALS_JSON_BASE64, GOOGLE_VISION_CREDENTIALS_JSON, GOOGLE_APPLICATION_CREDENTIALS")
+        return None
         
     except Exception as e:
         logger.error(f"Falha ao configurar Vision client: {e}")
@@ -476,7 +489,10 @@ def main():
                     CallbackQueryHandler(start_photos_cb, pattern='^start_photos$')
                 ]
             },
-            fallbacks=[CommandHandler('cancel', cancel_cmd)]
+            fallbacks=[CommandHandler('cancel', cancel_cmd)],
+            per_message=False,
+            per_chat=True,
+            per_user=True
         )
 
         app.add_handler(conv)
@@ -486,7 +502,15 @@ def main():
         app.add_error_handler(error_handler)
 
         logger.info("Bot configurado, iniciando polling...")
-        app.run_polling(drop_pending_updates=True)
+        app.run_polling(
+            drop_pending_updates=True,
+            poll_interval=2.0,
+            timeout=30,
+            read_timeout=30,
+            write_timeout=30,
+            connect_timeout=30,
+            pool_timeout=30
+        )
         
     except Exception as e:
         logger.error(f"Erro crítico ao inicializar bot: {e}")
