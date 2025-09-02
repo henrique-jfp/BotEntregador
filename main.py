@@ -19,6 +19,7 @@ import base64
 import errno
 import math
 import httpx
+import urllib.parse
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from datetime import datetime, timedelta
 from dataclasses import dataclass, asdict
@@ -499,7 +500,8 @@ async def process_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         "\nEscolha uma ação abaixo:" )
     kb = InlineKeyboardMarkup([
         [InlineKeyboardButton("🚀 Navegar", callback_data="nav_start")],
-        [InlineKeyboardButton("📤 Exportar Circuit", callback_data="export_circuit")]
+        [InlineKeyboardButton("📤 Exportar Circuit (arquivo)", callback_data="export_circuit")],
+        [InlineKeyboardButton("🔗 Link Circuit", callback_data="circuit_link")]
     ])
     await q.edit_message_text(text, reply_markup=kb, parse_mode='Markdown')
     session.state = BotStates.CONFIRMING_ROUTE
@@ -520,6 +522,48 @@ async def export_circuit_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     bio.name = f"rota_{datetime.now().strftime('%Y%m%d_%H%M')}.txt"
     await q.message.reply_document(InputFile(bio), caption="Arquivo de endereços para importar no Circuit. \nNo app Circuit: Import > Paste/Upload e selecione este arquivo.")
     # Mantém mensagem original com botões (não edita) – oferece continuidade
+    return BotStates.CONFIRMING_ROUTE.value
+
+def build_circuit_link(addresses: List[DeliveryAddress]) -> Tuple[str, str]:
+    """Gera tentativa de deep-link para Circuit e link alternativo Google Maps multi-stop.
+
+    Observação: Deep-link 'circuit://' não é documentado oficialmente; pode não funcionar em todos os dispositivos.
+    """
+    addr_list = [a.cleaned_address for a in addresses]
+    # Tentativa de esquema customizado (beta). Usamos pipe como separador.
+    joined = '|'.join(addr_list)
+    encoded = urllib.parse.quote(joined)
+    circuit_link = f"circuit://import?stops={encoded}"  # pode ou não abrir o app dependendo do suporte
+
+    # Google Maps multi-stop: primeiro -> destino final, middle como waypoints
+    if len(addr_list) >= 2:
+        origin = urllib.parse.quote(addr_list[0])
+        destination = urllib.parse.quote(addr_list[-1])
+        waypoints = urllib.parse.quote('|'.join(addr_list[1:-1])) if len(addr_list) > 2 else ''
+        maps_link = f"https://www.google.com/maps/dir/?api=1&origin={origin}&destination={destination}"
+        if waypoints:
+            maps_link += f"&waypoints={waypoints}"
+    else:
+        maps_link = f"https://www.google.com/maps/search/{urllib.parse.quote(addr_list[0])}" if addr_list else ''
+    return circuit_link, maps_link
+
+async def circuit_link_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    q = update.callback_query
+    await q.answer()
+    uid = q.from_user.id
+    session = await get_session(uid)
+    if not session.addresses:
+        await q.edit_message_text("Nenhum endereço disponível.")
+        return BotStates.CONFIRMING_ROUTE.value
+    circuit_link, maps_link = build_circuit_link(session.addresses)
+    texto = (
+        "*Links de Rota*\n\n"
+        "Circuit (beta – pode não abrir em todos os aparelhos):\n"
+        f"{circuit_link}\n\n"
+        "Google Maps multi-stop (alternativa):\n"
+        f"{maps_link}\n\n"
+        "Se o link Circuit não abrir o app: abra o Circuit > Import > Paste e use o arquivo exportado ou copie a lista de endereços." )
+    await q.message.reply_text(texto, parse_mode='Markdown', disable_web_page_preview=True)
     return BotStates.CONFIRMING_ROUTE.value
 
 async def nav_start_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -685,7 +729,8 @@ def main():
                 BotStates.CONFIRMING_ROUTE.value: [
                     CallbackQueryHandler(nav_start_cb, pattern='^nav_start$'),
                     CallbackQueryHandler(process_cb, pattern='^process$'),
-                    CallbackQueryHandler(export_circuit_cb, pattern='^export_circuit$')
+                    CallbackQueryHandler(export_circuit_cb, pattern='^export_circuit$'),
+                    CallbackQueryHandler(circuit_link_cb, pattern='^circuit_link$')
                 ],
                 BotStates.NAVIGATING.value: [
                     CallbackQueryHandler(delivered_cb, pattern='^delivered$'),
