@@ -9,8 +9,8 @@ google-auth==2.29.0
 # Environment & Security
 python-dotenv==1.0.0
 
-# Image Processing
-Pillow==10.1.0
+# Image Processing (versão compatível com Python 3.13)
+Pillow>=10.4.0
 
 # HTTP Async
 aiohttp==3.9.1
