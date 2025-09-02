@@ -13,5 +13,5 @@ python-dotenv==1.0.0
 Pillow==10.4.0
 
 # Otimização de rotas
-ortools==9.9.3963
+ortools==9.14.6206
 httpx==0.27.0
