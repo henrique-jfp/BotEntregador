@@ -19,7 +19,15 @@ ADDRESS_REGEX = re.compile(
 
 # Função para extrair texto da imagem usando Google Vision
 def extract_text_from_image(image_path):
-    credentials_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS', 'google-credentials.json')
+    credentials_json = os.getenv('GOOGLE_VISION_CREDENTIALS_JSON')
+    if credentials_json:
+        # Escrever o JSON em um arquivo temporário
+        with open('temp_credentials.json', 'w') as f:
+            f.write(credentials_json)
+        credentials_path = 'temp_credentials.json'
+    else:
+        credentials_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS', 'google-credentials.json')
+    
     credentials = service_account.Credentials.from_service_account_file(credentials_path)
     client = vision.ImageAnnotatorClient(credentials=credentials)
 
@@ -120,9 +128,9 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 # Função principal
 def main():
-    token = os.getenv('BOT_TOKEN')
+    token = os.getenv('TELEGRAM_TOKEN')
     if not token:
-        logger.error("BOT_TOKEN não definido.")
+        logger.error("TELEGRAM_TOKEN não definido.")
         return
 
     application = Application.builder().token(token).build()
