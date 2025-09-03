@@ -402,20 +402,58 @@ class ImageProcessor:
         return ''
 
 def extract_addresses(raw_text: str) -> List[DeliveryAddress]:
-    found: List[DeliveryAddress] = []
-    seen = set()
-    for line in raw_text.splitlines():
-        line_clean = line.strip()
-        if not line_clean:
+    """Extrai endereços preservando linhas e tentando unir fragmentos.
+
+    Muitos comprovantes imprimem assim:
+        R. Nossa Sra de Lourdes, 150
+        São Francisco, Niterói - RJ, 24360-420
+
+    Queremos juntar em uma única linha. Estratégia:
+      1. Limpa linhas vazias / ruído curto (<3 chars sem dígitos ou letras)
+      2. Detecta possível segunda linha se: não começa com tipo de logradouro
+         e contém cidade/UF ou CEP e linha anterior tinha número.
+      3. Junta com vírgula se não existir já.
+      4. Aplica normalização apenas na primeira palavra (já existente).
+    """
+    lines = [l.strip() for l in raw_text.splitlines()]
+    cleaned: List[str] = []
+    for l in lines:
+        if not l:
             continue
-        # Aceita linha se tiver pelo menos um número e uma palavra e tamanho razoável
-        if re.search(r'\d', line_clean) and re.search(r'[A-Za-zÀ-ÖØ-öø-ÿ]', line_clean) and len(line_clean) >= 5:
-            normalized = normalize_address(line_clean)
-            key = normalized.lower()
+        if len(re.sub(r'[^\w]', '', l)) < 3:
+            continue
+        cleaned.append(l)
+
+    merged: List[str] = []
+    logradouro_start = re.compile(r'^(rua|r\.|avenida|av\.|travessa|tv\.|alameda|praça|praca|rodovia|estrada|beco)\b', re.IGNORECASE)
+    city_or_cep = re.compile(r'(\b(rj|sp|mg|es|ba|rs|sc|pr|go|df|pe|ce)\b|\b\d{5}-?\d{3}\b)', re.IGNORECASE)
+
+    i = 0
+    while i < len(cleaned):
+        cur = cleaned[i]
+        nxt = cleaned[i+1] if i+1 < len(cleaned) else ''
+        # Se a próxima linha parece complemento (cidade/UF/CEP) e a atual tem número de endereço
+        if nxt and not logradouro_start.search(nxt) and city_or_cep.search(nxt) and re.search(r'\d', cur) and len(cur) < 120:
+            combined = cur.rstrip(',') + ', ' + nxt
+            merged.append(combined)
+            i += 2
+            continue
+        merged.append(cur)
+        i += 1
+
+    # Remove duplicados mantendo ordem
+    seen = set()
+    results: List[DeliveryAddress] = []
+    for line in merged:
+        if re.search(r'\d', line) and re.search(r'[A-Za-zÀ-ÖØ-öø-ÿ]', line):
+            norm = normalize_address(line)
+            key = norm.lower()
             if key not in seen:
                 seen.add(key)
-                found.append(DeliveryAddress(original_text=line_clean, cleaned_address=normalized))
-    return found[:Config.MAX_ADDRESSES_PER_ROUTE]
+                results.append(DeliveryAddress(original_text=line, cleaned_address=norm))
+        if len(results) >= Config.MAX_ADDRESSES_PER_ROUTE:
+            break
+    return results
 
 class Geocoder:
     cache: Dict[str, Tuple[float, float]] = {}
