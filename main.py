@@ -884,9 +884,41 @@ async def generate_static_map(addresses: List[DeliveryAddress]) -> Optional[byte
             r = await client.get(url)
             if r.status_code == 200 and r.content.startswith(b'\x89PNG'):
                 return r.content
+            # 403 ou outro: gera fallback local simples
+            logger.warning(f"Static Maps falhou status={r.status_code}; usando fallback local.")
     except Exception as e:
-        logger.warning(f"Falha mapa estático: {e}")
-    return None
+        logger.warning(f"Falha mapa estático remoto: {e}; gerando fallback.")
+    # Fallback local com Pillow
+    try:
+        from PIL import Image, ImageDraw, ImageFont
+        from io import BytesIO
+        w,h = 1024,1024
+        img = Image.new('RGB',(w,h),'white')
+        draw = ImageDraw.Draw(img)
+        # Normaliza coords para canvas
+        lats = [a.lat for a in addresses if a.lat]; lngs=[a.lng for a in addresses if a.lng]
+        if not lats or not lngs:
+            return None
+        minlat,maxlat=min(lats),max(lats); minlng,maxlng=min(lngs),max(lngs)
+        def project(lat,lng):
+            x = int((lng-minlng)/(maxlng-minlng+1e-9)*(w-80))+40
+            y = int((1-(lat-minlat)/(maxlat-minlat+1e-9))*(h-80))+40
+            return x,y
+        pts=[project(a.lat,a.lng) for a in addresses]
+        # Linha da rota
+        draw.line(pts, fill=(0,0,255), width=4)
+        # Marcadores
+        for i,(x,y) in enumerate(pts):
+            color = (0,200,0) if i==0 else ((220,0,0) if i==len(pts)-1 else (0,100,255))
+            draw.ellipse((x-10,y-10,x+10,y+10), fill=color, outline='black')
+            draw.text((x+12,y-8), chr(65+i) if i<26 else str(i+1), fill='black')
+        bio = BytesIO()
+        img.save(bio, format='PNG')
+        bio.seek(0)
+        return bio.getvalue()
+    except Exception as e:
+        logger.warning(f"Fallback Pillow falhou: {e}")
+        return None
 
 async def get_session(user_id: int) -> UserSession:
     if user_id not in user_sessions:
