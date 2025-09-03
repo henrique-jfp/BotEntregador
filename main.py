@@ -556,23 +556,26 @@ class DistanceMatrixBuilder:
         okey = o.lower(); dkey = d.lower()
         cls.cache.setdefault(okey, {})[dkey] = {'distance': dist, 'duration': dur}
 
-async def build_distance_duration_matrix(addresses: List[DeliveryAddress]) -> Tuple[List[List[float]], List[List[float]], bool]:
-    """Retorna (matriz_dist_m, matriz_dur_s, via_api).
+async def build_distance_duration_matrix(addresses: List[DeliveryAddress]) -> Tuple[List[List[float]], List[List[float]], bool, List[str]]:
+    """Retorna (matriz_dist_m, matriz_dur_s, via_api, enderecos_falhos).
 
-    Faz chamadas individuais por origem (n chamadas) para n<=25.
-    Usa cache para reduzir consumo.
+    Não aborta toda a matriz em caso de elemento NOT_FOUND; apenas marca distância grande.
+    Considera a matriz utilizável se >=70% dos pares válidos.
     """
     api_key = os.getenv('GOOGLE_API_KEY')
     n = len(addresses)
     DistanceMatrixBuilder.load()
     if not api_key:
-        return [], [], False
+        return [], [], False, []
     dmat = [[0.0]*n for _ in range(n)]
     tmat = [[0.0]*n for _ in range(n)]
-    async with httpx.AsyncClient(timeout=15) as client:
+    failed: List[str] = []
+    total_pairs = n*(n-1)
+    ok_pairs = 0
+    BIG = 5_000_000  # 5000 km penalidade
+    async with httpx.AsyncClient(timeout=20) as client:
         for i, origin_obj in enumerate(addresses):
             origin = origin_obj.cleaned_address
-            # Verifica cache para todos destinos
             missing = []
             for j, dest_obj in enumerate(addresses):
                 if i == j:
@@ -581,40 +584,52 @@ async def build_distance_duration_matrix(addresses: List[DeliveryAddress]) -> Tu
                 if cached:
                     dmat[i][j] = cached['distance']
                     tmat[i][j] = cached['duration']
+                    if cached['distance'] > 0:
+                        ok_pairs += 1
                 else:
                     missing.append((j, dest_obj.cleaned_address))
-            if missing:
-                destinations_str = '|'.join(m[1] for m in missing)
-                params = {
-                    'origins': origin,
-                    'destinations': destinations_str,
-                    'mode': 'driving',
-                    'language': 'pt-BR',
-                    'key': api_key
-                }
-                try:
-                    r = await client.get('https://maps.googleapis.com/maps/api/distancematrix/json', params=params)
-                    data = r.json()
-                    if data.get('status') != 'OK':
-                        logger.warning(f"Distance Matrix status global {data.get('status')} - fallback")
-                        return [], [], False
-                    elements = data['rows'][0]['elements']
-                    for idx, el in enumerate(elements):
-                        j = missing[idx][0]
-                        if el.get('status') == 'OK':
-                            dist = el['distance']['value']  # metros
-                            dur = el['duration']['value']    # segundos
-                            dmat[i][j] = dist
-                            tmat[i][j] = dur
-                            DistanceMatrixBuilder.set_cached(origin, addresses[j].cleaned_address, dist, dur)
-                        else:
-                            logger.warning(f"Elemento DM não OK {origin} -> {addresses[j].cleaned_address}: {el.get('status')}")
-                            return [], [], False
-                except Exception as e:
-                    logger.warning(f"Falha Distance Matrix origem {origin}: {e}")
-                    return [], [], False
+            if not missing:
+                continue
+            destinations_str = '|'.join(m[1] for m in missing)
+            params = {
+                'origins': origin,
+                'destinations': destinations_str,
+                'mode': 'driving',
+                'language': 'pt-BR',
+                'key': api_key
+            }
+            try:
+                r = await client.get('https://maps.googleapis.com/maps/api/distancematrix/json', params=params)
+                data = r.json()
+                if data.get('status') != 'OK':
+                    logger.warning(f"Distance Matrix status global {data.get('status')} - fallback total")
+                    return [], [], False, [a.cleaned_address for a in addresses]
+                elements = data['rows'][0]['elements']
+                for idx, el in enumerate(elements):
+                    j = missing[idx][0]
+                    dest_addr = addresses[j].cleaned_address
+                    st = el.get('status')
+                    if st == 'OK':
+                        dist = el['distance']['value']
+                        dur = el['duration']['value']
+                        dmat[i][j] = dist
+                        tmat[i][j] = dur
+                        DistanceMatrixBuilder.set_cached(origin, dest_addr, dist, dur)
+                        ok_pairs += 1
+                    else:
+                        # Marca falho mas segue
+                        dmat[i][j] = BIG
+                        tmat[i][j] = dist = 0
+                        if dest_addr not in failed:
+                            failed.append(dest_addr)
+                        logger.warning(f"Elemento DM não OK {origin} -> {dest_addr}: {st}")
+            except Exception as e:
+                logger.warning(f"Falha Distance Matrix origem {origin}: {e}")
+                failed.extend([m[1] for m in missing if m[1] not in failed])
     DistanceMatrixBuilder.save()
-    return dmat, tmat, True
+    usable_ratio = ok_pairs/total_pairs if total_pairs else 0
+    via_api = usable_ratio >= 0.7 and ok_pairs > 0
+    return dmat, tmat, via_api, failed
 
 def tsp_exact(distance_matrix: List[List[float]]) -> List[int]:
     """Held-Karp exato para n<=12."""
@@ -739,7 +754,7 @@ def optimize_with_distance_matrix(distance_matrix: List[List[float]]) -> List[in
         return tsp_exact(distance_matrix)
     return tsp_heuristic(distance_matrix)
 
-async def optimize_and_compute(addresses: List[DeliveryAddress]) -> Tuple[List[DeliveryAddress], float, float, float, float, bool]:
+async def optimize_and_compute(addresses: List[DeliveryAddress]) -> Tuple[List[DeliveryAddress], float, float, float, float, bool, List[str]]:
     """Produz rota otimizada e estatísticas.
 
     Retorna (addresses_ordenados, total_km, driving_min, service_min, total_min, via_api)
@@ -748,7 +763,7 @@ async def optimize_and_compute(addresses: List[DeliveryAddress]) -> Tuple[List[D
     if len(addresses) <= 1:
         service = len(addresses) * Config.SERVICE_TIME_PER_STOP_MIN
         return addresses, 0.0, 0.0, service, service, False
-    dmat, tmat, ok = await build_distance_duration_matrix(addresses)
+    dmat, tmat, ok, failed = await build_distance_duration_matrix(addresses)
     if ok:
         order_idx = optimize_with_distance_matrix(dmat)
         ordered = [addresses[i] for i in order_idx]
@@ -763,11 +778,11 @@ async def optimize_and_compute(addresses: List[DeliveryAddress]) -> Tuple[List[D
         service_min = (len(ordered)-1) * Config.SERVICE_TIME_PER_STOP_MIN
         driving_min = total_s / 60.0 if total_s > 0 else (total_m/1000.0)/Config.AVERAGE_SPEED_KMH*60
         total_min = driving_min + service_min
-        return ordered, round(total_m/1000.0, 2), round(driving_min, 1), round(service_min,1), round(total_min,1), True
+    return ordered, round(total_m/1000.0, 2), round(driving_min, 1), round(service_min,1), round(total_min,1), True, failed
     # Fallback: usar heurística geocoding existente
     ordered = await optimize_route(addresses)
     total_km, driving_min, service_min, total_min = await compute_route_stats(ordered)
-    return ordered, total_km, driving_min, service_min, total_min, False
+    return ordered, total_km, driving_min, service_min, total_min, False, failed
 
 async def compute_route_stats(ordered: List[DeliveryAddress]) -> Tuple[float, float, float, float]:
     """Calcula distância real em km e tempos a partir da rota otimizada.
@@ -871,7 +886,7 @@ async def process_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         await q.edit_message_text("Nenhum endereço reconhecido. Verifique se aparecem 'Rua', 'Av', etc.")
         return BotStates.WAITING_PHOTOS.value
     # Otimiza rota com Distance Matrix (se disponível) e calcula métricas reais
-    optimized_objs, total_km, driving_min, service_min, total_min, via_api = await optimize_and_compute(session.addresses)
+    optimized_objs, total_km, driving_min, service_min, total_min, via_api, failed_dm = await optimize_and_compute(session.addresses)
     session.optimized_route = [o.cleaned_address for o in optimized_objs]
     session.addresses = optimized_objs
     session.processed = True
@@ -891,7 +906,7 @@ async def process_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     f"📦 Manuseio (@{Config.SERVICE_TIME_PER_STOP_MIN} min/entrega): {service_min} min\n"
     f"⏳ Total estimado: *{total_min} min*\n"
         "\n� *Ordem das Entregas:*\n" + lista +
-    ("\n\n✅ Distância calculada via Google Distance Matrix." if via_api else "\n\n💡 Fallback heurístico usado (API indisponível).") +
+    ("\n\n✅ Distância calculada via Google Distance Matrix." if via_api else ("\n\n💡 Fallback heurístico (Distance Matrix parcial ou indisponível)." + (f"\n⚠️ Endereços não reconhecidos: {', '.join(failed_dm[:4])}{'...' if len(failed_dm)>4 else ''}" if failed_dm else ""))) +
         "\nEscolha uma ação abaixo:" )
     # Registra rota para deep-link via endpoint HTTP
     route_id = uuid.uuid4().hex[:10]
