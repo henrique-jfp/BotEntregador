@@ -279,54 +279,47 @@ ADDRESS_REGEX = re.compile(r'(rua|r\.|avenida|av\.|travessa|tv\.|alameda|praça|
 
 # ===== Normalização de Abreviações de Logradouros =====
 ABBREV_MAP = [
-    (r'^r\b\.?:?', 'Rua '),
-    (r'^av\b\.?:?', 'Avenida '),
-    (r'^avenida\b', 'Avenida '),
-    (r'^tv\b\.?:?', 'Travessa '),
-    (r'^trav\b\.?:?', 'Travessa '),
-    (r'^al\b\.?:?', 'Alameda '),
-    (r'^pça\b\.?:?', 'Praça '),
-    (r'^praca\b\.?:?', 'Praça '),
-    (r'^praça\b\.?:?', 'Praça '),
-    (r'^rod\b\.?:?', 'Rodovia '),
-    (r'^estr\b\.?:?', 'Estrada '),
-    (r'^est\b\.?:?', 'Estrada '),
-    (r'^bec\b\.?:?', 'Beco '),
-    (r'^cond\b\.?:?', 'Condomínio '),
-    (r'^jd\b\.?:?', 'Jardim '),
-    (r'^lote\b\.?:?', 'Loteamento '),
+    (r'^(r)\b\.?:?', 'Rua'),
+    (r'^(av)\b\.?:?', 'Avenida'),
+    (r'^(tv|trav)\b\.?:?', 'Travessa'),
+    (r'^(al)\b\.?:?', 'Alameda'),
+    (r'^(pça|praca|praça)\b\.?:?', 'Praça'),
+    (r'^(rod)\b\.?:?', 'Rodovia'),
+    (r'^(estr|est)\b\.?:?', 'Estrada'),
+    (r'^(bec)\b\.?:?', 'Beco'),
+    (r'^(cond)\b\.?:?', 'Condomínio'),
+    (r'^(jd)\b\.?:?', 'Jardim'),
+    (r'^(lote)\b\.?:?', 'Loteamento'),
 ]
 
-def normalize_address(text: str) -> str:
-    """Expande abreviações iniciais e faz limpeza básica.
+CEP_REGEX = re.compile(r'\b\d{5}-?\d{3}\b')
 
-    Regras:
-    - Expande abreviações mapeadas
-    - Remove duplicação de espaços
-    - Remove pontuação solta no final
-    - Mantém caixa original restante, apenas capitalizando logradouro
+def normalize_address(original: str) -> str:
+    """Expande somente a abreviação inicial (se houver) preservando todo o restante intacto
+    (números, maiúsculas, CEP, acentos). Não reordena, não capitaliza o meio.
     """
-    raw = text.strip().lower()
-    # Remove emojis ou caracteres de controle
-    raw = re.sub(r'[\u2600-\u27BF]', '', raw)
-    expanded = raw
+    line = original.strip()
+    if not line:
+        return line
+    # Remove caracteres de controle
+    line = re.sub(r'[\u0000-\u001F]', '', line)
+    # Divide primeira palavra para checar abreviação
+    parts = line.split(maxsplit=1)
+    first = parts[0]
+    rest = parts[1] if len(parts) > 1 else ''
+    replaced = False
     for pattern, repl in ABBREV_MAP:
-        if re.match(pattern, expanded, flags=re.IGNORECASE):
-            expanded = re.sub(pattern, repl, expanded, flags=re.IGNORECASE)
+        if re.match(pattern, first, flags=re.IGNORECASE):
+            first = repl
+            replaced = True
             break
-    # Capitalização do primeiro termo já substituído
-    expanded = expanded.strip()
-    expanded = re.sub(r'\s+', ' ', expanded)
-    # Remove traços ou vírgulas isolados no fim
-    expanded = re.sub(r'[-,;:]\s*$', '', expanded)
-    # Primeira letra maiúscula de cada palavra relevante
-    def title_preserve(m: re.Match):
-        w = m.group(0)
-        if len(w) <= 2:  # siglas (ex: RJ)
-            return w.upper()
-        return w.capitalize()
-    expanded = re.sub(r'[A-Za-zÀ-ÖØ-öø-ÿ]+', title_preserve, expanded)
-    return expanded
+    # Junta novamente mantendo resto exatamente
+    rebuilt = (first + (' ' + rest if rest else '')).strip()
+    # Garante que CEP (se existir no original) permaneça (já está preservado, apenas sanity)
+    cep_match = CEP_REGEX.search(original)
+    if cep_match and cep_match.group(0) not in rebuilt:
+        rebuilt += f' CEP {cep_match.group(0)}'
+    return rebuilt
 
 class ImageProcessor:
     @staticmethod
@@ -378,8 +371,16 @@ class ImageProcessor:
                 try:
                     b64 = base64.b64encode(img_bytes).decode('utf-8')
                     # Prompt para extrair somente texto
-                    prompt = ("Extraia SOMENTE o texto legível presente na imagem (endereços, linhas). "
-                              "Não adicione interpretações. Retorne o texto cru exatamente.")
+                    prompt = (
+                        "Extraia exatamente o texto de endereços da imagem.\n"
+                        "Regras IMPORTANTES:\n"
+                        "1. NÃO traduza, NÃO corrija ortografia, NÃO invente nada.\n"
+                        "2. Preserve números, hífens, vírgulas, barras, complementos, CEP (#####-###).\n"
+                        "3. Uma linha por endereço como aparece.\n"
+                        "4. NÃO expanda abreviações (R., Av., Tv.) – apenas copie como está.\n"
+                        "5. Não agrupe ou reordene.\n"
+                        "Saída: somente linhas de texto, sem comentários adicionais."
+                    )
                     # API espera lista de partes: imagem e texto
                     resp = await asyncio.to_thread(
                         gemini_model.generate_content,
@@ -407,7 +408,8 @@ def extract_addresses(raw_text: str) -> List[DeliveryAddress]:
         line_clean = line.strip()
         if not line_clean:
             continue
-        if ADDRESS_REGEX.search(line_clean.lower()) and len(line_clean) > 5:
+        # Aceita linha se tiver pelo menos um número e uma palavra e tamanho razoável
+        if re.search(r'\d', line_clean) and re.search(r'[A-Za-zÀ-ÖØ-öø-ÿ]', line_clean) and len(line_clean) >= 5:
             normalized = normalize_address(line_clean)
             key = normalized.lower()
             if key not in seen:
