@@ -852,6 +852,42 @@ user_sessions: Dict[int, UserSession] = {}
 circuit_routes: Dict[str, List[str]] = {}
 BASE_URL: Optional[str] = None
 
+async def generate_static_map(addresses: List[DeliveryAddress]) -> Optional[bytes]:
+    """Gera imagem estática simples usando Google Static Maps (se chave) com marcadores e path.
+    Caso sem chave, retorna None (poderíamos implementar Pillow + fundo cinza, mas preferimos falhar silenciosamente).
+    """
+    api_key = os.getenv('GOOGLE_API_KEY')
+    if not api_key or len(addresses) < 2:
+        return None
+    # Necessário garantir lat/lng; geocodifica faltantes rapidamente (sequencial para evitar bursts)
+    for a in addresses:
+        if a.lat is None or a.lng is None:
+            coord = await Geocoder.geocode(a.cleaned_address)
+            if coord:
+                a.lat, a.lng = coord
+    have_all = all(a.lat is not None and a.lng is not None for a in addresses)
+    if not have_all:
+        return None
+    # Monta path (limite URL ~ 2k chars; nossa rota <= 20 pontos OK)
+    path = 'path=color:0x0000ff|weight:4|' + '|'.join(f"{a.lat},{a.lng}" for a in addresses)
+    markers = []
+    for i,a in enumerate(addresses):
+        color = 'green' if i==0 else ('red' if i==len(addresses)-1 else 'blue')
+        label = chr(65+i) if i < 26 else ''
+        markers.append(f"color:{color}|label:{label}|{a.lat},{a.lng}")
+    marker_params = '&'.join('markers='+m for m in markers)
+    base = 'https://maps.googleapis.com/maps/api/staticmap'
+    params = f"size=640x640&scale=2&{path}&{marker_params}&key={api_key}"
+    url = base + '?' + params
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            r = await client.get(url)
+            if r.status_code == 200 and r.content.startswith(b'\x89PNG'):
+                return r.content
+    except Exception as e:
+        logger.warning(f"Falha mapa estático: {e}")
+    return None
+
 async def get_session(user_id: int) -> UserSession:
     if user_id not in user_sessions:
         loaded = await DataPersistence.load(user_id)
@@ -973,9 +1009,24 @@ async def process_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     else:
         BASE_URL = BASE_URL or f"http://localhost:{port}"
     circuit_http_link = f"{BASE_URL}/circuit/{route_id}"
+    # Link completo Google Maps com waypoints
+    def build_gmaps_link(addresses: List[str]) -> str:
+        if len(addresses) < 2:
+            enc = urllib.parse.quote(addresses[0])
+            return f"https://www.google.com/maps/search/{enc}"
+        origin = urllib.parse.quote(addresses[0])
+        destination = urllib.parse.quote(addresses[-1])
+        waypoints_list = addresses[1:-1]
+        # Limite prático: 23 waypoints (Maps aceita até 25 pontos total). Nosso MAX é 20.
+        wp = '|'.join(urllib.parse.quote(w) for w in waypoints_list)
+        return f"https://www.google.com/maps/dir/?api=1&origin={origin}&destination={destination}&travelmode=driving&waypoints={wp}"
+
+    maps_route_link = build_gmaps_link([a.cleaned_address for a in session.addresses])
     kb = InlineKeyboardMarkup([
         [InlineKeyboardButton("🚀 Navegar", callback_data="nav_start")],
         [InlineKeyboardButton("📤 Exportar Circuit (CSV)", callback_data="export_circuit")],
+        [InlineKeyboardButton("🧭 Google Maps (rota)", url=maps_route_link)],
+        [InlineKeyboardButton("🗺️ Mapa imagem", callback_data="map_image")],
         [InlineKeyboardButton("🔗 Abrir no Circuit", url=circuit_http_link)]
     ])
     await q.edit_message_text(text, reply_markup=kb, parse_mode='Markdown')
@@ -1007,6 +1058,25 @@ async def export_circuit_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     return BotStates.CONFIRMING_ROUTE.value
 
 ## Removido callback antigo de link Circuit / Maps
+
+async def map_image_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    q = update.callback_query
+    await q.answer()
+    uid = q.from_user.id
+    session = await get_session(uid)
+    if not session.addresses:
+        await q.edit_message_text("Rota não encontrada.")
+        return BotStates.CONFIRMING_ROUTE.value
+    await q.message.reply_text("Gerando mapa…")
+    img_bytes = await generate_static_map(session.addresses)
+    if not img_bytes:
+        await q.message.reply_text("Não foi possível gerar mapa estático (talvez falta GOOGLE_API_KEY ou geocoding incompleto).")
+        return BotStates.CONFIRMING_ROUTE.value
+    from io import BytesIO
+    bio = BytesIO(img_bytes)
+    bio.name = 'rota.png'
+    await q.message.reply_photo(photo=InputFile(bio), caption="Mapa estimado da rota (sequência otimizada).")
+    return BotStates.CONFIRMING_ROUTE.value
 
 async def nav_start_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     q = update.callback_query
@@ -1236,6 +1306,7 @@ def main():
                     CallbackQueryHandler(nav_start_cb, pattern='^nav_start$'),
                     CallbackQueryHandler(process_cb, pattern='^process$'),
                     CallbackQueryHandler(export_circuit_cb, pattern='^export_circuit$'),
+                    CallbackQueryHandler(map_image_cb, pattern='^map_image$'),
                     # Callback removido: link Circuit agora é botão URL direto
                 ],
                 BotStates.NAVIGATING.value: [
