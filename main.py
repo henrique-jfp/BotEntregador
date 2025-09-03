@@ -824,17 +824,27 @@ async def get_session(user_id: int) -> UserSession:
     return user_sessions[user_id]
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    uid = update.effective_user.id
-    if not await SecurityValidator.rate_limit(uid):
-        await update.message.reply_text("⚠️ Limite por hora atingido. Tente depois.")
+    try:
+        uid = update.effective_user.id if update.effective_user else 0
+        logger.info(f"/start recebido de user {uid}")
+        if not update.message:
+            logger.warning("Update sem message em /start")
+            return ConversationHandler.END
+        if not await SecurityValidator.rate_limit(uid):
+            await update.message.reply_text("⚠️ Limite por hora atingido. Tente depois.")
+            return ConversationHandler.END
+        user_sessions[uid] = UserSession(user_id=uid, photos=[], processed=False)
+        msg = (
+            "🚚 Olá! Envie fotos (até 8) com os endereços. Depois clique em Processar."
+        )
+        kb = InlineKeyboardMarkup([[InlineKeyboardButton("📸 Enviar Fotos", callback_data="start_photos")]])
+        await update.message.reply_text(msg, reply_markup=kb)
+        return BotStates.WAITING_PHOTOS.value
+    except Exception as e:
+        logger.error(f"Falha em /start: {e}")
+        if update and hasattr(update, 'message') and update.message:
+            await update.message.reply_text("Erro ao iniciar. Tente novamente em instantes.")
         return ConversationHandler.END
-    user_sessions[uid] = UserSession(user_id=uid, photos=[], processed=False)
-    msg = (
-        "🚚 Olá! Envie fotos (até 8) com os endereços. Depois clique em Processar."
-    )
-    kb = InlineKeyboardMarkup([[InlineKeyboardButton("📸 Enviar Fotos", callback_data="start_photos")]])
-    await update.message.reply_text(msg, reply_markup=kb)
-    return BotStates.WAITING_PHOTOS.value
 
 async def start_photos_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     q = update.callback_query
@@ -1201,7 +1211,9 @@ def main():
             per_user=True
         )
 
+        # Registra handlers (mantém apenas uma duplicata /start fora do conv se necessário)
         app.add_handler(conv)
+        app.add_handler(CommandHandler('start', start))  # fallback extra caso estado corrompido
         app.add_handler(CommandHandler('help', help_cmd))
         app.add_handler(CommandHandler('status', status_cmd))
         app.add_handler(CommandHandler('cancel', cancel_cmd))
