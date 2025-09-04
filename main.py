@@ -69,6 +69,9 @@ class BotStates(Enum):
     PROCESSING = 2
     CONFIRMING_ROUTE = 3
     NAVIGATING = 4
+    REVIEWING_ADDRESSES = 5
+    EDITING_ADDRESS = 6
+    ADDING_ADDRESS = 7
 
 @dataclass
 class DeliveryAddress:
@@ -90,6 +93,16 @@ class UserSession:
     completed_deliveries: List[str] = None
     state: BotStates = BotStates.WAITING_PHOTOS
     processed: bool = False
+    pending_edit_index: Optional[int] = None
+    config: Dict[str, float] = None  # {'valor_entrega': float, 'custo_km': float, 'service_time_min': float}
+
+    def ensure_config(self):
+        if self.config is None:
+            self.config = {
+                'valor_entrega': float(os.getenv('VALOR_POR_ENTREGA', '0')),
+                'custo_km': float(os.getenv('CUSTO_POR_KM', '0')),
+                'service_time_min': Config.SERVICE_TIME_PER_STOP_MIN
+            }
 
     def __post_init__(self):
         if self.photos is None:
@@ -102,6 +115,7 @@ class UserSession:
             self.completed_deliveries = []
         if self.start_time is None:
             self.start_time = datetime.now()
+        self.ensure_config()
 
 class Config:
     TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
@@ -166,7 +180,9 @@ class DataPersistence:
                 start_time=start_time,
                 completed_deliveries=data.get('completed_deliveries', []),
                 state=BotStates[data.get('state', 'WAITING_PHOTOS')],
-                processed=data.get('processed', False)
+                processed=data.get('processed', False),
+                pending_edit_index=data.get('pending_edit_index'),
+                config=data.get('config')
             )
             return session
         except Exception as e:
@@ -999,49 +1015,74 @@ async def process_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         await q.edit_message_text("Nenhum texto encontrado. Envie fotos mais nítidas.")
         return BotStates.WAITING_PHOTOS.value
     session.raw_text = raw
-    session.addresses = extract_addresses(raw)
-    if not session.addresses:
+    extracted = extract_addresses(raw)
+    if not extracted:
         await q.edit_message_text("Nenhum endereço reconhecido. Verifique se aparecem 'Rua', 'Av', etc.")
         return BotStates.WAITING_PHOTOS.value
-    # Otimiza rota com Distance Matrix (se disponível) e calcula métricas reais
+    session.addresses = extracted
+    session.state = BotStates.REVIEWING_ADDRESSES
+    await DataPersistence.save(session)
+    # Exibe lista para revisão antes de otimizar
+    lines = '\n'.join(f"{i+1:02d}. {a.cleaned_address}" for i,a in enumerate(session.addresses))
+    kb = InlineKeyboardMarkup([
+        [InlineKeyboardButton("✅ Confirmar lista", callback_data="confirm_addresses")],
+        [InlineKeyboardButton("✏️ Editar", callback_data="edit_address_0")],
+        [InlineKeyboardButton("➕ Adicionar", callback_data="add_address")]
+    ])
+    await q.edit_message_text(
+        "📋 *Revise os endereços extraídos*\n" + lines + "\n\nVocê pode editar ou adicionar antes de otimizar.",
+        reply_markup=kb, parse_mode='Markdown'
+    )
+    return BotStates.REVIEWING_ADDRESSES.value
+
+async def confirm_addresses_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    q = update.callback_query
+    await q.answer()
+    uid = q.from_user.id
+    session = await get_session(uid)
+    if not session.addresses:
+        await q.edit_message_text("Lista vazia.")
+        return BotStates.WAITING_PHOTOS.value
+    await q.edit_message_text("🛣️ Otimizando rota...")
     optimized_objs, total_km, driving_min, service_min, total_min, via_api, failed_dm = await optimize_and_compute(session.addresses)
     session.optimized_route = [o.cleaned_address for o in optimized_objs]
     session.addresses = optimized_objs
     session.processed = True
+    session.state = BotStates.CONFIRMING_ROUTE
     await DataPersistence.save(session)
-    # Estatísticas da rota
     total = len(session.addresses)
     primeira = session.addresses[0].cleaned_address
     ultima = session.addresses[-1].cleaned_address
-
     lista = '\n'.join(f"{i+1:02d}. {a.cleaned_address}" for i, a in enumerate(session.addresses))
+    # Métricas econômicas se configuradas
+    valor_ent = session.config.get('valor_entrega', 0) if session.config else 0
+    custo_km = session.config.get('custo_km', 0) if session.config else 0
+    receita = valor_ent * total
+    custo_dist = custo_km * total_km
+    lucro = receita - custo_dist
+    econ_line = f"💰 Receita: R$ {receita:.2f} | Custo: R$ {custo_dist:.2f} | Lucro: R$ {lucro:.2f}" if (valor_ent or custo_km) else ""
     text = (
-        "🚀 *Resumo Profissional da Rota*\n"
+        "🚀 *Rota Otimizada*\n"
         f"🔢 Entregas: *{total}*\n"
         f"🧭 Início: {primeira}\n🏁 Fim: {ultima}\n"
-    f"📏 Distância {'real' if via_api else 'estimada'}: *{total_km} km*\n"
-    f"⏱️ Condução: ~{driving_min} min\n"
-    f"📦 Manuseio (@{Config.SERVICE_TIME_PER_STOP_MIN} min/entrega): {service_min} min\n"
-    f"⏳ Total estimado: *{total_min} min*\n"
-        "\n� *Ordem das Entregas:*\n" + lista +
-    ("\n\n✅ Distância calculada via Google Distance Matrix." if via_api else ("\n\n💡 Fallback heurístico (Distance Matrix parcial ou indisponível)." + (f"\n⚠️ Endereços não reconhecidos: {', '.join(failed_dm[:4])}{'...' if len(failed_dm)>4 else ''}" if failed_dm else ""))) +
+        f"📏 Distância {'real' if via_api else 'estimada'}: *{total_km} km*\n"
+        f"⏱️ Condução: ~{driving_min} min\n"
+        f"📦 Manuseio: {service_min} min\n"
+        f"⏳ Total estimado: *{total_min} min*\n" +
+        (econ_line + '\n' if econ_line else '') +
+        "\n*Ordem das Entregas:*\n" + lista +
+        ("\n\n✅ Distância via Google Distance Matrix." if via_api else ("\n\n💡 Fallback heurístico." + (f"\n⚠️ Endereços não reconhecidos: {', '.join(failed_dm[:4])}{'...' if len(failed_dm)>4 else ''}" if failed_dm else ""))) +
         "\nEscolha uma ação abaixo:" )
-    # Registra rota para deep-link via endpoint HTTP
     route_id = uuid.uuid4().hex[:10]
     circuit_routes[route_id] = [a.cleaned_address for a in session.addresses]
-    # Monta URL pública base
     global BASE_URL
     port = int(os.getenv('PORT', 8000))
     host_env = os.getenv('RENDER_EXTERNAL_HOSTNAME')
     if host_env:
-        if not host_env.startswith('http'):
-            BASE_URL = f"https://{host_env}"
-        else:
-            BASE_URL = host_env
+        BASE_URL = f"https://{host_env}" if not host_env.startswith('http') else host_env
     else:
         BASE_URL = BASE_URL or f"http://localhost:{port}"
     circuit_http_link = f"{BASE_URL}/circuit/{route_id}"
-    # Link completo Google Maps com waypoints
     def build_gmaps_link(addresses: List[str]) -> str:
         if len(addresses) < 2:
             enc = urllib.parse.quote(addresses[0])
@@ -1049,21 +1090,173 @@ async def process_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         origin = urllib.parse.quote(addresses[0])
         destination = urllib.parse.quote(addresses[-1])
         waypoints_list = addresses[1:-1]
-        # Limite prático: 23 waypoints (Maps aceita até 25 pontos total). Nosso MAX é 20.
         wp = '|'.join(urllib.parse.quote(w) for w in waypoints_list)
         return f"https://www.google.com/maps/dir/?api=1&origin={origin}&destination={destination}&travelmode=driving&waypoints={wp}"
-
     maps_route_link = build_gmaps_link([a.cleaned_address for a in session.addresses])
     kb = InlineKeyboardMarkup([
         [InlineKeyboardButton("🚀 Navegar", callback_data="nav_start")],
         [InlineKeyboardButton("📤 Exportar Circuit (CSV)", callback_data="export_circuit")],
         [InlineKeyboardButton("🧭 Google Maps (rota)", url=maps_route_link)],
         [InlineKeyboardButton("🗺️ Mapa imagem", callback_data="map_image")],
-        [InlineKeyboardButton("🔗 Abrir no Circuit", url=circuit_http_link)]
+        [InlineKeyboardButton("🔗 Abrir no Circuit", url=circuit_http_link)],
+        [InlineKeyboardButton("⚙️ Config", callback_data="config_open")]
     ])
     await q.edit_message_text(text, reply_markup=kb, parse_mode='Markdown')
-    session.state = BotStates.CONFIRMING_ROUTE
     return BotStates.CONFIRMING_ROUTE.value
+
+async def reopt_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    q = update.callback_query
+    await q.answer()
+    uid = q.from_user.id
+    session = await get_session(uid)
+    if not session.addresses:
+        await q.edit_message_text("Nada para re-otimizar.")
+        return BotStates.WAITING_PHOTOS.value
+    await q.edit_message_text("♻️ Re-otimizando rota...")
+    # Usa cleaned_address atual (pode ter sido editado manualmente após primeira execução se voltarmos futuramente)
+    optimized_objs, total_km, driving_min, service_min, total_min, via_api, failed_dm = await optimize_and_compute(session.addresses)
+    session.optimized_route = [o.cleaned_address for o in optimized_objs]
+    session.addresses = optimized_objs
+    await DataPersistence.save(session)
+    total = len(session.addresses)
+    primeira = session.addresses[0].cleaned_address
+    ultima = session.addresses[-1].cleaned_address
+    lista = '\n'.join(f"{i+1:02d}. {a.cleaned_address}" for i, a in enumerate(session.addresses))
+    valor_ent = session.config.get('valor_entrega', 0) if session.config else 0
+    custo_km = session.config.get('custo_km', 0) if session.config else 0
+    receita = valor_ent * total
+    custo_dist = custo_km * total_km
+    lucro = receita - custo_dist
+    econ_line = f"💰 Receita: R$ {receita:.2f} | Custo: R$ {custo_dist:.2f} | Lucro: R$ {lucro:.2f}" if (valor_ent or custo_km) else ""
+    text = (
+        "✅ *Rota Re-otimizada*\n" +
+        f"🔢 Entregas: *{total}*\n" +
+        f"🧭 Início: {primeira}\n🏁 Fim: {ultima}\n" +
+        f"📏 Distância {'real' if via_api else 'estimada'}: *{total_km} km*\n" +
+        f"⏱️ Condução: ~{driving_min} min\n" +
+        f"📦 Manuseio: {service_min} min\n" +
+        f"⏳ Total estimado: *{total_min} min*\n" +
+        (econ_line + '\n' if econ_line else '') +
+        "\n*Ordem:*\n" + lista +
+        ("\n\n✅ Distance Matrix." if via_api else "\n\n💡 Heurístico.") +
+        "\nEscolha uma ação:" )
+    def build_gmaps_link(addresses: List[str]) -> str:
+        if len(addresses) < 2:
+            enc = urllib.parse.quote(addresses[0])
+            return f"https://www.google.com/maps/search/{enc}"
+        origin = urllib.parse.quote(addresses[0])
+        destination = urllib.parse.quote(addresses[-1])
+        waypoints_list = addresses[1:-1]
+        wp = '|'.join(urllib.parse.quote(w) for w in waypoints_list)
+        return f"https://www.google.com/maps/dir/?api=1&origin={origin}&destination={destination}&travelmode=driving&waypoints={wp}"
+    maps_route_link = build_gmaps_link([a.cleaned_address for a in session.addresses])
+    route_id = uuid.uuid4().hex[:10]
+    circuit_routes[route_id] = [a.cleaned_address for a in session.addresses]
+    global BASE_URL
+    port = int(os.getenv('PORT', 8000))
+    host_env = os.getenv('RENDER_EXTERNAL_HOSTNAME')
+    if host_env:
+        BASE_URL = f"https://{host_env}" if not host_env.startswith('http') else host_env
+    else:
+        BASE_URL = BASE_URL or f"http://localhost:{port}"
+    circuit_http_link = f"{BASE_URL}/circuit/{route_id}"
+    kb = InlineKeyboardMarkup([
+        [InlineKeyboardButton("🚀 Navegar", callback_data="nav_start")],
+        [InlineKeyboardButton("♻️ Re-otimizar", callback_data="reopt")],
+        [InlineKeyboardButton("📤 CSV", callback_data="export_circuit"), InlineKeyboardButton("🗺️ Img", callback_data="map_image")],
+        [InlineKeyboardButton("🧭 Maps", url=maps_route_link)],
+        [InlineKeyboardButton("⚙️ Config", callback_data="config_open")],
+        [InlineKeyboardButton("🔗 Circuit", url=circuit_http_link)]
+    ])
+    await q.edit_message_text(text, reply_markup=kb, parse_mode='Markdown')
+    return BotStates.CONFIRMING_ROUTE.value
+
+async def config_open_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    q = update.callback_query
+    await q.answer()
+    uid = q.from_user.id
+    session = await get_session(uid)
+    session.ensure_config()
+    cfg = session.config
+    kb = InlineKeyboardMarkup([
+        [InlineKeyboardButton("💲 Valor +1", callback_data="cfg_valor_up"), InlineKeyboardButton("-1", callback_data="cfg_valor_down")],
+        [InlineKeyboardButton("⛽ Custo/km +0.1", callback_data="cfg_km_up"), InlineKeyboardButton("-0.1", callback_data="cfg_km_down")],
+        [InlineKeyboardButton("⬅️ Voltar", callback_data="review_back")]
+    ])
+    await q.edit_message_text(
+        f"⚙️ *Configuração*\nValor por entrega: R$ {cfg['valor_entrega']:.2f}\nCusto por km: R$ {cfg['custo_km']:.2f}\nTempo serviço: {cfg['service_time_min']} min",
+        reply_markup=kb, parse_mode='Markdown'
+    )
+    return session.state.value
+
+async def review_back_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    q = update.callback_query
+    await q.answer()
+    uid = q.from_user.id
+    session = await get_session(uid)
+    if not session.addresses:
+        await q.edit_message_text("Lista vazia.")
+        return BotStates.WAITING_PHOTOS.value
+    lines = '\n'.join(f"{i+1:02d}. {a.cleaned_address}" for i,a in enumerate(session.addresses))
+    kb = InlineKeyboardMarkup([
+        [InlineKeyboardButton("✅ Confirmar lista", callback_data="confirm_addresses")],
+        [InlineKeyboardButton("⚙️ Config", callback_data="config_open")]
+    ])
+    await q.edit_message_text(
+        "📋 *Revise os endereços*\n" + lines + "\n\nPara editar envie: 3: Novo Endereço 123. Para adicionar: + Rua Tal 99",
+        reply_markup=kb, parse_mode='Markdown'
+    )
+    session.state = BotStates.REVIEWING_ADDRESSES
+    await DataPersistence.save(session)
+    return BotStates.REVIEWING_ADDRESSES.value
+
+async def reviewing_message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    uid = update.effective_user.id
+    session = await get_session(uid)
+    if session.state != BotStates.REVIEWING_ADDRESSES:
+        return session.state.value
+    text = update.message.text.strip()
+    # Add address
+    if text.startswith('+') or text.lower().startswith('add '):
+        new_addr = text.lstrip('+').split(' ',1)
+        if isinstance(new_addr, list):
+            new_addr = new_addr[-1]
+        new_addr = new_addr.strip()
+        if new_addr:
+            session.addresses.append(DeliveryAddress(original_text=new_addr, cleaned_address=new_addr))
+            await update.message.reply_text(f"Adicionado: {new_addr}")
+    else:
+        m = re.match(r'^(\d{1,2})\s*[:\-|]\s*(.+)$', text)
+        if m:
+            idx = int(m.group(1)) - 1
+            new_val = m.group(2).strip()
+            if 0 <= idx < len(session.addresses) and new_val:
+                old = session.addresses[idx].cleaned_address
+                session.addresses[idx].cleaned_address = new_val
+                await update.message.reply_text(f"Atualizado {idx+1}: '{old}' -> '{new_val}'")
+    await DataPersistence.save(session)
+    # Re-lista silenciosamente
+    lines = '\n'.join(f"{i+1:02d}. {a.cleaned_address}" for i,a in enumerate(session.addresses))
+    await update.message.reply_text("Lista agora:\n" + lines + "\nConfirme quando pronto (botão).")
+    return BotStates.REVIEWING_ADDRESSES.value
+
+async def config_adjust_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    q = update.callback_query
+    await q.answer()
+    uid = q.from_user.id
+    session = await get_session(uid)
+    session.ensure_config()
+    data = q.data
+    if data == 'cfg_valor_up':
+        session.config['valor_entrega'] += 1
+    elif data == 'cfg_valor_down':
+        session.config['valor_entrega'] = max(0, session.config['valor_entrega'] - 1)
+    elif data == 'cfg_km_up':
+        session.config['custo_km'] += 0.1
+    elif data == 'cfg_km_down':
+        session.config['custo_km'] = max(0, session.config['custo_km'] - 0.1)
+    await DataPersistence.save(session)
+    return await config_open_cb(update, context)
 
 async def export_circuit_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     q = update.callback_query
@@ -1126,18 +1319,47 @@ async def show_current_stop(q_or_update, context, session: UserSession) -> int:
         return await finish_route(q_or_update, context, session)
     addr = session.optimized_route[idx]
     enc = addr.replace(' ', '+').replace(',', '%2C')
+    # ETA simples: assume velocidade média e tempo serviço
+    remaining = total - idx
+    km_per_stop = 2  # heurística se não temos distância incremental aqui
+    est_km_remaining = km_per_stop * remaining
+    speed = Config.AVERAGE_SPEED_KMH
+    drive_min = (est_km_remaining / speed) * 60
+    service_min = remaining * session.config.get('service_time_min', Config.SERVICE_TIME_PER_STOP_MIN) if session.config else remaining * Config.SERVICE_TIME_PER_STOP_MIN
+    eta_total = int(drive_min + service_min)
     msg = (f"Entrega {idx+1}/{total}\n\n{addr}\n\n"
-           f"Concluídas: {idx} | Restantes: {total - idx - 1}")
+           f"Concluídas: {idx} | Restantes: {total - idx - 1}\n"
+           f"ETA restante ~ {eta_total} min")
     kb = InlineKeyboardMarkup([
         [InlineKeyboardButton("Maps", url=f"https://www.google.com/maps/search/{enc}"),
          InlineKeyboardButton("Waze", url=f"https://waze.com/ul?q={enc}")],
-        [InlineKeyboardButton("✅ Entregue", callback_data="delivered")]
+        [InlineKeyboardButton("⬅️", callback_data="nav_prev"), InlineKeyboardButton("⏭️ Pular", callback_data="nav_skip"), InlineKeyboardButton("✅ Entregue", callback_data="delivered")]
     ])
     if hasattr(q_or_update, 'edit_message_text'):
         await q_or_update.edit_message_text(msg, reply_markup=kb)
     else:
         await q_or_update.message.reply_text(msg, reply_markup=kb)
     return BotStates.NAVIGATING.value
+
+async def nav_prev_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    q = update.callback_query
+    await q.answer()
+    uid = q.from_user.id
+    session = await get_session(uid)
+    if session.current_delivery_index > 0:
+        session.current_delivery_index -= 1
+    return await show_current_stop(q, context, session)
+
+async def nav_skip_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    q = update.callback_query
+    await q.answer()
+    uid = q.from_user.id
+    session = await get_session(uid)
+    if session.current_delivery_index < len(session.optimized_route) - 1:
+        # move atual para final
+        cur = session.optimized_route.pop(session.current_delivery_index)
+        session.optimized_route.append(cur)
+    return await show_current_stop(q, context, session)
 
 async def delivered_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     q = update.callback_query
@@ -1151,7 +1373,25 @@ async def delivered_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     return await show_current_stop(q, context, session)
 
 async def finish_route(q_or_update, context, session: UserSession) -> int:
-    msg = ("🎉 Rota concluída!\n\n" f"Total entregas: {len(session.completed_deliveries)}")
+    total_ent = len(session.completed_deliveries)
+    msg = ("🎉 Rota concluída!\n\n" f"Total entregas: {total_ent}")
+    try:
+        if session.config:
+            receita = session.config.get('valor_entrega',0)*total_ent
+        else:
+            receita = 0
+        # append simple history line (JSONL)
+        hist_dir = Path('history'); hist_dir.mkdir(exist_ok=True)
+        rec = {
+            'ts': datetime.utcnow().isoformat(),
+            'entregas_total': total_ent,
+            'receita': receita,
+            'duracao_min': int((datetime.now()-session.start_time).total_seconds()/60)
+        }
+        with open(hist_dir / f'history_{session.user_id}.jsonl','a',encoding='utf-8') as f:
+            f.write(json.dumps(rec, ensure_ascii=False)+'\n')
+    except Exception as e:
+        logger.debug(f'Hist falhou: {e}')
     kb = InlineKeyboardMarkup([[InlineKeyboardButton("Nova Rota", callback_data="start_photos")]])
     user_sessions[session.user_id] = UserSession(user_id=session.user_id, photos=[])
     if hasattr(q_or_update, 'edit_message_text'):
@@ -1169,6 +1409,25 @@ async def status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         f"Fotos: {len(session.photos)} | Endereços: {len(session.addresses)} | Estado: {session.state.name}"
     )
+
+async def history_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    uid = update.effective_user.id
+    p = Path('history') / f'history_{uid}.jsonl'
+    if not p.exists():
+        await update.message.reply_text('Sem histórico.')
+        return
+    try:
+        lines = p.read_text(encoding='utf-8').strip().splitlines()[-5:]
+        out = []
+        for l in lines:
+            try:
+                j = json.loads(l)
+                out.append(f"{j.get('ts','')} - {j.get('entregas_total',0)} entregas, receita R$ {j.get('receita',0):.2f}")
+            except Exception:
+                pass
+        await update.message.reply_text('📜 Últimas rotas:\n'+'\n'.join(out) if out else 'Sem histórico.')
+    except Exception as e:
+        await update.message.reply_text(f'Erro histórico: {e}')
 
 async def cancel_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
@@ -1334,29 +1593,41 @@ def main():
                     CallbackQueryHandler(start_photos_cb, pattern='^start_photos$'),
                     CallbackQueryHandler(process_cb, pattern='^process$')
                 ],
+                BotStates.REVIEWING_ADDRESSES.value: [
+                    CallbackQueryHandler(confirm_addresses_cb, pattern='^confirm_addresses$'),
+                    CallbackQueryHandler(config_open_cb, pattern='^config_open$'),
+                    CallbackQueryHandler(review_back_cb, pattern='^review_back$'),
+                    CallbackQueryHandler(config_adjust_cb, pattern='^cfg_'),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, reviewing_message_handler)
+                ],
                 BotStates.CONFIRMING_ROUTE.value: [
                     CallbackQueryHandler(nav_start_cb, pattern='^nav_start$'),
                     CallbackQueryHandler(process_cb, pattern='^process$'),
+                    CallbackQueryHandler(reopt_cb, pattern='^reopt$'),
                     CallbackQueryHandler(export_circuit_cb, pattern='^export_circuit$'),
                     CallbackQueryHandler(map_image_cb, pattern='^map_image$'),
-                    # Callback removido: link Circuit agora é botão URL direto
+                    CallbackQueryHandler(config_adjust_cb, pattern='^cfg_'),
+                    CallbackQueryHandler(config_open_cb, pattern='^config_open$'),
                 ],
                 BotStates.NAVIGATING.value: [
                     CallbackQueryHandler(delivered_cb, pattern='^delivered$'),
+                    CallbackQueryHandler(nav_prev_cb, pattern='^nav_prev$'),
+                    CallbackQueryHandler(nav_skip_cb, pattern='^nav_skip$'),
                     CallbackQueryHandler(start_photos_cb, pattern='^start_photos$')
                 ]
             },
             fallbacks=[CommandHandler('cancel', cancel_cmd)],
-            per_message=False,  # volta para False para permitir CommandHandler /start sem warning crítico
+            per_message=False,
             per_chat=True,
             per_user=True
         )
 
-        # Registra handlers (mantém apenas uma duplicata /start fora do conv se necessário)
+        # Registra handlers
         app.add_handler(conv)
-        app.add_handler(CommandHandler('start', start))  # fallback extra caso estado corrompido
+        app.add_handler(CommandHandler('start', start))
         app.add_handler(CommandHandler('help', help_cmd))
         app.add_handler(CommandHandler('status', status_cmd))
+        app.add_handler(CommandHandler('history', history_cmd))
         app.add_handler(CommandHandler('cancel', cancel_cmd))
         app.add_handler(CommandHandler('cancelar', cancelar_cmd))
         app.add_error_handler(error_handler)
