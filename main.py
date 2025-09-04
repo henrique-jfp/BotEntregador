@@ -72,6 +72,10 @@ class BotStates(Enum):
     REVIEWING_ADDRESSES = 5
     EDITING_ADDRESS = 6
     ADDING_ADDRESS = 7
+    GAINS_MENU = 20
+    GAINS_DATE = 21
+    GAINS_APP = 22
+    GAINS_VALUE = 23
 
 @dataclass
 class DeliveryAddress:
@@ -95,6 +99,7 @@ class UserSession:
     processed: bool = False
     pending_edit_index: Optional[int] = None
     config: Dict[str, float] = None  # {'valor_entrega': float, 'custo_km': float, 'service_time_min': float}
+    gains_temp: Dict[str, str] = None  # {'date': 'YYYY-MM-DD', 'app': 'iFood'}
 
     def ensure_config(self):
         if self.config is None:
@@ -115,6 +120,8 @@ class UserSession:
             self.completed_deliveries = []
         if self.start_time is None:
             self.start_time = datetime.now()
+        if self.gains_temp is None:
+            self.gains_temp = {}
         self.ensure_config()
 
 class Config:
@@ -182,7 +189,8 @@ class DataPersistence:
                 state=BotStates[data.get('state', 'WAITING_PHOTOS')],
                 processed=data.get('processed', False),
                 pending_edit_index=data.get('pending_edit_index'),
-                config=data.get('config')
+                config=data.get('config'),
+                gains_temp=data.get('gains_temp')
             )
             return session
         except Exception as e:
@@ -830,12 +838,11 @@ async def optimize_and_compute(addresses: List[DeliveryAddress]) -> Tuple[List[D
             a = order_idx[i]; b = order_idx[i+1]
             total_m += dmat[a][b]
             total_s += tmat[a][b]
-        # Tempo de serviço (não conta origem coleta)
-        service_min = (len(ordered)-1) * Config.SERVICE_TIME_PER_STOP_MIN
+        service_min = (len(ordered)-1) * Config.SERVICE_TIME_PER_STOP_MIN  # não conta origem
         driving_min = total_s / 60.0 if total_s > 0 else (total_m/1000.0)/Config.AVERAGE_SPEED_KMH*60
         total_min = driving_min + service_min
-    return ordered, round(total_m/1000.0, 2), round(driving_min, 1), round(service_min,1), round(total_min,1), True, failed
-    # Fallback: usar heurística geocoding existente
+        return ordered, round(total_m/1000.0, 2), round(driving_min, 1), round(service_min,1), round(total_min,1), True, failed
+    # Fallback heurístico usando geocoding/haversine
     ordered = await optimize_route(addresses)
     total_km, driving_min, service_min, total_min = await compute_route_stats(ordered)
     return ordered, total_km, driving_min, service_min, total_min, False, failed
@@ -866,6 +873,173 @@ async def compute_route_stats(ordered: List[DeliveryAddress]) -> Tuple[float, fl
 user_sessions: Dict[int, UserSession] = {}
 # Armazena rotas para endpoint /circuit/<id>
 circuit_routes: Dict[str, List[str]] = {}
+GAINS_FILE = Path('gains.jsonl')  # cada linha um registro {'user':id,'date':'YYYY-MM-DD','app':'iFood','valor':float}
+DEFAULT_APPS = ["iFood", "Rappi", "Uber Eats", "Loggi", "Outro"]
+
+def append_gain(rec: Dict):
+    try:
+        with open(GAINS_FILE, 'a', encoding='utf-8') as f:
+            f.write(json.dumps(rec, ensure_ascii=False)+'\n')
+    except Exception as e:
+        logger.warning(f"Falha ao registrar ganho: {e}")
+
+def load_gains(user_id: int, start: datetime, end: datetime) -> List[Dict]:
+    if not GAINS_FILE.exists():
+        return []
+    out = []
+    try:
+        with open(GAINS_FILE, 'r', encoding='utf-8') as f:
+            for line in f:
+                try:
+                    j = json.loads(line)
+                    if j.get('user') != user_id:
+                        continue
+                    d = datetime.fromisoformat(j.get('date'))
+                    if start.date() <= d.date() <= end.date():
+                        out.append(j)
+                except Exception:
+                    pass
+    except Exception:
+        return out
+    return out
+
+def summarize_gains(gains: List[Dict]) -> str:
+    if not gains:
+        return "Nenhum registro."
+    by_app: Dict[str, float] = {}
+    total = 0.0
+    for g in gains:
+        v = float(g.get('valor', 0))
+        app = g.get('app', 'Outro')
+        by_app[app] = by_app.get(app, 0.0) + v
+        total += v
+    lines = [f"{app}: R$ {val:.2f}" for app,val in sorted(by_app.items(), key=lambda x:-x[1])]
+    lines.append(f"Total: R$ {total:.2f}")
+    return '\n'.join(lines)
+
+async def ganhos_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    uid = update.effective_user.id
+    session = await get_session(uid)
+    today = datetime.now().strftime('%Y-%m-%d')
+    session.gains_temp = {'date': today}
+    await DataPersistence.save(session)
+    kb = InlineKeyboardMarkup([
+        [InlineKeyboardButton("Hoje", callback_data="gains_date_today"), InlineKeyboardButton("Ontem", callback_data="gains_date_yesterday")],
+        [InlineKeyboardButton("Outra Data", callback_data="gains_date_other")],
+        [InlineKeyboardButton("Cancelar", callback_data="gains_cancel")]
+    ])
+    await update.message.reply_text("📅 Selecione a data dos ganhos:", reply_markup=kb)
+    session.state = BotStates.GAINS_DATE
+
+async def gains_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    q = update.callback_query
+    await q.answer()
+    uid = q.from_user.id
+    session = await get_session(uid)
+    data = q.data
+    if data == 'gains_cancel':
+        await q.edit_message_text("Operação cancelada.")
+        session.state = BotStates.WAITING_PHOTOS
+        return session.state.value
+    # Data selection
+    if data.startswith('gains_date_'):
+        if data.endswith('today'):
+            session.gains_temp['date'] = datetime.now().strftime('%Y-%m-%d')
+        elif data.endswith('yesterday'):
+            session.gains_temp['date'] = (datetime.now()-timedelta(days=1)).strftime('%Y-%m-%d')
+        else:
+            await q.edit_message_text("Digite a data no formato DD/MM/AAAA")
+            session.state = BotStates.GAINS_DATE
+            session.gains_temp['awaiting_custom_date'] = '1'
+            await DataPersistence.save(session)
+            return session.state.value
+        # Next: choose app
+    if data.startswith('gains_date_') and not session.gains_temp.get('awaiting_custom_date'):
+        kb = InlineKeyboardMarkup([[InlineKeyboardButton(app, callback_data=f"gains_app_{i}")] for i, app in enumerate(DEFAULT_APPS)])
+        await q.edit_message_text(f"Data: {session.gains_temp['date']}. Escolha o aplicativo:", reply_markup=kb)
+        session.state = BotStates.GAINS_APP
+        await DataPersistence.save(session)
+        return session.state.value
+    if data.startswith('gains_app_'):
+        idx = int(data.split('_')[-1])
+        if 0 <= idx < len(DEFAULT_APPS):
+            session.gains_temp['app'] = DEFAULT_APPS[idx]
+            await q.edit_message_text(f"Digite o valor ganho no {session.gains_temp['app']} (ex: 150.75)")
+            session.state = BotStates.GAINS_VALUE
+            await DataPersistence.save(session)
+            return session.state.value
+    return session.state.value
+
+async def gains_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    uid = update.effective_user.id
+    session = await get_session(uid)
+    if session.state == BotStates.GAINS_DATE and session.gains_temp.get('awaiting_custom_date'):
+        txt = update.message.text.strip()
+        m = re.match(r'^(\d{2})/(\d{2})/(\d{4})$', txt)
+        if not m:
+            await update.message.reply_text("Formato inválido. Use DD/MM/AAAA ou /cancel.")
+            return session.state.value
+        day, mon, year = m.groups()
+        try:
+            dt = datetime(int(year), int(mon), int(day))
+            session.gains_temp['date'] = dt.strftime('%Y-%m-%d')
+            session.gains_temp.pop('awaiting_custom_date', None)
+            kb = InlineKeyboardMarkup([[InlineKeyboardButton(app, callback_data=f"gains_app_{i}")] for i, app in enumerate(DEFAULT_APPS)])
+            await update.message.reply_text(f"Data definida {session.gains_temp['date']}. Escolha o app:", reply_markup=kb)
+            session.state = BotStates.GAINS_APP
+        except ValueError:
+            await update.message.reply_text("Data inválida.")
+        await DataPersistence.save(session)
+        return session.state.value
+    if session.state == BotStates.GAINS_VALUE and 'app' in session.gains_temp:
+        txt = update.message.text.replace(',', '.').strip()
+        try:
+            val = float(txt)
+        except ValueError:
+            await update.message.reply_text("Valor inválido. Tente novamente (ex: 123.45)")
+            return session.state.value
+        rec = {
+            'user': uid,
+            'date': session.gains_temp['date'],
+            'app': session.gains_temp['app'],
+            'valor': val
+        }
+        append_gain(rec)
+        await update.message.reply_text(f"✅ Registrado R$ {val:.2f} em {rec['app']} no dia {rec['date']}.")
+        # Menu final
+        kb = InlineKeyboardMarkup([
+            [InlineKeyboardButton("Adicionar outro", callback_data="gains_date_today"), InlineKeyboardButton("Resumo hoje", callback_data="gains_summary_day")],
+            [InlineKeyboardButton("Resumo semana", callback_data="gains_summary_week"), InlineKeyboardButton("Resumo mês", callback_data="gains_summary_month")],
+            [InlineKeyboardButton("Finalizar", callback_data="gains_cancel")]
+        ])
+        await update.message.reply_text("O que deseja agora?", reply_markup=kb)
+        session.state = BotStates.GAINS_MENU
+        await DataPersistence.save(session)
+        return session.state.value
+    return session.state.value
+
+async def gains_summary_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    q = update.callback_query
+    await q.answer()
+    uid = q.from_user.id
+    session = await get_session(uid)
+    now = datetime.now()
+    data = q.data
+    if data == 'gains_summary_day':
+        start = end = now
+    elif data == 'gains_summary_week':
+        start = now - timedelta(days=6)
+        end = now
+    elif data == 'gains_summary_month':
+        start = now.replace(day=1)
+        end = now
+    else:
+        return session.state.value
+    gains = load_gains(uid, start, end)
+    summary = summarize_gains(gains)
+    await q.edit_message_text(f"📊 Resumo ({start.date()} a {end.date()}):\n{summary}")
+    session.state = BotStates.GAINS_MENU
+    return session.state.value
 BASE_URL: Optional[str] = None
 
 async def generate_static_map(addresses: List[DeliveryAddress]) -> Optional[bytes]:
@@ -1578,7 +1752,6 @@ def main():
     try:
         builder = Application.builder().token(Config.TELEGRAM_BOT_TOKEN)
         # Define timeouts via builder (evita DeprecationWarning de run_polling)
-        # Aumenta timeouts para evitar falha inicial
         builder.get_updates_read_timeout(60)
         builder.get_updates_write_timeout(30)
         builder.get_updates_connect_timeout(60)
@@ -1592,6 +1765,22 @@ def main():
                     MessageHandler(filters.PHOTO, photo_handler),
                     CallbackQueryHandler(start_photos_cb, pattern='^start_photos$'),
                     CallbackQueryHandler(process_cb, pattern='^process$')
+                ],
+                BotStates.GAINS_DATE.value: [
+                    CallbackQueryHandler(gains_cb, pattern='^gains_date_'),
+                    CallbackQueryHandler(gains_cb, pattern='^gains_cancel$'),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, gains_message)
+                ],
+                BotStates.GAINS_APP.value: [
+                    CallbackQueryHandler(gains_cb, pattern='^gains_app_')
+                ],
+                BotStates.GAINS_VALUE.value: [
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, gains_message)
+                ],
+                BotStates.GAINS_MENU.value: [
+                    CallbackQueryHandler(gains_summary_cb, pattern='^gains_summary_'),
+                    CallbackQueryHandler(gains_cb, pattern='^gains_date_today$'),
+                    CallbackQueryHandler(gains_cb, pattern='^gains_cancel$')
                 ],
                 BotStates.REVIEWING_ADDRESSES.value: [
                     CallbackQueryHandler(confirm_addresses_cb, pattern='^confirm_addresses$'),
@@ -1628,13 +1817,13 @@ def main():
         app.add_handler(CommandHandler('help', help_cmd))
         app.add_handler(CommandHandler('status', status_cmd))
         app.add_handler(CommandHandler('history', history_cmd))
+        app.add_handler(CommandHandler('ganhos', ganhos_cmd))
         app.add_handler(CommandHandler('cancel', cancel_cmd))
         app.add_handler(CommandHandler('cancelar', cancelar_cmd))
         app.add_error_handler(error_handler)
 
         logger.info("Bot configurado, iniciando polling...")
         app.run_polling(drop_pending_updates=True, poll_interval=2.0)
-
     except Exception as e:
         logger.error(f"Erro crítico ao inicializar bot: {e}")
         raise
