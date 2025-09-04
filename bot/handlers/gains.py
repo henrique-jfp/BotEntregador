@@ -16,6 +16,7 @@ async def ganhos_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     kb = InlineKeyboardMarkup([
         [InlineKeyboardButton("Hoje", callback_data="gains_date_today"), InlineKeyboardButton("Ontem", callback_data="gains_date_yesterday")],
         [InlineKeyboardButton("Outra Data", callback_data="gains_date_other")],
+        [InlineKeyboardButton("Gerenciar Apps", callback_data="apps_manage")],
         [InlineKeyboardButton("Cancelar", callback_data="gains_cancel")]
     ])
     await update.message.reply_text("📅 Selecione a data dos ganhos:", reply_markup=kb)
@@ -43,7 +44,7 @@ async def gains_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             await DataPersistence.save(session)
             return session.state.value
     if data.startswith('gains_date_') and not session.gains_temp.get('awaiting_custom_date'):
-        kb = InlineKeyboardMarkup([[InlineKeyboardButton(app, callback_data=f"gains_app_{i}")] for i, app in enumerate(apps)])
+        kb = InlineKeyboardMarkup([[InlineKeyboardButton(app, callback_data=f"gains_app_{i}")] for i, app in enumerate(apps)] + [[InlineKeyboardButton("Gerenciar Apps", callback_data="apps_manage")]])
         await q.edit_message_text(f"Data: {session.gains_temp['date']}. Escolha o aplicativo:", reply_markup=kb)
         session.state = BotStates.GAINS_APP
         await DataPersistence.save(session)
@@ -75,7 +76,7 @@ async def gains_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
             dt = datetime(int(year), int(mon), int(day))
             session.gains_temp['date'] = dt.strftime('%Y-%m-%d')
             session.gains_temp.pop('awaiting_custom_date', None)
-            kb = InlineKeyboardMarkup([[InlineKeyboardButton(app, callback_data=f"gains_app_{i}")] for i, app in enumerate(apps)])
+            kb = InlineKeyboardMarkup([[InlineKeyboardButton(app, callback_data=f"gains_app_{i}")] for i, app in enumerate(apps)] + [[InlineKeyboardButton("Gerenciar Apps", callback_data="apps_manage")]])
             await update.message.reply_text(f"Data definida {session.gains_temp['date']}. Escolha o app:", reply_markup=kb)
             session.state = BotStates.GAINS_APP
         except ValueError:
@@ -100,6 +101,7 @@ async def gains_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         kb = InlineKeyboardMarkup([
             [InlineKeyboardButton("Adicionar outro", callback_data="gains_date_today"), InlineKeyboardButton("Resumo hoje", callback_data="gains_summary_day")],
             [InlineKeyboardButton("Resumo semana", callback_data="gains_summary_week"), InlineKeyboardButton("Resumo mês", callback_data="gains_summary_month")],
+            [InlineKeyboardButton("Gerenciar Apps", callback_data="apps_manage")],
             [InlineKeyboardButton("Finalizar", callback_data="gains_cancel")]
         ])
         await update.message.reply_text("O que deseja agora?", reply_markup=kb)
