@@ -76,6 +76,9 @@ class BotStates(Enum):
     GAINS_DATE = 21
     GAINS_APP = 22
     GAINS_VALUE = 23
+    APPS_MENU = 30
+    APPS_ADD = 31
+    APPS_RENAME_INPUT = 32
 
 @dataclass
 class DeliveryAddress:
@@ -100,6 +103,7 @@ class UserSession:
     pending_edit_index: Optional[int] = None
     config: Dict[str, float] = None  # {'valor_entrega': float, 'custo_km': float, 'service_time_min': float}
     gains_temp: Dict[str, str] = None  # {'date': 'YYYY-MM-DD', 'app': 'iFood'}
+    apps: List[str] = None  # lista customizada de apps de ganhos
 
     def ensure_config(self):
         if self.config is None:
@@ -122,6 +126,9 @@ class UserSession:
             self.start_time = datetime.now()
         if self.gains_temp is None:
             self.gains_temp = {}
+        if self.apps is None:
+            # cópia padrão inicial
+            self.apps = DEFAULT_APPS.copy()
         self.ensure_config()
 
 class Config:
@@ -190,7 +197,8 @@ class DataPersistence:
                 processed=data.get('processed', False),
                 pending_edit_index=data.get('pending_edit_index'),
                 config=data.get('config'),
-                gains_temp=data.get('gains_temp')
+                gains_temp=data.get('gains_temp'),
+                apps=data.get('apps')
             )
             return session
         except Exception as e:
@@ -926,6 +934,7 @@ async def ganhos_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     kb = InlineKeyboardMarkup([
         [InlineKeyboardButton("Hoje", callback_data="gains_date_today"), InlineKeyboardButton("Ontem", callback_data="gains_date_yesterday")],
         [InlineKeyboardButton("Outra Data", callback_data="gains_date_other")],
+    [InlineKeyboardButton("Gerenciar Apps", callback_data="apps_manage")],
         [InlineKeyboardButton("Cancelar", callback_data="gains_cancel")]
     ])
     await update.message.reply_text("📅 Selecione a data dos ganhos:", reply_markup=kb)
@@ -955,15 +964,17 @@ async def gains_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             return session.state.value
         # Next: choose app
     if data.startswith('gains_date_') and not session.gains_temp.get('awaiting_custom_date'):
-        kb = InlineKeyboardMarkup([[InlineKeyboardButton(app, callback_data=f"gains_app_{i}")] for i, app in enumerate(DEFAULT_APPS)])
+        apps = session.apps if session.apps else DEFAULT_APPS
+        kb = InlineKeyboardMarkup([[InlineKeyboardButton(app, callback_data=f"gains_app_{i}")] for i, app in enumerate(apps)] + [[InlineKeyboardButton("Gerenciar Apps", callback_data="apps_manage")]])
         await q.edit_message_text(f"Data: {session.gains_temp['date']}. Escolha o aplicativo:", reply_markup=kb)
         session.state = BotStates.GAINS_APP
         await DataPersistence.save(session)
         return session.state.value
     if data.startswith('gains_app_'):
         idx = int(data.split('_')[-1])
-        if 0 <= idx < len(DEFAULT_APPS):
-            session.gains_temp['app'] = DEFAULT_APPS[idx]
+        apps = session.apps if session.apps else DEFAULT_APPS
+        if 0 <= idx < len(apps):
+            session.gains_temp['app'] = apps[idx]
             await q.edit_message_text(f"Digite o valor ganho no {session.gains_temp['app']} (ex: 150.75)")
             session.state = BotStates.GAINS_VALUE
             await DataPersistence.save(session)
@@ -985,6 +996,8 @@ async def gains_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
             session.gains_temp['date'] = dt.strftime('%Y-%m-%d')
             session.gains_temp.pop('awaiting_custom_date', None)
             kb = InlineKeyboardMarkup([[InlineKeyboardButton(app, callback_data=f"gains_app_{i}")] for i, app in enumerate(DEFAULT_APPS)])
+            if session.apps and session.apps != DEFAULT_APPS:
+                kb = InlineKeyboardMarkup([[InlineKeyboardButton(app, callback_data=f"gains_app_{i}")] for i, app in enumerate(session.apps)] + [[InlineKeyboardButton("Gerenciar Apps", callback_data="apps_manage")]])
             await update.message.reply_text(f"Data definida {session.gains_temp['date']}. Escolha o app:", reply_markup=kb)
             session.state = BotStates.GAINS_APP
         except ValueError:
@@ -1010,6 +1023,7 @@ async def gains_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         kb = InlineKeyboardMarkup([
             [InlineKeyboardButton("Adicionar outro", callback_data="gains_date_today"), InlineKeyboardButton("Resumo hoje", callback_data="gains_summary_day")],
             [InlineKeyboardButton("Resumo semana", callback_data="gains_summary_week"), InlineKeyboardButton("Resumo mês", callback_data="gains_summary_month")],
+            [InlineKeyboardButton("Gerenciar Apps", callback_data="apps_manage")],
             [InlineKeyboardButton("Finalizar", callback_data="gains_cancel")]
         ])
         await update.message.reply_text("O que deseja agora?", reply_markup=kb)
@@ -1039,6 +1053,113 @@ async def gains_summary_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     summary = summarize_gains(gains)
     await q.edit_message_text(f"📊 Resumo ({start.date()} a {end.date()}):\n{summary}")
     session.state = BotStates.GAINS_MENU
+    return session.state.value
+
+# ================= GERENCIAMENTO DE APPS DE GANHOS =================
+def render_apps_menu(session: UserSession) -> InlineKeyboardMarkup:
+    rows = []
+    apps = session.apps if session.apps else DEFAULT_APPS
+    for i, a in enumerate(apps):
+        rows.append([InlineKeyboardButton(f"{a}", callback_data=f"apps_sel_{i}"), InlineKeyboardButton("✏️", callback_data=f"apps_ren_{i}"), InlineKeyboardButton("🗑️", callback_data=f"apps_del_{i}")])
+    rows.append([InlineKeyboardButton("➕ Adicionar", callback_data="apps_add"), InlineKeyboardButton("⬅️ Voltar", callback_data="apps_back")])
+    return InlineKeyboardMarkup(rows)
+
+async def apps_manage_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    q = update.callback_query
+    await q.answer()
+    session = await get_session(q.from_user.id)
+    session.state = BotStates.APPS_MENU
+    await q.edit_message_text("📱 *Gerenciar Apps de Ganhos*\nToque para renomear (✏️) ou remover (🗑️).", reply_markup=render_apps_menu(session), parse_mode='Markdown')
+    await DataPersistence.save(session)
+    return session.state.value
+
+async def apps_menu_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    q = update.callback_query
+    await q.answer()
+    uid = q.from_user.id
+    session = await get_session(uid)
+    data = q.data
+    apps = session.apps if session.apps else DEFAULT_APPS
+    if data == 'apps_back':
+        # Volta para fluxo de ganhos se estava nele, senão apenas cancela para WAITING
+        kb = InlineKeyboardMarkup([[InlineKeyboardButton(app, callback_data=f"gains_app_{i}")] for i, app in enumerate(apps)] + [[InlineKeyboardButton("Gerenciar Apps", callback_data="apps_manage")]])
+        await q.edit_message_text("Escolha o aplicativo: ", reply_markup=kb)
+        session.state = BotStates.GAINS_APP
+        return session.state.value
+    if data == 'apps_add':
+        if len(apps) >= 15:
+            await q.edit_message_text("Limite de 15 apps atingido.", reply_markup=render_apps_menu(session))
+            return session.state.value
+        session.state = BotStates.APPS_ADD
+        await q.edit_message_text("Digite o nome do novo app:")
+        await DataPersistence.save(session)
+        return session.state.value
+    if data.startswith('apps_del_'):
+        idx = int(data.split('_')[-1])
+        if 0 <= idx < len(apps):
+            if len(apps) <= 1:
+                await q.edit_message_text("Não é possível remover todos os apps.", reply_markup=render_apps_menu(session))
+                return session.state.value
+            removed = apps.pop(idx)
+            await q.edit_message_text(f"Removido: {removed}", reply_markup=render_apps_menu(session))
+            await DataPersistence.save(session)
+        return session.state.value
+    if data.startswith('apps_ren_'):
+        idx = int(data.split('_')[-1])
+        if 0 <= idx < len(apps):
+            session.gains_temp['rename_index'] = str(idx)
+            session.state = BotStates.APPS_RENAME_INPUT
+            await q.edit_message_text(f"Digite novo nome para '{apps[idx]}':")
+            await DataPersistence.save(session)
+        return session.state.value
+    return session.state.value
+
+async def apps_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    uid = update.effective_user.id
+    session = await get_session(uid)
+    txt = update.message.text.strip()
+    apps = session.apps if session.apps else DEFAULT_APPS
+    if session.state == BotStates.APPS_ADD:
+        if not txt:
+            await update.message.reply_text("Nome vazio. Digite novamente ou /cancel.")
+            return session.state.value
+        if txt.lower() in [a.lower() for a in apps]:
+            await update.message.reply_text("Já existe app com esse nome.")
+            return session.state.value
+        apps.append(txt[:40])
+        session.apps = apps
+        session.state = BotStates.APPS_MENU
+        await DataPersistence.save(session)
+        await update.message.reply_text("Adicionado.", reply_markup=render_apps_menu(session))
+        return session.state.value
+    if session.state == BotStates.APPS_RENAME_INPUT and 'rename_index' in session.gains_temp:
+        try:
+            idx = int(session.gains_temp.get('rename_index'))
+        except ValueError:
+            idx = -1
+        if 0 <= idx < len(apps):
+            if not txt:
+                await update.message.reply_text("Nome vazio. Digite novamente.")
+                return session.state.value
+            if txt.lower() in [a.lower() for a in apps if a != apps[idx]]:
+                await update.message.reply_text("Já existe outro app com esse nome.")
+                return session.state.value
+            old = apps[idx]
+            apps[idx] = txt[:40]
+            session.apps = apps
+            session.gains_temp.pop('rename_index', None)
+            session.state = BotStates.APPS_MENU
+            await DataPersistence.save(session)
+            await update.message.reply_text(f"Renomeado '{old}' -> '{apps[idx]}'", reply_markup=render_apps_menu(session))
+            return session.state.value
+    return session.state.value
+
+async def apps_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    uid = update.effective_user.id
+    session = await get_session(uid)
+    session.state = BotStates.APPS_MENU
+    await update.message.reply_text("📱 *Gerenciar Apps de Ganhos*", reply_markup=render_apps_menu(session), parse_mode='Markdown')
+    await DataPersistence.save(session)
     return session.state.value
 BASE_URL: Optional[str] = None
 
@@ -1864,6 +1985,16 @@ def main():
                     CallbackQueryHandler(gains_cb, pattern='^gains_date_today$'),
                     CallbackQueryHandler(gains_cb, pattern='^gains_cancel$')
                 ],
+                BotStates.APPS_MENU.value: [
+                    CallbackQueryHandler(apps_menu_cb, pattern='^apps_'),
+                    CallbackQueryHandler(apps_manage_cb, pattern='^apps_manage$')
+                ],
+                BotStates.APPS_ADD.value: [
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, apps_text_handler)
+                ],
+                BotStates.APPS_RENAME_INPUT.value: [
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, apps_text_handler)
+                ],
                 BotStates.REVIEWING_ADDRESSES.value: [
                     CallbackQueryHandler(confirm_addresses_cb, pattern='^confirm_addresses$'),
                     CallbackQueryHandler(config_open_cb, pattern='^config_open$'),
@@ -1900,6 +2031,7 @@ def main():
         app.add_handler(CommandHandler('status', status_cmd))
         app.add_handler(CommandHandler('history', history_cmd))
         app.add_handler(CommandHandler('ganhos', ganhos_cmd))
+        app.add_handler(CommandHandler('apps', apps_cmd))
         app.add_handler(CommandHandler('cancel', cancel_cmd))
         app.add_handler(CommandHandler('cancelar', cancelar_cmd))
         app.add_error_handler(error_handler)
