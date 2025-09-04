@@ -1236,8 +1236,8 @@ async def confirm_addresses_cb(update: Update, context: ContextTypes.DEFAULT_TYP
     lucro = receita - custo_dist
     econ_line = f"💰 Receita: R$ {receita:.2f} | Custo: R$ {custo_dist:.2f} | Lucro: R$ {lucro:.2f}" if (valor_ent or custo_km) else ""
     text = (
-        "🚀 *Rota Otimizada*\n"
-        f"🔢 Entregas: *{total}*\n"
+        "• Botões: Maps / Waze, ⬅️ Voltar, ⏭️ Pular (manda atual para o fim), ✅ Entregue.\n"
+        "Dúvidas adicionais? Envie /help novamente ou reinicie com /start."
         f"🧭 Início: {primeira}\n🏁 Fim: {ultima}\n"
         f"📏 Distância {'real' if via_api else 'estimada'}: *{total_km} km*\n"
         f"⏱️ Condução: ~{driving_min} min\n"
@@ -1521,7 +1521,7 @@ async def nav_prev_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
     uid = q.from_user.id
     session = await get_session(uid)
     if session.current_delivery_index > 0:
-        session.current_delivery_index -= 1
+               session.current_delivery_index -= 1
     return await show_current_stop(q, context, session)
 
 async def nav_skip_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -1575,7 +1575,89 @@ async def finish_route(q_or_update, context, session: UserSession) -> int:
     return BotStates.WAITING_PHOTOS.value
 
 async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Envie /start para iniciar uma nova rota.")
+    """Exibe ajuda detalhada de todas as funções do bot."""
+    if not update.message:
+        return
+    texto = (
+        "*BOT ENTREGADOR – Ajuda*\n"
+        "Versão 2.0\n\n"
+        "*Fluxo básico:*\n"
+        "1. Use /start e envie fotos (até 8) dos comprovantes / listas com endereços.\n"
+        "2. Clique em *Processar* para OCR e extração.\n"
+        "3. Revise/edite a lista de endereços (pode corrigir ou adicionar).\n"
+        "4. Confirme para otimizar a rota.\n"
+        "5. Use *🚀 Navegar* para seguir entrega a entrega.\n\n"
+        "*Comandos:*\n"
+        "• /start – Inicia nova sessão e fluxo de envio de fotos.\n"
+        "• /help – Mostra esta ajuda.\n"
+        "• /status – Mostra estado atual (fotos/end. lidos).\n"
+        "• /history – Últimos registros de rotas concluídas (qtd entregas e receita estimada).\n"
+        "• /ganhos – Registrar ganhos por aplicativo (iFood, Rappi, etc.) e ver resumos.\n"
+        "• /cancel ou /cancelar – Descarta sessão atual.\n\n"
+        "*Envio de fotos:*\n"
+        "• Formatos aceitos: JPG/PNG.\n"
+        "• Máx por rodada: 8 fotos (configurável via env).\n"
+        "• Após cada foto você pode enviar mais ou finalizar.\n\n"
+        "*Extração & Revisão:*\n"
+        "• O OCR tenta primeiro Google Vision; fallback Gemini se configurado.\n"
+        "• A lista mostrada pode ser editada digitando: _N: Texto Novo_ (ex: `3: Rua Tal 123`).\n"
+        "• Para adicionar manual: comece a mensagem com `+` ou `add ` (ex: `+ Avenida Central 500`).\n"
+        "• Quando satisfeito clique em *Confirmar lista*.\n\n"
+        "*Otimização de Rota:*\n"
+        "• Tenta usar Google Distance Matrix (distância real).\n"
+        "• Se não disponível ou insuficiente, usa heurística (geocoding + nearest + 2-opt).\n"
+        "• Mostra distância, tempos estimados (condução + serviço) e métricas econômicas se configuradas.\n"
+        "• Botões: Navegar, Re-otimizar, Exportar CSV (Circuit), Mapa imagem, Link Google Maps, Config.\n\n"
+        "*Configuração (⚙️ Config):*\n"
+        "• Ajusta valor por entrega e custo por km (incrementos simples).\n"
+        "• Esses valores alimentam cálculo de Receita, Custo e Lucro aproximados.\n\n"
+        "*Navegação (🚀 Navegar):*\n"
+        "• Mostra entrega atual, restantes e ETA simples.\n"
+        "• Botões: Maps / Waze, ⬅️ Voltar, ⏭️ Pular (manda atual para o fim), ✅ Entregue.\n"
+        "*Finalizar:* Ao entregar todas, a rota é concluída e registrada no histórico.\n\n"
+        "*Exportação & Integração:*\n"
+        "• CSV: formato ordem,endereco – pode importar no Circuit.\n"
+        "• Link /circuit/<id>: tenta abrir direto no app Circuit via deep link.\n"
+        "• Google Maps: gera rota com waypoints (limite do Maps pode cortar após ~25 pontos).\n\n"
+        "*Geração de Mapa Estático:*\n"
+        "• Usa Google Static Maps se chave válida.\n"
+        "• Se falhar, tenta um fallback desenhado (quando coordenadas disponíveis).\n\n"
+        "*Ganhos (/ganhos):*\n"
+        "• Fluxo: escolher data (Hoje / Ontem / Outra), escolher aplicativo, informar valor.\n"
+        "• Após registrar, menu para adicionar outro ou ver resumos (dia, semana, mês).\n"
+        "• Dados salvos em arquivo local `gains.jsonl` (um registro por linha).\n\n"
+        "*Histórico (/history):*\n"
+        "• Armazena entregas concluídas, tempo e receita estimada (com base no valor por entrega configurado).\n\n"
+        "*Limitações & Notas:*\n"
+        "• Qualidade do OCR depende de nitidez/contraste.\n"
+        "• Endereços sem número ou muito incompletos podem ser descartados.\n"
+        "• Sem chave Google: distâncias serão estimadas (mensagem indica fallback).\n"
+        "• Geocoding parcial pode reduzir precisão da ordem.\n\n"
+        "*Recomendações:*\n"
+        "• Fotos claras, sem cortes.\n"
+        "• Verifique a lista antes de confirmar para maximizar precisão da rota.\n"
+        "• Ajuste Config para ter métricas econômicas realistas.\n\n"
+        "Dúvidas adicionais? Envie /help novamente ou reinicie com /start."
+    )
+
+    # Garante que não exceda limite Telegram (divide se necessário)
+    if len(texto) > 3500:
+        partes = []
+        bloco = []
+        total = 0
+        for linha in texto.split('\n'):
+            if total + len(linha) + 1 > 3500:
+                partes.append('\n'.join(bloco))
+                bloco = []
+                total = 0
+            bloco.append(linha)
+            total += len(linha) + 1
+        if bloco:
+            partes.append('\n'.join(bloco))
+        for p in partes:
+            await update.message.reply_text(p, parse_mode='Markdown')
+    else:
+        await update.message.reply_text(texto, parse_mode='Markdown')
 
 async def status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
