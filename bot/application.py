@@ -10,7 +10,13 @@ from bot.handlers.misc import status_cmd, history_cmd, cancel_cmd, cancelar_cmd,
 from bot.handlers.help import help_cmd
 from bot.models.core import BotStates
 
-async def build_app():
+def build_app():
+    """Constroi a aplicação Telegram.
+
+    Era assíncrona mas não utilizava awaits; convertida para função síncrona
+    para permitir chamada direta sem envolver asyncio.run e evitar conflitos
+    de event loop em produção (Python 3.13).
+    """
     builder = Application.builder().token(Config.TELEGRAM_BOT_TOKEN)
     builder.get_updates_read_timeout(60)
     builder.get_updates_write_timeout(30)
@@ -87,9 +93,7 @@ async def build_app():
     return app
 
 def run_bot():
-    import asyncio
-    async def _run():
-        app = await build_app()
-        logger.info("Bot parcial (modular) iniciado – somente /ganhos e /help registrados por enquanto")
-        app.run_polling(drop_pending_updates=True, poll_interval=2.0)
-    asyncio.run(_run())
+    # Constrói app de forma síncrona e inicia polling diretamente.
+    app = build_app()
+    logger.info("Bot iniciado (modular)")
+    app.run_polling(drop_pending_updates=True, poll_interval=2.0)
