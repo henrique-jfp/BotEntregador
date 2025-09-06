@@ -55,8 +55,7 @@ class DataPersistence:
                 processed=data.get('processed', False),
                 pending_edit_index=data.get('pending_edit_index'),
                 config=data.get('config'),
-                gains_temp=data.get('gains_temp'),
-                apps=data.get('apps')  # garante persistência customizada de apps
+                gains_temp=data.get('gains_temp')
             )
             return session
         except Exception as e:

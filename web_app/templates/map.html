@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa - Entregador</title>
+    <meta name="theme-color" content="#007bff">
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8f9fa;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .map-header {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+        
+        .back-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        
+        .header-info {
+            text-align: center;
+            flex: 1;
+        }
+        
+        .header-info h1 {
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+        
+        .progress-info {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .map-controls {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .control-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            min-width: 40px;
+        }
+        
+        .control-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        #mapContainer {
+            flex: 1;
+            position: relative;
+            background: #e9ecef;
+        }
+        
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+        
+        .delivery-panel {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-radius: 15px 15px 0 0;
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.1);
+            max-height: 40vh;
+            overflow-y: auto;
+            z-index: 1000;
+            transform: translateY(calc(100% - 80px));
+            transition: transform 0.3s ease;
+        }
+        
+        .delivery-panel.expanded {
+            transform: translateY(0);
+        }
+        
+        .panel-handle {
+            height: 30px;
+            background: #f8f9fa;
+            border-radius: 15px 15px 0 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .panel-handle::after {
+            content: '';
+            width: 40px;
+            height: 4px;
+            background: #ddd;
+            border-radius: 2px;
+        }
+        
+        .current-delivery {
+            padding: 20px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .delivery-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .delivery-address {
+            font-size: 16px;
+            color: #666;
+            line-height: 1.4;
+            margin-bottom: 15px;
+        }
+        
+        .delivery-stats {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+        
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            color: #666;
+        }
+        
+        .action-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .nav-btn {
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            text-align: center;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .nav-btn.maps {
+            background: #4285f4;
+            color: white;
+        }
+        
+        .nav-btn.waze {
+            background: #00d4ff;
+            color: white;
+        }
+        
+        .deliver-btn {
+            background: #28a745;
+            color: white;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .upcoming-deliveries {
+            padding: 0 20px 20px;
+        }
+        
+        .upcoming-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .upcoming-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .upcoming-item:hover {
+            background: #f8f9fa;
+        }
+        
+        .upcoming-number {
+            background: #6c757d;
+            color: white;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .upcoming-address {
+            flex: 1;
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .upcoming-distance {
+            font-size: 12px;
+            color: #999;
+        }
+        
+        /* Estilos personalizados para marcadores */
+        .custom-marker {
+            background: white;
+            border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        
+        .marker-current {
+            background: #28a745;
+            color: white;
+            animation: pulse 2s infinite;
+        }
+        
+        .marker-completed {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .marker-pending {
+            background: #007bff;
+            color: white;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        
+        .route-line {
+            stroke: #007bff;
+            stroke-width: 4;
+            stroke-opacity: 0.8;
+            fill: none;
+        }
+        
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255,255,255,0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            flex-direction: column;
+        }
+        
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e3f2fd;
+            border-top: 4px solid #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="map-header">
+        <button class="back-btn" onclick="window.location.href='/navigation'">← Voltar</button>
+        
+        <div class="header-info">
+            <h1>🗺️ Mapa de Entregas</h1>
+            <div class="progress-info">
+                Entrega {{ current_index + 1 }} de {{ total }}
+            </div>
+        </div>
+        
+        <div class="map-controls">
+            <button class="control-btn" onclick="centerOnCurrent()" title="Centralizar na entrega atual">
+                📍
+            </button>
+            <button class="control-btn" onclick="showFullRoute()" title="Ver rota completa">
+                🛣️
+            </button>
+            <button class="control-btn" onclick="toggleTraffic()" title="Mostrar trânsito">
+                🚦
+            </button>
+        </div>
+    </div>
+    
+    <div id="mapContainer">
+        <div id="map"></div>
+        
+        <div class="loading-overlay" id="loadingOverlay">
+            <div class="loading-spinner"></div>
+            <p>Carregando mapa...</p>
+        </div>
+    </div>
+    
+    <div class="delivery-panel" id="deliveryPanel">
+        <div class="panel-handle" onclick="togglePanel()"></div>
+        
+        {% if locations and current_index < total %}
+        {% set current_delivery = locations[current_index] %}
+        <div class="current-delivery">
+            <div class="delivery-title">
+                📦 Entrega {{ current_index + 1 }}
+            </div>
+            
+            <div class="delivery-address">
+                {{ current_delivery.address }}
+            </div>
+            
+            <div class="delivery-stats">
+                <div class="stat-item">
+                    <span>📏</span>
+                    <span id="currentDistance">Calculando...</span>
+                </div>
+                <div class="stat-item">
+                    <span>🕒</span>
+                    <span id="currentDuration">Calculando...</span>
+                </div>
+                <div class="stat-item">
+                    <span>🚦</span>
+                    <span id="trafficStatus">Normal</span>
+                </div>
+            </div>
+            
+            <div class="action-buttons">
+                <a href="https://www.google.com/maps/search/{{ current_delivery.address | urlencode }}" 
+                   class="nav-btn maps" target="_blank">
+                    🗺️ Maps
+                </a>
+                
+                <a href="https://waze.com/ul?q={{ current_delivery.address | urlencode }}" 
+                   class="nav-btn waze" target="_blank">
+                    🚗 Waze
+                </a>
+            </div>
+            
+            <button class="deliver-btn" onclick="markDelivered({{ current_index }})">
+                ✅ Marcar como Entregue
+            </button>
+        </div>
+        {% endif %}
+        
+        <div class="upcoming-deliveries">
+            <div class="upcoming-title">Próximas Entregas</div>
+            
+            {% for location in locations %}
+            {% if loop.index0 > current_index %}
+            <div class="upcoming-item" onclick="focusOnDelivery({{ loop.index0 }})">
+                <div class="upcoming-number">{{ loop.index }}</div>
+                <div class="upcoming-address">{{ location.address }}</div>
+                <div class="upcoming-distance" id="distance-{{ loop.index0 }}">--</div>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        let map;
+        let markers = [];
+        let routeLine = null;
+        let userLocationMarker = null;
+        let panelExpanded = false;
+        
+        const locations = {{ locations | tojsonfilter | safe }};
+        const currentIndex = {{ current_index }};
+        
+        // Inicializa o mapa
+        function initMap() {
+            // Centro inicial em São Paulo
+            const centerLat = -23.5505;
+            const centerLng = -46.6333;
+            
+            map = L.map('map').setView([centerLat, centerLng], 13);
+            
+            // Adiciona camada do mapa
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+            
+            // Adiciona marcadores
+            addMarkers();
+            
+            // Desenha rota
+            drawRoute();
+            
+            // Obtém localização do usuário
+            getUserLocation();
+            
+            // Calcula distâncias
+            calculateDistances();
+            
+            // Remove overlay de loading
+            setTimeout(() => {
+                document.getElementById('loadingOverlay').classList.add('hidden');
+            }, 1500);
+        }
+        
+        function addMarkers() {
+            locations.forEach((location, index) => {
+                const lat = location.lat;
+                const lng = location.lng;
+                
+                // Define cor do marcador
+                let markerClass = 'marker-pending';
+                if (location.status === 'delivered') {
+                    markerClass = 'marker-completed';
+                } else if (location.is_current) {
+                    markerClass = 'marker-current';
+                }
+                
+                // Cria ícone personalizado
+                const customIcon = L.divIcon({
+                    html: `<div class="custom-marker ${markerClass}">${index + 1}</div>`,
+                    className: 'custom-marker-container',
+                    iconSize: [30, 30],
+                    iconAnchor: [15, 15]
+                });
+                
+                // Adiciona marcador
+                const marker = L.marker([lat, lng], { icon: customIcon })
+                    .addTo(map)
+                    .bindPopup(`
+                        <div style="text-align: center; padding: 5px;">
+                            <strong>Entrega ${index + 1}</strong><br>
+                            <span style="font-size: 12px;">${location.address}</span><br>
+                            <div style="margin-top: 8px;">
+                                <button onclick="openInMaps('${location.address}')" 
+                                        style="margin: 2px; padding: 5px 10px; border: none; background: #4285f4; color: white; border-radius: 4px; cursor: pointer;">
+                                    Maps
+                                </button>
+                                <button onclick="openInWaze('${location.address}')" 
+                                        style="margin: 2px; padding: 5px 10px; border: none; background: #00d4ff; color: white; border-radius: 4px; cursor: pointer;">
+                                    Waze
+                                </button>
+                            </div>
+                        </div>
+                    `);
+                
+                markers.push(marker);
+            });
+        }
+        
+        function drawRoute() {
+            if (locations.length < 2) return;
+            
+            const routeCoords = locations.map(loc => [loc.lat, loc.lng]);
+            
+            routeLine = L.polyline(routeCoords, {
+                color: '#007bff',
+                weight: 4,
+                opacity: 0.8,
+                smoothFactor: 1
+            }).addTo(map);
+            
+            // Ajusta visão para mostrar toda a rota
+            const group = new L.featureGroup(markers);
+            map.fitBounds(group.getBounds().pad(0.1));
+        }
+        
+        function getUserLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        
+                        // Adiciona marcador de localização atual
+                        const userIcon = L.divIcon({
+                            html: '<div style="background: #ff4444; border: 3px solid white; border-radius: 50%; width: 20px; height: 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>',
+                            className: 'user-location-marker',
+                            iconSize: [20, 20],
+                            iconAnchor: [10, 10]
+                        });
+                        
+                        userLocationMarker = L.marker([lat, lng], { icon: userIcon })
+                            .addTo(map)
+                            .bindPopup('📍 Sua localização atual');
+                        
+                        // Calcula distância até próxima entrega
+                        if (currentIndex < locations.length) {
+                            const nextDelivery = locations[currentIndex];
+                            const distance = calculateDistance(lat, lng, nextDelivery.lat, nextDelivery.lng);
+                            document.getElementById('currentDistance').textContent = `${distance.toFixed(1)} km`;
+                        }
+                    },
+                    (error) => {
+                        console.warn('Erro ao obter localização:', error);
+                    },
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+                );
+            }
+        }
+        
+        function calculateDistance(lat1, lng1, lat2, lng2) {
+            const R = 6371; // Raio da Terra em km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLng = (lng2 - lng1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                     Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                     Math.sin(dLng/2) * Math.sin(dLng/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+        
+        function calculateDistances() {
+            // Calcula distâncias entre entregas consecutivas
+            for (let i = currentIndex; i < locations.length - 1; i++) {
+                const current = locations[i];
+                const next = locations[i + 1];
+                const distance = calculateDistance(current.lat, current.lng, next.lat, next.lng);
+                
+                const distanceElement = document.getElementById(`distance-${i + 1}`);
+                if (distanceElement) {
+                    distanceElement.textContent = `${distance.toFixed(1)} km`;
+                }
+            }
+        }
+        
+        function centerOnCurrent() {
+            if (currentIndex < locations.length) {
+                const current = locations[currentIndex];
+                map.setView([current.lat, current.lng], 16);
+                markers[currentIndex].openPopup();
+            }
+        }
+        
+        function showFullRoute() {
+            if (routeLine) {
+                map.fitBounds(routeLine.getBounds().pad(0.1));
+            }
+        }
+        
+        function toggleTraffic() {
+            // Simulação de toggle de trânsito
+            const trafficStatus = document.getElementById('trafficStatus');
+            const current = trafficStatus.textContent;
+            
+            const statuses = ['Normal', 'Lento', 'Congestionado', 'Normal'];
+            const currentIndex = statuses.indexOf(current);
+            const nextIndex = (currentIndex + 1) % statuses.length;
+            
+            trafficStatus.textContent = statuses[nextIndex];
+            
+            // Mudaria cor da rota baseado no trânsito
+            if (routeLine) {
+                const colors = { 'Normal': '#007bff', 'Lento': '#ffa500', 'Congestionado': '#ff4444' };
+                routeLine.setStyle({ color: colors[statuses[nextIndex]] || '#007bff' });
+            }
+        }
+        
+        function togglePanel() {
+            const panel = document.getElementById('deliveryPanel');
+            panelExpanded = !panelExpanded;
+            panel.classList.toggle('expanded', panelExpanded);
+        }
+        
+        function focusOnDelivery(index) {
+            if (index < locations.length) {
+                const location = locations[index];
+                map.setView([location.lat, location.lng], 16);
+                markers[index].openPopup();
+            }
+        }
+        
+        function openInMaps(address) {
+            const encodedAddress = encodeURIComponent(address);
+            window.open(`https://www.google.com/maps/search/${encodedAddress}`, '_blank');
+        }
+        
+        function openInWaze(address) {
+            const encodedAddress = encodeURIComponent(address);
+            window.open(`https://waze.com/ul?q=${encodedAddress}`, '_blank');
+        }
+        
+        async function markDelivered(index) {
+            try {
+                const response = await fetch(`/deliver/${index}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Atualiza marcador
+                    const marker = markers[index];
+                    const newIcon = L.divIcon({
+                        html: `<div class="custom-marker marker-completed">${index + 1}</div>`,
+                        className: 'custom-marker-container',
+                        iconSize: [30, 30],
+                        iconAnchor: [15, 15]
+                    });
+                    marker.setIcon(newIcon);
+                    
+                    // Recarrega página após um delay
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                } else {
+                    alert('Erro ao marcar entrega');
+                }
+            } catch (error) {
+                alert('Erro de conexão');
+            }
+        }
+        
+        // Inicializa mapa quando página carregar
+        document.addEventListener('DOMContentLoaded', initMap);
+        
+        // Atualiza localização do usuário periodicamente
+        setInterval(getUserLocation, 30000); // 30 segundos
+    </script>
+</body>
+</html>

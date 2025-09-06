@@ -16,9 +16,6 @@ class BotStates(Enum):
     GAINS_DATE = 21
     GAINS_APP = 22
     GAINS_VALUE = 23
-    APPS_MENU = 30
-    APPS_ADD = 31
-    APPS_RENAME_INPUT = 32
 
 @dataclass
 class DeliveryAddress:
@@ -43,7 +40,6 @@ class UserSession:
     pending_edit_index: Optional[int] = None
     config: Dict[str, float] = None
     gains_temp: Dict[str, str] = None
-    apps: List[str] = None
 
     def ensure_config(self):
         if self.config is None:
@@ -66,7 +62,4 @@ class UserSession:
             self.start_time = datetime.now()
         if self.gains_temp is None:
             self.gains_temp = {}
-        if self.apps is None:
-            from bot.services.gains import DEFAULT_APPS
-            self.apps = DEFAULT_APPS.copy()
         self.ensure_config()

@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entregador App</title>
+    <meta name="theme-color" content="#007bff">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/png" href="/static/icon-192.png">
+    
+    <!-- PWA meta tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Entregador">
+    <link rel="apple-touch-icon" href="/static/icon-192.png">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: white;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            color: rgba(255,255,255,0.8);
+            font-size: 16px;
+        }
+        
+        .upload-section {
+            text-align: center;
+        }
+        
+        .upload-area {
+            border: 2px dashed #ddd;
+            border-radius: 10px;
+            padding: 40px 20px;
+            margin-bottom: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .upload-area:hover {
+            border-color: #007bff;
+            background: #f8f9ff;
+        }
+        
+        .upload-area.dragover {
+            border-color: #007bff;
+            background: #f0f8ff;
+        }
+        
+        .upload-icon {
+            font-size: 48px;
+            color: #ddd;
+            margin-bottom: 15px;
+        }
+        
+        .btn {
+            background: linear-gradient(45deg, #007bff, #0056b3);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,123,255,0.3);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(45deg, #6c757d, #495057);
+        }
+        
+        .btn-success {
+            background: linear-gradient(45deg, #28a745, #1e7e34);
+        }
+        
+        .photo-preview {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            gap: 10px;
+            margin: 20px 0;
+        }
+        
+        .photo-item {
+            position: relative;
+            border-radius: 8px;
+            overflow: hidden;
+            aspect-ratio: 1;
+        }
+        
+        .photo-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .photo-remove {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: rgba(255,0,0,0.8);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #e9ecef;
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(45deg, #28a745, #20c997);
+            width: 0%;
+            transition: width 0.3s;
+        }
+        
+        .status-message {
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+            text-align: center;
+        }
+        
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .quick-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .action-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            color: inherit;
+        }
+        
+        .action-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .action-icon {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        #fileInput {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚚 Entregador</h1>
+            <p>Seu assistente pessoal de entregas</p>
+        </div>
+        
+        <div class="card">
+            <div class="upload-section">
+                <div class="upload-area" onclick="document.getElementById('fileInput').click()" 
+                     ondrop="handleDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
+                    <div class="upload-icon">📸</div>
+                    <h3>Adicionar Fotos</h3>
+                    <p>Clique ou arraste fotos dos comprovantes</p>
+                </div>
+                
+                <input type="file" id="fileInput" multiple accept="image/*" onchange="handleFileSelect(event)">
+                
+                <div id="photoPreview" class="photo-preview hidden"></div>
+                
+                <div id="progressBar" class="progress-bar hidden">
+                    <div id="progressFill" class="progress-fill"></div>
+                </div>
+                
+                <div id="statusMessage" class="status-message hidden"></div>
+                
+                <button id="processBtn" class="btn" onclick="processPhotos()" disabled>
+                    📋 Processar Fotos
+                </button>
+                
+                <button id="optimizeBtn" class="btn btn-secondary hidden" onclick="optimizeRoute()">
+                    🛣️ Otimizar Rota
+                </button>
+                
+                <button id="navigateBtn" class="btn btn-success hidden" onclick="startNavigation()">
+                    🚀 Começar Entregas
+                </button>
+            </div>
+        </div>
+        
+        <div class="quick-actions">
+            <a href="/gains" class="action-card">
+                <div class="action-icon">💰</div>
+                <h4>Ganhos</h4>
+                <p>Registrar valores</p>
+            </a>
+            
+            <a href="/config" class="action-card">
+                <div class="action-icon">⚙️</div>
+                <h4>Config</h4>
+                <p>Ajustar valores</p>
+            </a>
+        </div>
+    </div>
+
+    <script>
+        let selectedFiles = [];
+        let processedAddresses = [];
+        
+        // PWA Service Worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/static/sw.js')
+                .then(reg => console.log('SW registrado'))
+                .catch(err => console.log('SW erro:', err));
+        }
+        
+        function handleFileSelect(event) {
+            const files = Array.from(event.target.files);
+            addFiles(files);
+        }
+        
+        function handleDrop(event) {
+            event.preventDefault();
+            event.target.classList.remove('dragover');
+            const files = Array.from(event.dataTransfer.files);
+            addFiles(files);
+        }
+        
+        function handleDragOver(event) {
+            event.preventDefault();
+            event.target.classList.add('dragover');
+        }
+        
+        function handleDragLeave(event) {
+            event.target.classList.remove('dragover');
+        }
+        
+        function addFiles(files) {
+            selectedFiles = [...selectedFiles, ...files];
+            displayPhotos();
+            updateProcessButton();
+        }
+        
+        function displayPhotos() {
+            const preview = document.getElementById('photoPreview');
+            preview.innerHTML = '';
+            
+            if (selectedFiles.length > 0) {
+                preview.classList.remove('hidden');
+                
+                selectedFiles.forEach((file, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'photo-item';
+                    
+                    const img = document.createElement('img');
+                    img.src = URL.createObjectURL(file);
+                    
+                    const removeBtn = document.createElement('button');
+                    removeBtn.className = 'photo-remove';
+                    removeBtn.innerHTML = '×';
+                    removeBtn.onclick = () => removePhoto(index);
+                    
+                    item.appendChild(img);
+                    item.appendChild(removeBtn);
+                    preview.appendChild(item);
+                });
+            } else {
+                preview.classList.add('hidden');
+            }
+        }
+        
+        function removePhoto(index) {
+            selectedFiles.splice(index, 1);
+            displayPhotos();
+            updateProcessButton();
+        }
+        
+        function updateProcessButton() {
+            const btn = document.getElementById('processBtn');
+            btn.disabled = selectedFiles.length === 0;
+        }
+        
+        async function processPhotos() {
+            if (selectedFiles.length === 0) return;
+            
+            const formData = new FormData();
+            selectedFiles.forEach(file => {
+                formData.append('photos', file);
+            });
+            
+            showProgress(0);
+            showStatus('Processando fotos...', 'info');
+            
+            try {
+                // Simula upload
+                for (let i = 0; i <= 100; i += 10) {
+                    showProgress(i);
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+                
+                const response = await fetch('/process', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    processedAddresses = result.addresses;
+                    showStatus(`${result.count} endereços encontrados!`, 'success');
+                    document.getElementById('optimizeBtn').classList.remove('hidden');
+                } else {
+                    showStatus(result.error || 'Erro no processamento', 'error');
+                }
+            } catch (error) {
+                showStatus('Erro de conexão', 'error');
+            } finally {
+                hideProgress();
+            }
+        }
+        
+        async function optimizeRoute() {
+            showStatus('Otimizando rota...', 'info');
+            
+            try {
+                const response = await fetch('/optimize', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ addresses: processedAddresses })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus(`Rota otimizada! ${result.stats.total_deliveries} entregas, ${result.stats.total_km}km`, 'success');
+                    document.getElementById('navigateBtn').classList.remove('hidden');
+                } else {
+                    showStatus(result.error || 'Erro na otimização', 'error');
+                }
+            } catch (error) {
+                showStatus('Erro de conexão', 'error');
+            }
+        }
+        
+        function startNavigation() {
+            window.location.href = '/navigation';
+        }
+        
+        function showProgress(percent) {
+            const bar = document.getElementById('progressBar');
+            const fill = document.getElementById('progressFill');
+            bar.classList.remove('hidden');
+            fill.style.width = percent + '%';
+        }
+        
+        function hideProgress() {
+            document.getElementById('progressBar').classList.add('hidden');
+        }
+        
+        function showStatus(message, type) {
+            const status = document.getElementById('statusMessage');
+            status.textContent = message;
+            status.className = `status-message status-${type}`;
+            status.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>

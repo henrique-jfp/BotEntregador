@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ganhos - Entregador</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
+        }
+        
+        .btn {
+            background: linear-gradient(45deg, #007bff, #0056b3);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,123,255,0.3);
+        }
+        
+        .app-selector {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .app-btn {
+            padding: 15px;
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+        
+        .app-btn.selected {
+            background: #007bff;
+            color: white;
+            border-color: #0056b3;
+        }
+        
+        .summary-section {
+            margin-top: 30px;
+        }
+        
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .summary-item:last-child {
+            border-bottom: none;
+            font-weight: bold;
+            font-size: 18px;
+            color: #28a745;
+        }
+        
+        .period-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 5px;
+        }
+        
+        .period-tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+        
+        .period-tab.active {
+            background: #007bff;
+            color: white;
+        }
+        
+        .back-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <button class="back-btn" onclick="window.location.href='/'">← Voltar</button>
+        
+        <div class="header">
+            <h1>💰 Controle de Ganhos</h1>
+        </div>
+        
+        <div class="card">
+            <h3>Registrar Ganho</h3>
+            
+            <form id="gainForm" onsubmit="addGain(event)">
+                <div class="form-group">
+                    <label>Data:</label>
+                    <input type="date" id="dateInput" class="form-control" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Aplicativo:</label>
+                    <div class="app-selector">
+                        <div class="app-btn" onclick="selectApp('iFood')">🍔 iFood</div>
+                        <div class="app-btn" onclick="selectApp('Rappi')">🛒 Rappi</div>
+                        <div class="app-btn" onclick="selectApp('Uber Eats')">🚗 Uber</div>
+                        <div class="app-btn" onclick="selectApp('Loggi')">📦 Loggi</div>
+                        <div class="app-btn" onclick="selectApp('99Food')">🥘 99Food</div>
+                        <div class="app-btn" onclick="selectApp('Outro')">➕ Outro</div>
+                    </div>
+                    <input type="hidden" id="selectedApp" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Valor (R$):</label>
+                    <input type="number" id="valueInput" class="form-control" 
+                           placeholder="0.00" step="0.01" min="0" required>
+                </div>
+                
+                <button type="submit" class="btn">💾 Salvar Ganho</button>
+            </form>
+        </div>
+        
+        <div class="card summary-section">
+            <h3>Resumo de Ganhos</h3>
+            
+            <div class="period-tabs">
+                <div class="period-tab active" onclick="loadSummary('today')">Hoje</div>
+                <div class="period-tab" onclick="loadSummary('week')">Semana</div>
+                <div class="period-tab" onclick="loadSummary('month')">Mês</div>
+            </div>
+            
+            <div id="summaryContent">
+                <p>Carregando resumo...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedApp = '';
+        
+        // Define data de hoje como padrão
+        document.getElementById('dateInput').value = new Date().toISOString().split('T')[0];
+        
+        // Carrega resumo inicial
+        loadSummary('today');
+        
+        function selectApp(app) {
+            // Remove seleção anterior
+            document.querySelectorAll('.app-btn').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            
+            // Seleciona novo app
+            event.target.classList.add('selected');
+            selectedApp = app;
+            document.getElementById('selectedApp').value = app;
+        }
+        
+        async function addGain(event) {
+            event.preventDefault();
+            
+            if (!selectedApp) {
+                alert('Selecione um aplicativo');
+                return;
+            }
+            
+            const data = {
+                date: document.getElementById('dateInput').value,
+                app: selectedApp,
+                value: parseFloat(document.getElementById('valueInput').value)
+            };
+            
+            try {
+                const response = await fetch('/gains/add', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Limpa form
+                    document.getElementById('valueInput').value = '';
+                    document.querySelectorAll('.app-btn').forEach(btn => {
+                        btn.classList.remove('selected');
+                    });
+                    selectedApp = '';
+                    document.getElementById('selectedApp').value = '';
+                    
+                    // Recarrega resumo
+                    const activeTab = document.querySelector('.period-tab.active').textContent.toLowerCase();
+                    const period = activeTab === 'hoje' ? 'today' : 
+                                  activeTab === 'semana' ? 'week' : 'month';
+                    loadSummary(period);
+                    
+                    alert('Ganho registrado com sucesso!');
+                } else {
+                    alert('Erro ao registrar ganho');
+                }
+            } catch (error) {
+                alert('Erro de conexão');
+            }
+        }
+        
+        async function loadSummary(period) {
+            // Atualiza tab ativo
+            document.querySelectorAll('.period-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event?.target?.classList.add('active') || 
+            document.querySelector(`.period-tab:nth-child(${period === 'today' ? 1 : period === 'week' ? 2 : 3})`).classList.add('active');
+            
+            try {
+                const response = await fetch(`/gains/summary?period=${period}`);
+                const result = await response.json();
+                
+                const content = document.getElementById('summaryContent');
+                
+                if (result.gains && result.gains.length > 0) {
+                    let html = '';
+                    const byApp = {};
+                    let total = 0;
+                    
+                    result.gains.forEach(gain => {
+                        const app = gain.app || 'Outro';
+                        const value = parseFloat(gain.valor || 0);
+                        byApp[app] = (byApp[app] || 0) + value;
+                        total += value;
+                    });
+                    
+                    Object.entries(byApp).forEach(([app, value]) => {
+                        html += `
+                            <div class="summary-item">
+                                <span>${app}</span>
+                                <span>R$ ${value.toFixed(2)}</span>
+                            </div>
+                        `;
+                    });
+                    
+                    html += `
+                        <div class="summary-item">
+                            <span>TOTAL</span>
+                            <span>R$ ${total.toFixed(2)}</span>
+                        </div>
+                    `;
+                    
+                    content.innerHTML = html;
+                } else {
+                    content.innerHTML = '<p style="text-align: center; color: #6c757d;">Nenhum ganho registrado neste período</p>';
+                }
+            } catch (error) {
+                document.getElementById('summaryContent').innerHTML = '<p style="color: #dc3545;">Erro ao carregar resumo</p>';
+            }
+        }
+    </script>
+</body>
+</html>
