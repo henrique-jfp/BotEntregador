@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: bot-multidelivery
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main_multidelivery.py
+    envVars:
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: ADMIN_TELEGRAM_ID
+        sync: false
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: PYTHON_VERSION
+        value: 3.12.8
