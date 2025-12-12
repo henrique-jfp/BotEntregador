@@ -31,7 +31,8 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
         await update.message.reply_text(
             "🔥 <b>BOT ADMIN - Multi-Entregador</b>\n\n"
-            "Bem-vindo, chefe! Escolha uma opção:",
+            "Bem-vindo, chefe! Escolha uma opção:\n\n"
+            "💡 Digite /help para ver todos os comandos",
             parse_mode='HTML',
             reply_markup=reply_markup
         )
@@ -43,12 +44,123 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
             await update.message.reply_text(
                 f"👋 Olá, <b>{partner.name}</b>!\n\n"
-                "Você receberá sua rota quando o admin distribuir as entregas.",
+                "Você receberá sua rota quando o admin distribuir as entregas.\n\n"
+                "💡 Digite /help para ver comandos disponíveis",
                 parse_mode='HTML',
                 reply_markup=reply_markup
             )
         else:
             await update.message.reply_text("❌ Você não está cadastrado como entregador.")
+
+
+async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Comando /help - Ajuda contextual"""
+    user_id = update.effective_user.id
+    
+    if user_id == BotConfig.ADMIN_TELEGRAM_ID:
+        # Help para ADMIN
+        help_text = """
+🔥 <b>AJUDA - ADMIN</b>
+
+<b>📋 COMANDOS DISPONÍVEIS:</b>
+
+/start - Menu principal
+/help - Esta mensagem de ajuda
+/fechar_rota - Fecha e divide rotas
+
+<b>📦 FLUXO DIÁRIO:</b>
+
+1️⃣ <b>Nova Sessão do Dia</b>
+   • Define base (onde o carro está)
+   • Recebe romaneios (texto/CSV/PDF)
+   • Pode enviar múltiplos arquivos
+
+2️⃣ <b>/fechar_rota</b>
+   • IA divide em 2 territórios
+   • Otimiza ordem de entrega
+   • Atribui rotas aos entregadores
+
+3️⃣ <b>Status Atual</b>
+   • Vê progresso em tempo real
+   • Quantos entregues/pendentes
+   • % de conclusão por entregador
+
+4️⃣ <b>Relatório Financeiro</b>
+   • Custos por entregador
+   • Diferencia sócios (R$ 0) vs colaboradores (R$ 1/pacote)
+   • Total do dia
+
+<b>📋 FORMATOS DE ROMANEIO:</b>
+
+📝 <b>Texto</b>: Cole endereços (um por linha)
+📄 <b>CSV</b>: Anexe planilha Excel/Google Sheets
+📕 <b>PDF</b>: Anexe documento (digital ou escaneado)
+
+<b>💡 DICAS:</b>
+
+• Pode misturar formatos na mesma sessão
+• Aceita numeração (1., 2.) e emojis (📦)
+• CSV detecta colunas automaticamente
+• PDFs digitais funcionam melhor
+
+📚 Documentação completa: /docs
+"""
+    else:
+        # Help para ENTREGADOR
+        partner = BotConfig.get_partner_by_id(user_id)
+        if not partner:
+            await update.message.reply_text("❌ Você não está cadastrado como entregador.")
+            return
+        
+        help_text = f"""
+🚴 <b>AJUDA - ENTREGADOR</b>
+
+Olá, <b>{partner.name}</b>!
+
+<b>📋 COMANDOS DISPONÍVEIS:</b>
+
+/start - Menu principal
+/help - Esta mensagem de ajuda
+
+<b>🗺️ COMO USAR:</b>
+
+1️⃣ <b>Receber Rota</b>
+   • Admin atribui rota automaticamente
+   • Você recebe mensagem com lista completa
+   • Ordem é otimizada pela IA
+
+2️⃣ <b>🗺️ Minha Rota Hoje</b>
+   • Ver/rever rota completa
+   • Endereços em ordem otimizada
+   • IDs dos pacotes
+
+3️⃣ <b>✅ Marcar Entrega</b>
+   • Depois de cada entrega
+   • Seleciona pacote da lista
+   • Progresso atualiza automaticamente
+
+<b>📦 INFORMAÇÕES DA ROTA:</b>
+
+• Base: Onde o carro está estacionado
+• Ordem: Do mais próximo ao mais distante
+• IDs: Identificação única de cada pacote
+• Progresso: Quantos faltam
+
+<b>💰 PAGAMENTO:</b>
+
+{'🤝 Você é <b>SÓCIO</b> - Sem custo por pacote' if partner.is_partner else '💵 R$ 1,00 por pacote entregue'}
+
+<b>💡 DICAS:</b>
+
+• Siga a ordem sugerida (economia de tempo/km)
+• Marque entregas logo após fazer
+• Pode consultar rota quantas vezes quiser
+• Em caso de dúvida, fale com o admin
+
+🚀 Boas entregas!
+"""
+    
+    await update.message.reply_text(help_text, parse_mode='HTML')
 
 
 async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -455,6 +567,7 @@ def run_bot():
     
     # Handlers
     app.add_handler(CommandHandler("start", cmd_start))
+    app.add_handler(CommandHandler("help", cmd_help))
     app.add_handler(CommandHandler("fechar_rota", cmd_fechar_rota))
     app.add_handler(MessageHandler(filters.Document.ALL, handle_document_message))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_message))
