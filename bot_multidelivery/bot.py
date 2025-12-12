@@ -1,0 +1,468 @@
+"""
+🚀 BOT TELEGRAM - Handler principal
+Fluxo completo de admin + entregadores
+"""
+import logging
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
+from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, ContextTypes, filters
+from datetime import datetime
+from .config import BotConfig, DeliveryPartner
+from .session import session_manager, Romaneio, Route
+from .clustering import DeliveryPoint, TerritoryDivider
+from .parsers import parse_csv_romaneio, parse_pdf_romaneio, parse_text_romaneio
+import uuid
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
+# ==================== ADMIN HANDLERS ====================
+
+async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Comando /start"""
+    user_id = update.effective_user.id
+    
+    if user_id == BotConfig.ADMIN_TELEGRAM_ID:
+        keyboard = [
+            [KeyboardButton("📦 Nova Sessão do Dia")],
+            [KeyboardButton("📊 Status Atual")],
+            [KeyboardButton("💰 Relatório Financeiro")],
+        ]
+        reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+        await update.message.reply_text(
+            "🔥 <b>BOT ADMIN - Multi-Entregador</b>\n\n"
+            "Bem-vindo, chefe! Escolha uma opção:",
+            parse_mode='HTML',
+            reply_markup=reply_markup
+        )
+    else:
+        # Entregador
+        partner = BotConfig.get_partner_by_id(user_id)
+        if partner:
+            keyboard = [[KeyboardButton("🗺️ Minha Rota Hoje")], [KeyboardButton("✅ Marcar Entrega")]]
+            reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+            await update.message.reply_text(
+                f"👋 Olá, <b>{partner.name}</b>!\n\n"
+                "Você receberá sua rota quando o admin distribuir as entregas.",
+                parse_mode='HTML',
+                reply_markup=reply_markup
+            )
+        else:
+            await update.message.reply_text("❌ Você não está cadastrado como entregador.")
+
+
+async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handler de mensagens de texto"""
+    user_id = update.effective_user.id
+    text = update.message.text
+    
+    # Admin flow
+    if user_id == BotConfig.ADMIN_TELEGRAM_ID:
+        await handle_admin_message(update, context, text)
+    else:
+        # Deliverer flow
+        await handle_deliverer_message(update, context, text)
+
+
+async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str):
+    """Fluxo do admin"""
+    user_id = update.effective_user.id
+    state = session_manager.get_admin_state(user_id)
+    
+    if text == "📦 Nova Sessão do Dia":
+        # Inicia nova sessão
+        today = datetime.now().strftime("%Y-%m-%d")
+        session_manager.start_new_session(today)
+        session_manager.set_admin_state(user_id, "awaiting_base_address")
+        
+        await update.message.reply_text(
+            "🏠 <b>Defina o endereço da BASE</b>\n\n"
+            "Onde o carro estará estacionado hoje?\n"
+            "Ex: <i>Rua das Flores, 123 - São Paulo</i>",
+            parse_mode='HTML'
+        )
+    
+    elif text == "📊 Status Atual":
+        await show_status(update, context)
+    
+    elif text == "💰 Relatório Financeiro":
+        await show_financial_report(update, context)
+    
+    elif state == "awaiting_base_address":
+        # Geocodifica base (simulado por enquanto)
+        base_address = text
+        # TODO: Integrar com Google Geocoding API real
+        base_lat, base_lng = -23.5505, -46.6333  # Simulado
+        
+        session_manager.set_base_location(base_address, base_lat, base_lng)
+        session_manager.set_admin_state(user_id, "awaiting_romaneios")
+        
+        await update.message.reply_text(
+            f"✅ Base definida: <b>{base_address}</b>\n\n"
+            "📋 Agora envie os <b>romaneios</b>:\n\n"
+            "📝 <b>Opção 1:</b> Cole texto (um endereço por linha)\n"
+            "📄 <b>Opção 2:</b> Anexe arquivo CSV\n"
+            "📕 <b>Opção 3:</b> Anexe arquivo PDF\n\n"
+            "Quando terminar, digite: <code>/fechar_rota</code>",
+            parse_mode='HTML'
+        )
+    
+    elif state == "awaiting_romaneios":
+        # Parse romaneio de texto
+        await process_text_romaneio(update, context, text)
+
+
+async def handle_document_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handler de arquivos (CSV, PDF)"""
+    user_id = update.effective_user.id
+    
+    # Apenas admin pode enviar arquivos
+    if user_id != BotConfig.ADMIN_TELEGRAM_ID:
+        await update.message.reply_text("❌ Apenas o admin pode enviar arquivos.")
+        return
+    
+    state = session_manager.get_admin_state(user_id)
+    
+    if state != "awaiting_romaneios":
+        await update.message.reply_text(
+            "❌ Inicie uma sessão primeiro: <b>📦 Nova Sessão do Dia</b>",
+            parse_mode='HTML'
+        )
+        return
+    
+    document = update.message.document
+    file_name = document.file_name.lower()
+    
+    # Download arquivo
+    file = await context.bot.get_file(document.file_id)
+    file_content = await file.download_as_bytearray()
+    
+    # Parse baseado no tipo
+    try:
+        if file_name.endswith('.csv'):
+            await update.message.reply_text("📄 Processando CSV...")
+            addresses = parse_csv_romaneio(bytes(file_content))
+        
+        elif file_name.endswith('.pdf'):
+            await update.message.reply_text("📕 Processando PDF...")
+            addresses = parse_pdf_romaneio(bytes(file_content))
+        
+        else:
+            await update.message.reply_text(
+                "❌ Formato não suportado.\n"
+                "Aceito: <b>.csv</b>, <b>.pdf</b>",
+                parse_mode='HTML'
+            )
+            return
+        
+        # Cria romaneio com endereços extraídos
+        await create_romaneio_from_addresses(update, context, addresses)
+        
+    except Exception as e:
+        logger.error(f"Erro ao processar arquivo: {e}")
+        await update.message.reply_text(
+            f"❌ Erro ao processar arquivo:\n<code>{str(e)}</code>\n\n"
+            "Tente enviar manualmente (um endereço por linha).",
+            parse_mode='HTML'
+        )
+
+
+async def process_text_romaneio(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str):
+    """Processa romaneio de texto (manual)"""
+    addresses = parse_text_romaneio(text)
+    
+    if not addresses:
+        await update.message.reply_text("❌ Nenhum endereço válido encontrado.")
+        return
+    
+    await create_romaneio_from_addresses(update, context, addresses)
+
+
+async def create_romaneio_from_addresses(update: Update, context: ContextTypes.DEFAULT_TYPE, addresses: list):
+    """Cria romaneio a partir de lista de endereços"""
+    if not addresses:
+        await update.message.reply_text("❌ Nenhum endereço válido encontrado.")
+        return
+    
+    # Cria pontos de entrega (com geocoding simulado)
+    points = []
+    for i, addr in enumerate(addresses):
+        # TODO: Geocoding real com Google API
+        lat = -23.5505 + (i * 0.01)  # Simulado
+        lng = -46.6333 + (i * 0.01)  # Simulado
+        
+        points.append(DeliveryPoint(
+            address=addr,
+            lat=lat,
+            lng=lng,
+            romaneio_id=str(uuid.uuid4())[:8],
+            package_id=str(uuid.uuid4())[:8]
+        ))
+    
+    romaneio = Romaneio(
+        id=str(uuid.uuid4())[:8],
+        uploaded_at=datetime.now(),
+        points=points
+    )
+    
+    session_manager.add_romaneio(romaneio)
+    session = session_manager.get_active_session()
+    
+    await update.message.reply_text(
+        f"✅ Romaneio <b>#{romaneio.id}</b> adicionado!\n"
+        f"📦 {len(points)} pacotes\n\n"
+        f"Total acumulado: <b>{session.total_packages} pacotes</b>\n\n"
+        "Envie mais romaneios ou digite <code>/fechar_rota</code> para dividir.",
+        parse_mode='HTML'
+    )
+
+
+async def cmd_fechar_rota(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Fecha rota e divide entre entregadores"""
+    user_id = update.effective_user.id
+    
+    if user_id != BotConfig.ADMIN_TELEGRAM_ID:
+        await update.message.reply_text("❌ Apenas o admin pode fechar rotas.")
+        return
+    
+    session = session_manager.get_active_session()
+    if not session or not session.romaneios:
+        await update.message.reply_text("❌ Nenhuma sessão ativa ou romaneios carregados.")
+        return
+    
+    # Consolida todos os pontos
+    all_points = []
+    for romaneio in session.romaneios:
+        all_points.extend(romaneio.points)
+    
+    # Divide em clusters
+    divider = TerritoryDivider(session.base_lat, session.base_lng)
+    clusters = divider.divide_into_clusters(all_points, k=BotConfig.CLUSTER_COUNT)
+    
+    # Otimiza rotas
+    routes = []
+    for cluster in clusters:
+        optimized = divider.optimize_cluster_route(cluster)
+        route = Route(
+            id=f"ROTA_{cluster.id + 1}",
+            cluster=cluster,
+            optimized_order=optimized
+        )
+        routes.append(route)
+    
+    session_manager.set_routes(routes)
+    session_manager.finalize_session()
+    session_manager.set_admin_state(user_id, "awaiting_assignment")
+    
+    # Mostra resumo
+    summary = f"🎯 <b>Rotas Divididas!</b>\n\n"
+    summary += f"📍 Base: {session.base_address}\n"
+    summary += f"📦 Total: {len(all_points)} pacotes\n\n"
+    
+    for route in routes:
+        summary += f"<b>{route.id}</b>: {route.total_packages} pacotes\n"
+    
+    summary += "\n🚀 Agora atribua as rotas aos entregadores:"
+    
+    keyboard = []
+    for route in routes:
+        keyboard.append([InlineKeyboardButton(f"Atribuir {route.id}", callback_data=f"assign_route_{route.id}")])
+    
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await update.message.reply_text(summary, parse_mode='HTML', reply_markup=reply_markup)
+
+
+async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handler de botões inline"""
+    query = update.callback_query
+    await query.answer()
+    
+    data = query.data
+    
+    if data.startswith("assign_route_"):
+        route_id = data.replace("assign_route_", "")
+        session_manager.save_temp_data(query.from_user.id, "assigning_route", route_id)
+        
+        # Mostra lista de entregadores
+        keyboard = []
+        for partner in BotConfig.DELIVERY_PARTNERS:
+            keyboard.append([InlineKeyboardButton(
+                f"{partner.name} {'(Sócio)' if partner.is_partner else ''}",
+                callback_data=f"deliverer_{partner.telegram_id}"
+            )])
+        
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text(
+            f"👤 Escolha o entregador para <b>{route_id}</b>:",
+            parse_mode='HTML',
+            reply_markup=reply_markup
+        )
+    
+    elif data.startswith("deliverer_"):
+        deliverer_id = int(data.replace("deliverer_", ""))
+        route_id = session_manager.get_temp_data(query.from_user.id, "assigning_route")
+        
+        # Atribui rota
+        session = session_manager.get_active_session()
+        route = next((r for r in session.routes if r.id == route_id), None)
+        
+        if route:
+            partner = BotConfig.get_partner_by_id(deliverer_id)
+            route.assigned_to_telegram_id = deliverer_id
+            route.assigned_to_name = partner.name
+            
+            # Envia rota pro entregador
+            await send_route_to_deliverer(context, deliverer_id, route, session)
+            
+            await query.edit_message_text(
+                f"✅ <b>{route_id}</b> atribuída a <b>{partner.name}</b>!\n\n"
+                f"📨 Rota enviada no chat privado do entregador.",
+                parse_mode='HTML'
+            )
+            
+            # Verifica se todas rotas foram atribuídas
+            all_assigned = all(r.assigned_to_telegram_id for r in session.routes)
+            if all_assigned:
+                await context.bot.send_message(
+                    chat_id=BotConfig.ADMIN_TELEGRAM_ID,
+                    text="🎉 <b>Todas as rotas foram distribuídas!</b>\n\nBoa entrega!",
+                    parse_mode='HTML'
+                )
+
+
+async def send_route_to_deliverer(context: ContextTypes.DEFAULT_TYPE, telegram_id: int, route: Route, session):
+    """Envia rota formatada para o entregador"""
+    message = f"🗺️ <b>SUA ROTA - {route.id}</b>\n\n"
+    message += f"📍 Base: {session.base_address}\n"
+    message += f"📦 Total: {route.total_packages} pacotes\n\n"
+    message += "📋 <b>Ordem de entrega:</b>\n\n"
+    
+    for i, point in enumerate(route.optimized_order, 1):
+        message += f"{i}. {point.address}\n"
+        message += f"   🆔 <code>{point.package_id}</code>\n\n"
+    
+    message += "\n✅ Marque entregas usando o botão 'Marcar Entrega'"
+    
+    await context.bot.send_message(
+        chat_id=telegram_id,
+        text=message,
+        parse_mode='HTML'
+    )
+
+
+# ==================== DELIVERER HANDLERS ====================
+
+async def handle_deliverer_message(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str):
+    """Fluxo do entregador"""
+    user_id = update.effective_user.id
+    
+    if text == "🗺️ Minha Rota Hoje":
+        route = session_manager.get_route_for_deliverer(user_id)
+        
+        if not route:
+            await update.message.reply_text("❌ Você não tem rota atribuída hoje.")
+            return
+        
+        session = session_manager.get_active_session()
+        await send_route_to_deliverer(context, user_id, route, session)
+    
+    elif text == "✅ Marcar Entrega":
+        route = session_manager.get_route_for_deliverer(user_id)
+        
+        if not route:
+            await update.message.reply_text("❌ Você não tem rota ativa.")
+            return
+        
+        # Lista pacotes pendentes
+        pending = [p for p in route.optimized_order if p.package_id not in route.delivered_packages]
+        
+        if not pending:
+            await update.message.reply_text("🎉 Todas as suas entregas foram concluídas!")
+            return
+        
+        keyboard = []
+        for p in pending[:10]:  # Limite 10 por vez
+            keyboard.append([InlineKeyboardButton(
+                f"📦 {p.address[:40]}... (ID: {p.package_id})",
+                callback_data=f"deliver_{p.package_id}"
+            )])
+        
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text(
+            "📋 Selecione o pacote entregue:",
+            reply_markup=reply_markup
+        )
+
+
+async def show_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Mostra status atual da sessão"""
+    session = session_manager.get_active_session()
+    
+    if not session:
+        await update.message.reply_text("❌ Nenhuma sessão ativa.")
+        return
+    
+    msg = f"📊 <b>STATUS - {session.date}</b>\n\n"
+    msg += f"📍 Base: {session.base_address}\n"
+    msg += f"📦 Total: {session.total_packages} pacotes\n"
+    msg += f"✅ Entregues: {session.total_delivered}\n"
+    msg += f"⏳ Pendentes: {session.total_pending}\n\n"
+    
+    if session.routes:
+        msg += "<b>Rotas:</b>\n"
+        for route in session.routes:
+            status = f"{route.delivered_count}/{route.total_packages} ({route.completion_rate:.1f}%)"
+            msg += f"• {route.id}: {route.assigned_to_name or 'Não atribuída'} - {status}\n"
+    
+    await update.message.reply_text(msg, parse_mode='HTML')
+
+
+async def show_financial_report(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Relatório financeiro"""
+    session = session_manager.get_active_session()
+    
+    if not session:
+        await update.message.reply_text("❌ Nenhuma sessão ativa.")
+        return
+    
+    msg = f"💰 <b>RELATÓRIO FINANCEIRO - {session.date}</b>\n\n"
+    
+    costs_by_deliverer = {}
+    
+    for route in session.routes:
+        if route.assigned_to_telegram_id:
+            partner = BotConfig.get_partner_by_id(route.assigned_to_telegram_id)
+            if partner:
+                cost = route.delivered_count * partner.cost_per_package
+                costs_by_deliverer[partner.name] = costs_by_deliverer.get(partner.name, 0) + cost
+    
+    total_cost = 0
+    for name, cost in costs_by_deliverer.items():
+        msg += f"• {name}: R$ {cost:.2f}\n"
+        total_cost += cost
+    
+    msg += f"\n<b>CUSTO TOTAL: R$ {total_cost:.2f}</b>"
+    
+    await update.message.reply_text(msg, parse_mode='HTML')
+
+
+# ==================== MAIN ====================
+
+def run_bot():
+    """Inicia o bot"""
+    app = Application.builder().token(BotConfig.TELEGRAM_TOKEN).build()
+    
+    # Handlers
+    app.add_handler(CommandHandler("start", cmd_start))
+    app.add_handler(CommandHandler("fechar_rota", cmd_fechar_rota))
+    app.add_handler(MessageHandler(filters.Document.ALL, handle_document_message))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_message))
+    app.add_handler(CallbackQueryHandler(handle_callback_query))
+    
+    logger.info("🚀 Bot iniciado! Suporta: texto, CSV, PDF")
+    app.run_polling()
+
+
+if __name__ == "__main__":
+    run_bot()
