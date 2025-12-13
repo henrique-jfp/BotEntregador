@@ -96,7 +96,10 @@ class TerritoryDivider:
             
             centroids = new_centroids
         
-        # 3. Monta objetos Cluster
+        # 3. Balanceamento: redistribui pontos para equilibrar clusters
+        clusters_dict = self._balance_clusters(clusters_dict, centroids, k)
+        
+        # 4. Monta objetos Cluster
         clusters = []
         for i in range(k):
             if clusters_dict[i]:
@@ -107,7 +110,7 @@ class TerritoryDivider:
                     points=clusters_dict[i]
                 ))
         
-        # 4. Ordena clusters por distância da base (mais próximo primeiro)
+        # 5. Ordena clusters por distância da base (mais próximo primeiro)
         clusters.sort(key=lambda c: c.distance_to_base(self.base_lat, self.base_lng))
         
         # Renumera IDs após ordenação
@@ -115,6 +118,46 @@ class TerritoryDivider:
             cluster.id = i
         
         return clusters
+    
+    def _balance_clusters(self, clusters_dict: dict, centroids: list, k: int) -> dict:
+        """
+        Balanceia clusters para distribuição mais uniforme.
+        Move pontos de borda de clusters grandes para pequenos.
+        """
+        max_iterations = 20
+        target_size = sum(len(clusters_dict[i]) for i in range(k)) // k
+        tolerance = int(target_size * 0.3)  # 30% de tolerância
+        
+        for _ in range(max_iterations):
+            sizes = [len(clusters_dict[i]) for i in range(k)]
+            
+            # Se todos estão balanceados, para
+            if all(abs(s - target_size) <= tolerance for s in sizes):
+                break
+            
+            # Encontra cluster maior e menor
+            largest_idx = max(range(k), key=lambda i: len(clusters_dict[i]))
+            smallest_idx = min(range(k), key=lambda i: len(clusters_dict[i]))
+            
+            if len(clusters_dict[largest_idx]) - len(clusters_dict[smallest_idx]) <= 1:
+                break
+            
+            # Move ponto mais próximo do centroide do cluster menor
+            largest_points = clusters_dict[largest_idx]
+            if not largest_points:
+                break
+            
+            # Pega o ponto do cluster grande mais próximo do centroide do cluster pequeno
+            closest_point = min(
+                largest_points,
+                key=lambda p: haversine_distance(p.lat, p.lng, centroids[smallest_idx][0], centroids[smallest_idx][1])
+            )
+            
+            # Move o ponto
+            clusters_dict[largest_idx].remove(closest_point)
+            clusters_dict[smallest_idx].append(closest_point)
+        
+        return clusters_dict
     
     def _initialize_centroids(self, points: List[DeliveryPoint], k: int) -> List[Tuple[float, float]]:
         """
