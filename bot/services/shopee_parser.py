@@ -43,19 +43,37 @@ class ShopeeRomaneioParser:
         
         for row in range(2, ws.max_row + 1):
             # Pula linhas vazias
-            if not ws.cell(row, 4).value:  # SPX TN
+            tracking_val = ws.cell(row, 4).value
+            if not tracking_val or str(tracking_val).strip() in ('', '-', 'N/A'):
                 continue
+            
+            # Helper para converter com segurança
+            def safe_int(val, default=0):
+                if val is None or str(val).strip() in ('', '-', 'N/A'):
+                    return default
+                try:
+                    return int(float(val))
+                except (ValueError, TypeError):
+                    return default
+            
+            def safe_float(val, default=0.0):
+                if val is None or str(val).strip() in ('', '-', 'N/A'):
+                    return default
+                try:
+                    return float(val)
+                except (ValueError, TypeError):
+                    return default
                 
             delivery = ShopeeDelivery(
-                tracking=str(ws.cell(row, 4).value),
+                tracking=str(tracking_val),
                 address=str(ws.cell(row, 5).value or ""),
                 bairro=str(ws.cell(row, 6).value or ""),
                 city=str(ws.cell(row, 7).value or ""),
                 zipcode=str(ws.cell(row, 8).value or ""),
-                latitude=float(ws.cell(row, 9).value or 0),
-                longitude=float(ws.cell(row, 10).value or 0),
-                sequence=int(ws.cell(row, 2).value or 0),
-                stop=int(ws.cell(row, 3).value or 0),
+                latitude=safe_float(ws.cell(row, 9).value, 0.0),
+                longitude=safe_float(ws.cell(row, 10).value, 0.0),
+                sequence=safe_int(ws.cell(row, 2).value, 0),
+                stop=safe_int(ws.cell(row, 3).value, 0),
                 at_id=str(ws.cell(row, 1).value or "")
             )
             
