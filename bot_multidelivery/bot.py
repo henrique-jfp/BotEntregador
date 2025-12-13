@@ -10,7 +10,7 @@ from .config import BotConfig, DeliveryPartner
 from .session import session_manager, Romaneio, Route
 from .clustering import DeliveryPoint, TerritoryDivider
 from .parsers import parse_csv_romaneio, parse_pdf_romaneio, parse_text_romaneio
-from .services import deliverer_service, geocoding_service, genetic_optimizer, gamification_service
+from .services import deliverer_service, geocoding_service, genetic_optimizer, gamification_service, predictor, dashboard_ws
 import uuid
 
 logging.basicConfig(level=logging.INFO)
@@ -312,6 +312,16 @@ async def create_romaneio_from_addresses(update: Update, context: ContextTypes.D
         
         # Geocoding com cache inteligente
         lat, lng = geocoding_service.geocode(address)
+        
+        # IA preditiva: estima tempo de entrega
+        base_lat, base_lng = -23.5505, -46.6333  # TODO: pegar da sessão
+        distance = ((lat - base_lat)**2 + (lng - base_lng)**2)**0.5 * 111  # km aprox
+        estimated_time = predictor.predict_from_package(
+            package_id=package_id,
+            deliverer_id=0,  # Ainda não atribuído
+            distance_km=distance,
+            priority=priority
+        )
         
         points.append(DeliveryPoint(
             address=address,
@@ -711,6 +721,59 @@ async def cmd_ranking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(msg, parse_mode='HTML')
 
 
+async def cmd_predict_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """🤖 Previsão de tempo de entrega com IA"""
+    user_id = update.effective_user.id
+    
+    if not context.args or len(context.args) < 1:
+        await update.message.reply_text(
+            "🤖 <b>Previsão de Tempo de Entrega</b>\n\n"
+            "<b>Uso:</b>\n"
+            "<code>/prever DISTANCIA_KM [PRIORIDADE]</code>\n\n"
+            "<b>Exemplo:</b>\n"
+            "<code>/prever 5.2 high</code>\n"
+            "<code>/prever 3.0</code>\n\n"
+            "Prioridades: low, normal, high, urgent",
+            parse_mode='HTML'
+        )
+        return
+    
+    try:
+        distance = float(context.args[0])
+        priority = context.args[1] if len(context.args) > 1 else 'normal'
+        
+        # Prediz tempo
+        estimated = predictor.predict_from_package(
+            package_id='PREVIEW',
+            deliverer_id=user_id,
+            distance_km=distance,
+            priority=priority
+        )
+        
+        # Avalia precisão do modelo
+        accuracy = predictor.evaluate_accuracy()
+        
+        msg = f"🤖 <b>PREVISÃO DE TEMPO - IA</b>\n\n"
+        msg += f"📏 Distância: {distance} km\n"
+        msg += f"⚡ Prioridade: {priority.upper()}\n"
+        msg += f"⏱️ Tempo estimado: <b>{estimated:.1f} minutos</b>\n\n"
+        msg += f"📊 <b>Precisão do Modelo:</b>\n"
+        
+        if 'error' in accuracy:
+            msg += f"⚠️ {accuracy['error']}\n"
+        else:
+            msg += f"✅ Accuracy: {accuracy['accuracy']}\n"
+            msg += f"📉 Erro médio: {accuracy['mae']:.1f} min\n"
+            msg += f"📦 Baseado em {accuracy['samples']} entregas\n"
+        
+        await update.message.reply_text(msg, parse_mode='HTML')
+    
+    except ValueError:
+        await update.message.reply_text("❌ Distância inválida. Use números (ex: 5.2)")
+    except Exception as e:
+        await update.message.reply_text(f"❌ Erro: {e}")
+
+
 # ==================== MAIN ====================
 
 def run_bot():
@@ -724,6 +787,7 @@ def run_bot():
     app.add_handler(CommandHandler("add_entregador", cmd_add_deliverer))
     app.add_handler(CommandHandler("entregadores", cmd_list_deliverers))
     app.add_handler(CommandHandler("ranking", cmd_ranking))
+    app.add_handler(CommandHandler("prever", cmd_predict_time))
     app.add_handler(MessageHandler(filters.Document.ALL, handle_document_message))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_message))
     app.add_handler(CallbackQueryHandler(handle_callback_query))
