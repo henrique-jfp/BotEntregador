@@ -10,3 +10,27 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+
+# Environment files
+.env
+.env.bot_multidelivery
+.env.*
+
+# Dados locais
+gains.jsonl
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
