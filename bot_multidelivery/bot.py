@@ -586,9 +586,6 @@ def run_health_server():
 
 def run_bot():
     """Inicia o bot"""
-    import threading
-    import os
-    
     app = Application.builder().token(BotConfig.TELEGRAM_TOKEN).build()
     
     # Handlers
@@ -598,11 +595,6 @@ def run_bot():
     app.add_handler(MessageHandler(filters.Document.ALL, handle_document_message))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_message))
     app.add_handler(CallbackQueryHandler(handle_callback_query))
-    
-    # Inicia health server em thread separada (apenas em produção)
-    if os.getenv('RENDER'):
-        health_thread = threading.Thread(target=run_health_server, daemon=True)
-        health_thread.start()
     
     logger.info("🚀 Bot iniciado! Suporta: texto, CSV, PDF")
     app.run_polling()

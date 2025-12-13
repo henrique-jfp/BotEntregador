@@ -1,5 +1,5 @@
 services:
-  - type: web
+  - type: worker
     name: bot-multidelivery
     runtime: python
     plan: free
