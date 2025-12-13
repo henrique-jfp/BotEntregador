@@ -168,8 +168,9 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-💡 Use <code>/help</code> a qualquer momento!
-🚀 Versão 20/10 - Scooter Mode + Mapa Interativo
+💡 <code>/help</code> disponível a qualquer momento
+🚀 <b>v2.0</b> | Scooter Mode + IA Preditiva
+⚡ Atualizado: 13/12/2025 23:45
 """
     else:
         # Help para ENTREGADOR
@@ -259,6 +260,7 @@ Seu algoritmo considera:
 Problemas? Fale com o admin!
 
 🚀 Boas entregas, parceiro!
+⚡ <b>v2.0</b> | Atualizado: 13/12/2025
 """
     
     await update.message.reply_text(help_text, parse_mode='HTML')
