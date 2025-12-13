@@ -1449,7 +1449,31 @@ async def cmd_distribuir_rota(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 def run_bot():
     """Inicia o bot"""
-    app = Application.builder().token(BotConfig.TELEGRAM_TOKEN).build()
+    import os
+    
+    # Validação crítica de variáveis de ambiente
+    token = os.getenv('TELEGRAM_BOT_TOKEN') or BotConfig.TELEGRAM_TOKEN
+    admin_id = os.getenv('ADMIN_TELEGRAM_ID')
+    
+    if not token:
+        logger.error("❌ TELEGRAM_BOT_TOKEN não configurado! Defina a variável de ambiente.")
+        print("❌ ERRO CRÍTICO: TELEGRAM_BOT_TOKEN vazio.")
+        print("Configure com: export TELEGRAM_BOT_TOKEN='seu_token' (Linux/Mac)")
+        print("ou: $env:TELEGRAM_BOT_TOKEN='seu_token' (Windows PowerShell)")
+        return
+    
+    if not admin_id:
+        logger.warning("⚠️ ADMIN_TELEGRAM_ID não configurado. Bot rodará mas sem admin.")
+    else:
+        logger.info(f"✅ Admin ID configurado: {admin_id}")
+    
+    logger.info(f"✅ Token presente: {token[:10]}...{token[-4:]}")
+    
+    try:
+        app = Application.builder().token(token).build()
+    except Exception as e:
+        logger.error(f"❌ Erro ao criar Application: {e}")
+        return
     
     # Handlers
     app.add_handler(CommandHandler("start", cmd_start))
@@ -1467,7 +1491,13 @@ def run_bot():
     app.add_handler(CallbackQueryHandler(handle_callback_query))
     
     logger.info("🚀 Bot iniciado! Suporta: texto, CSV, PDF + Deliverer Management")
-    app.run_polling()
+    
+    try:
+        app.run_polling(drop_pending_updates=True, allowed_updates=["message", "callback_query"])
+    except KeyboardInterrupt:
+        logger.info("🛑 Bot encerrado pelo usuário.")
+    except Exception as e:
+        logger.error(f"❌ Erro no polling: {e}", exc_info=True)
 
 
 if __name__ == "__main__":
