@@ -45,6 +45,23 @@ class Route:
     @property
     def completion_rate(self) -> float:
         return (self.delivered_count / self.total_packages * 100) if self.total_packages > 0 else 0
+
+    @property
+    def total_distance_km(self) -> float:
+        """Distância estimada somando hops da rota (fallback quando não há valor calculado)."""
+        try:
+            from .clustering import haversine_distance
+        except Exception:
+            return 0.0
+
+        if not self.optimized_order:
+            return 0.0
+
+        distance = 0.0
+        hops = self.optimized_order
+        for prev, curr in zip(hops, hops[1:]):
+            distance += haversine_distance(prev.lat, prev.lng, curr.lat, curr.lng)
+        return round(distance, 2)
     
     def mark_as_delivered(self, package_id: str):
         if package_id not in self.delivered_packages:

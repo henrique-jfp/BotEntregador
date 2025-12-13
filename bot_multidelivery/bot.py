@@ -291,7 +291,7 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
         session_manager.set_admin_state(user_id, "awaiting_base_address")
         
         await update.message.reply_text(
-            "� <b>NOVA SESSÃO INICIADA!</b>\n"
+            "🟢 <b>NOVA SESSÃO INICIADA!</b>\n"
             "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
             f"📅 Data: <b>{today}</b>\n\n"
             "🎯 <b>PRÓXIMO PASSO:</b>\n"
@@ -307,6 +307,12 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
     
     elif text == "💰 Relatório Financeiro":
         await show_financial_report(update, context)
+
+    elif text == "👥 Entregadores":
+        await cmd_list_deliverers(update, context)
+
+    elif text == "🏆 Ranking":
+        await cmd_ranking(update, context)
     
     elif state == "awaiting_base_address":
         # Geocodifica base (simulado por enquanto)
@@ -341,6 +347,13 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
     elif state == "awaiting_romaneios":
         # Parse romaneio de texto
         await process_text_romaneio(update, context, text)
+
+    else:
+        # Fallback para textos não mapeados
+        await update.message.reply_text(
+            "🤔 Não entendi. Use os botões do menu ou /help para ver os comandos.",
+            parse_mode='HTML'
+        )
 
 
 async def handle_document_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -622,6 +635,27 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
                     text="🎉 <b>Todas as rotas foram distribuídas!</b>\n\nBoa entrega!",
                     parse_mode='HTML'
                 )
+
+    elif data.startswith("deliver_"):
+        package_id = data.replace("deliver_", "")
+        delivered = session_manager.mark_package_delivered(query.from_user.id, package_id)
+
+        if delivered:
+            # Atualiza stats básicas
+            try:
+                deliverer_service.update_stats_after_delivery(query.from_user.id, True, delivery_time_minutes=10)
+            except Exception as e:
+                logger.warning(f"Falha ao atualizar stats do entregador: {e}")
+
+            await query.edit_message_text(
+                f"✅ Pacote <code>{package_id}</code> marcado como entregue!",
+                parse_mode='HTML'
+            )
+        else:
+            await query.edit_message_text(
+                "❌ Pacote não encontrado na sua rota ativa.",
+                parse_mode='HTML'
+            )
 
 
 async def send_route_to_deliverer(context: ContextTypes.DEFAULT_TYPE, telegram_id: int, route: Route, session):
