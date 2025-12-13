@@ -461,15 +461,30 @@ async def handle_document_message(update: Update, context: ContextTypes.DEFAULT_
         await update.message.reply_text("❌ Apenas o admin pode enviar arquivos.")
         return
     
+    # Cria sessão automaticamente se não existe
+    session = session_manager.get_active_session()
     state = session_manager.get_admin_state(user_id)
+    
+    if not session:
+        today = datetime.now().strftime("%Y-%m-%d")
+        session_manager.start_new_session(today)
+        session_manager.set_admin_state(user_id, "awaiting_base_address")
+        
+        await update.message.reply_text(
+            "🟢 <b>Sessão criada automaticamente!</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"📅 Data: <b>{today}</b>\n\n"
+            "🎯 Antes de importar, defina o <b>endereço da BASE</b>:\n\n"
+            "📝 <b>Exemplo:</b>\n"
+            "<i>Rua das Flores, 123 - Botafogo, RJ</i>",
+            parse_mode='HTML'
+        )
+        return
     
     if state != "awaiting_romaneios":
         await update.message.reply_text(
-            "⛔ <b>SESSÃO NÃO INICIADA</b>\n\n"
-            "Você precisa iniciar uma sessão antes de enviar arquivos!\n\n"
-            "🎯 Aperte o botão:\n"
-            "<b>📦 Nova Sessão do Dia</b>\n\n"
-            "Ou use <code>/start</code> pra ver o menu.",
+            "⚠️ <b>Configure a base primeiro!</b>\n\n"
+            "Envie o endereço da base (onde o carro está) para continuar.",
             parse_mode='HTML'
         )
         return
