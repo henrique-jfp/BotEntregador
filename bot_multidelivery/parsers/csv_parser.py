@@ -1,14 +1,19 @@
 """
 Parser para romaneios em formato CSV.
 Suporta múltiplos formatos com detecção automática de colunas.
+Agora com suporte a ID e prioridade.
 """
 
 import csv
 import io
-from typing import List
+from typing import List, Dict, Tuple
 
 
-def parse_csv_romaneio(file_content: bytes) -> List[str]:
+def parse_csv_romaneio(file_content: bytes) -> List[Dict[str, str]]:
+    """
+    Parse romaneio em formato CSV com suporte a metadados.
+    
+    Retorna lista de dicts com: address, id (opcional), priority (opcional)
     """
     Parse romaneio em formato CSV.
     
