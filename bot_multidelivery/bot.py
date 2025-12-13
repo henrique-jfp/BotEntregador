@@ -709,13 +709,15 @@ async def cmd_fechar_rota(update: Update, context: ContextTypes.DEFAULT_TYPE):
             stops_data.append((point.lat, point.lng, point.address, 1, status))
 
         eta_minutes = max(10, route.total_distance_km / 25 * 60 + len(optimized) * 3)
+        base_loc = (session.base_lat, session.base_lng, session.base_address) if session.base_lat and session.base_lng else None
         html = MapGenerator.generate_interactive_map(
             stops=stops_data,
             entregador_nome=f"{route.id}",
             current_stop=0,
             total_packages=route.total_packages,
             total_distance_km=route.total_distance_km,
-            total_time_min=eta_minutes
+            total_time_min=eta_minutes,
+            base_location=base_loc
         )
         map_file = f"map_{route.id}.html"
         MapGenerator.save_map(html, map_file)
@@ -937,13 +939,16 @@ async def send_route_to_deliverer(context: ContextTypes.DEFAULT_TYPE, telegram_i
             stops_data.append((point.lat, point.lng, point.address, 1, status))
 
         eta_minutes = max(10, route.total_distance_km / 25 * 60 + len(route.optimized_order) * 3)
+        session = session_manager.get_session()
+        base_loc = (session.base_lat, session.base_lng, session.base_address) if session and session.base_lat and session.base_lng else None
         html = MapGenerator.generate_interactive_map(
             stops=stops_data,
             entregador_nome=f"{route.id}",
             current_stop=0,
             total_packages=route.total_packages,
             total_distance_km=route.total_distance_km,
-            total_time_min=eta_minutes
+            total_time_min=eta_minutes,
+            base_location=base_loc
         )
         route.map_file = f"map_{route.id}.html"
         MapGenerator.save_map(html, route.map_file)
@@ -1440,13 +1445,16 @@ async def cmd_distribuir_rota(update: Update, context: ContextTypes.DEFAULT_TYPE
                 stops_data.append((lat, lon, address, num_packages, status))
             
             # Gera HTML do mapa
+            session = session_manager.get_session()
+            base_loc = (session.base_lat, session.base_lng, session.base_address) if session and session.base_lat and session.base_lng else None
             html = MapGenerator.generate_interactive_map(
                 stops=stops_data,
                 entregador_nome=route.entregador_nome,
                 current_stop=0,
                 total_packages=route.total_packages,
                 total_distance_km=route.total_distance_km,
-                total_time_min=route.total_time_minutes
+                total_time_min=route.total_time_minutes,
+                base_location=base_loc
             )
             
             # Salva temporariamente

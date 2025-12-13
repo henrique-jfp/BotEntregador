@@ -31,7 +31,8 @@ class MapGenerator:
         current_stop: int = 0,
         total_packages: int = 0,
         total_distance_km: float = 0,
-        total_time_min: float = 0
+        total_time_min: float = 0,
+        base_location: Tuple[float, float, str] = None  # (lat, lon, address)
     ) -> str:
         """
         Gera HTML do mapa interativo
@@ -43,14 +44,44 @@ class MapGenerator:
             total_packages: Total de pacotes
             total_distance_km: Distancia total
             total_time_min: Tempo estimado total
+            base_location: (lat, lon, endereco) da base
             
         Returns:
             HTML completo do mapa
         """
         
-        # Calcula centro do mapa
-        center_lat = sum(s[0] for s in stops) / len(stops) if stops else 0
-        center_lon = sum(s[1] for s in stops) / len(stops) if stops else 0
+        # Calcula bounds para zoom automático
+        all_lats = [s[0] for s in stops]
+        all_lons = [s[1] for s in stops]
+        if base_location:
+            all_lats.append(base_location[0])
+            all_lons.append(base_location[1])
+        
+        # Centro e zoom inteligente
+        if all_lats and all_lons:
+            center_lat = sum(all_lats) / len(all_lats)
+            center_lon = sum(all_lons) / len(all_lons)
+            
+            # Calcula distância máxima para definir zoom
+            lat_range = max(all_lats) - min(all_lats)
+            lon_range = max(all_lons) - min(all_lons)
+            max_range = max(lat_range, lon_range)
+            
+            # Zoom baseado na dispersão (menor range = mais zoom)
+            if max_range < 0.01:  # <1km
+                zoom = 16
+            elif max_range < 0.03:  # <3km
+                zoom = 15
+            elif max_range < 0.05:  # <5km
+                zoom = 14
+            elif max_range < 0.1:  # <10km
+                zoom = 13
+            else:
+                zoom = 12
+        else:
+            center_lat = 0
+            center_lon = 0
+            zoom = 15
         
         # Prepara dados dos markers
         markers_data = []
@@ -290,8 +321,8 @@ class MapGenerator:
         const markers = {markers_json};
         let currentMarker = null;
         
-        // Inicializa mapa
-        const map = L.map('map').setView([{center_lat}, {center_lon}], 15);
+        // Inicializa mapa com zoom automático
+        const map = L.map('map').setView([{center_lat}, {center_lon}], {zoom});
         
         // Tile layer (OpenStreetMap)
         L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
@@ -299,7 +330,20 @@ class MapGenerator:
             maxZoom: 19
         }}).addTo(map);
         
-        // Adiciona markers
+        // Adiciona marker da BASE se houver
+        const baseLocation = {json.dumps(base_location) if base_location else 'null'};
+        if (baseLocation) {{
+            const baseIcon = L.divIcon({{
+                className: 'marker-icon',
+                html: '<div style="border-color: #FF5722; color: #FF5722; background: white; font-weight: bold;">🏠</div>',
+                iconSize: [40, 40]
+            }});
+            
+            const baseMarker = L.marker([baseLocation[0], baseLocation[1]], {{ icon: baseIcon }}).addTo(map);
+            baseMarker.bindPopup(`<b>🏠 BASE</b><br>${{baseLocation[2]}}`);
+        }}
+        
+        // Adiciona markers das entregas
         markers.forEach((m, idx) => {{
             const icon = L.divIcon({{
                 className: 'marker-icon',

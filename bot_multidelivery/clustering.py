@@ -126,7 +126,7 @@ class TerritoryDivider:
         """
         max_iterations = 20
         target_size = sum(len(clusters_dict[i]) for i in range(k)) // k
-        tolerance = int(target_size * 0.3)  # 30% de tolerância
+        tolerance = int(target_size * 0.2)  # 20% de tolerância
         
         for _ in range(max_iterations):
             sizes = [len(clusters_dict[i]) for i in range(k)]
