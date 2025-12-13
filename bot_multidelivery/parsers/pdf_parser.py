@@ -3,11 +3,11 @@ Parser para romaneios em formato PDF.
 Suporta PDFs com texto extraível e PDFs escaneados (via OCR).
 """
 
-from typing import List
+from typing import List, Dict
 import re
 
 
-def parse_pdf_romaneio(file_content: bytes) -> List[str]:
+def parse_pdf_romaneio(file_content: bytes) -> List[Dict[str, str]]:
     """
     Parse romaneio em formato PDF.
     
@@ -56,9 +56,9 @@ def parse_pdf_romaneio(file_content: bytes) -> List[str]:
         text = _extract_text_with_ocr(file_content)
     
     # Parse o texto extraído
-    addresses = _extract_addresses_from_text(text)
+    packages = _extract_packages_from_text(text)
     
-    return addresses
+    return packages
 
 
 def _extract_text_with_ocr(file_content: bytes) -> str:
@@ -88,19 +88,18 @@ def _extract_text_with_ocr(file_content: bytes) -> str:
         )
 
 
-def _extract_addresses_from_text(text: str) -> List[str]:
+def _extract_packages_from_text(text: str) -> List[Dict[str, str]]:
     """
-    Extrai endereços de texto usando padrões comuns.
+    Extrai pacotes (endereço + id + prioridade) de texto.
     
     Procura por:
     - Linhas com padrões de endereço (Rua/Av + número)
     - Linhas após marcadores (1., 2., -, *, etc)
-    - Linhas com CEP
+    - IDs e prioridades quando disponíveis
     """
-    addresses = []
+    packages = []
     
     # Padrão de endereço brasileiro
-    # Ex: "Rua das Flores, 123", "Av. Paulista 1000"
     address_pattern = re.compile(
         r'(?:Rua|R\.|Avenida|Av\.|Alameda|Al\.|Travessa|Trav\.|Praça|Pça\.)'
         r'[^,\n]+(?:,\s*\d+|[\s]+\d+)',
@@ -109,11 +108,21 @@ def _extract_addresses_from_text(text: str) -> List[str]:
     
     # Procura endereços explícitos
     matches = address_pattern.findall(text)
-    addresses.extend([m.strip() for m in matches])
     
-    # Se não encontrou endereços explícitos, trata como texto simples
-    if not addresses:
+    if matches:
+        for i, addr in enumerate(matches, start=1):
+            packages.append({
+                "address": addr.strip(),
+                "id": f"PDF{i:03d}",
+                "priority": "normal"
+            })
+    else:
+        # Fallback: usa text_parser
         from .text_parser import parse_text_romaneio
-        return parse_text_romaneio(text)
+        packages = parse_text_romaneio(text)
+        
+        # Redefine IDs para PDF
+        for i, pkg in enumerate(packages, start=1):
+            pkg["id"] = f"PDF{i:03d}"
     
-    return addresses
+    return packages

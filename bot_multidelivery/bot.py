@@ -300,16 +300,27 @@ async def create_romaneio_from_addresses(update: Update, context: ContextTypes.D
     # Cria pontos de entrega (com geocoding simulado)
     points = []
     for i, addr in enumerate(addresses):
+        # Suporta tanto List[str] (legado) quanto List[Dict] (novo)
+        if isinstance(addr, dict):
+            address = addr.get("address", "")
+            package_id = addr.get("id", f"PKG{i:03d}")
+            priority = addr.get("priority", "normal")
+        else:
+            address = addr
+            package_id = f"PKG{i:03d}"
+            priority = "normal"
+        
         # TODO: Geocoding real com Google API
         lat = -23.5505 + (i * 0.01)  # Simulado
         lng = -46.6333 + (i * 0.01)  # Simulado
         
         points.append(DeliveryPoint(
-            address=addr,
+            address=address,
             lat=lat,
             lng=lng,
             romaneio_id=str(uuid.uuid4())[:8],
-            package_id=str(uuid.uuid4())[:8]
+            package_id=package_id,
+            priority=priority
         ))
     
     romaneio = Romaneio(

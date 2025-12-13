@@ -3,10 +3,11 @@ Parser para romaneios em formato texto (manual).
 Aceita um endereço por linha.
 """
 
-from typing import List
+from typing import List, Dict
+import re
 
 
-def parse_text_romaneio(text: str) -> List[str]:
+def parse_text_romaneio(text: str) -> List[Dict[str, str]]:
     """
     Parse romaneio em formato texto.
     

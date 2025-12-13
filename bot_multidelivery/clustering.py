@@ -15,6 +15,7 @@ class DeliveryPoint:
     lng: float
     romaneio_id: str
     package_id: str
+    priority: str = "normal"  # low, normal, high, urgent
 
 
 @dataclass
