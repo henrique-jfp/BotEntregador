@@ -26,14 +26,25 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user_id == BotConfig.ADMIN_TELEGRAM_ID:
         keyboard = [
             [KeyboardButton("📦 Nova Sessão do Dia")],
-            [KeyboardButton("📊 Status Atual")],
-            [KeyboardButton("💰 Relatório Financeiro")],
+            [KeyboardButton("📊 Status Atual"), KeyboardButton("💰 Relatório Financeiro")],
+            [KeyboardButton("👥 Entregadores"), KeyboardButton("🏆 Ranking")],
         ]
         reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
         await update.message.reply_text(
-            "🔥 <b>BOT ADMIN - Multi-Entregador</b>\n\n"
-            "Bem-vindo, chefe! Escolha uma opção:\n\n"
-            "💡 Digite /help para ver todos os comandos",
+            "🚀 <b>BOT MULTI-ENTREGADOR v20/10</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            "👋 E aí, <b>CHEFE</b>! Pronto pra dominar as entregas?\n\n"
+            "<b>⚡ FLUXO RÁPIDO:</b>\n"
+            "1️⃣ <code>/importar</code> - Sobe romaneios da Shopee\n"
+            "2️⃣ Seleciona entregadores disponíveis\n"
+            "3️⃣ <code>/otimizar</code> - Divide + roteiriza + MANDA!\n\n"
+            "<b>🛠️ GERENCIAR:</b>\n"
+            "• <code>/add_entregador</code> - Cadastra novo entregador\n"
+            "• <code>/entregadores</code> - Lista do time\n"
+            "• <code>/ranking</code> - Quem tá mandando bem\n\n"
+            "💡 <code>/help</code> pra ver TUDO que esse bot faz\n\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "🔥 <i>Bora fazer grana!</i>",
             parse_mode='HTML',
             reply_markup=reply_markup
         )
@@ -41,17 +52,39 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Entregador
         partner = BotConfig.get_partner_by_id(user_id)
         if partner:
-            keyboard = [[KeyboardButton("🗺️ Minha Rota Hoje")], [KeyboardButton("✅ Marcar Entrega")]]
+            keyboard = [
+                [KeyboardButton("🗺️ Minha Rota Hoje")],
+                [KeyboardButton("✅ Marcar Entrega"), KeyboardButton("❌ Reportar Problema")]
+            ]
             reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+            
+            tipo = "🤝 PARCEIRO" if partner.is_partner else "💼 COLABORADOR"
+            
             await update.message.reply_text(
-                f"👋 Olá, <b>{partner.name}</b>!\n\n"
-                "Você receberá sua rota quando o admin distribuir as entregas.\n\n"
-                "💡 Digite /help para ver comandos disponíveis",
+                f"🏍️ <b>E AÍ, {partner.name.upper()}!</b>\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"📛 Status: {tipo}\n"
+                f"📦 Capacidade: {partner.max_capacity} pacotes/dia\n"
+                f"💰 Ganho: R$ {partner.cost_per_package:.2f}/pacote\n\n"
+                f"<b>🎯 COMO FUNCIONA:</b>\n"
+                f"1️⃣ Admin distribui as rotas\n"
+                f"2️⃣ Você recebe um mapa HTML interativo\n"
+                f"3️⃣ Abre no navegador e segue a ordem\n"
+                f"4️⃣ Marca cada entrega (✅/❌)\n\n"
+                f"🔔 <i>Aguardando distribuição de rotas...</i>\n\n"
+                f"💡 <code>/help</code> - Ver todos os comandos\n\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"🚀 <i>Bora faturar!</i>",
                 parse_mode='HTML',
                 reply_markup=reply_markup
             )
         else:
-            await update.message.reply_text("❌ Você não está cadastrado como entregador.")
+            await update.message.reply_text(
+                "⛔ <b>ACESSO NEGADO</b>\n\n"
+                "Você não está cadastrado como entregador.\n\n"
+                "Entre em contato com o administrador para solicitar cadastro.",
+                parse_mode='HTML'
+            )
 
 
 async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -60,28 +93,57 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if user_id == BotConfig.ADMIN_TELEGRAM_ID:
         # Help para ADMIN
-        help_text = """
-<b>CENTRAL DE AJUDA - ADMINISTRADOR</b>
+        help_text = f"""
+📖 <b>MANUAL DO ADMIN - BOT MULTI-ENTREGADOR</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-<b>=== COMANDOS PRINCIPAIS ===</b>
+<b>🎯 FLUXO PRINCIPAL (3 PASSOS):</b>
 
-/start - Menu principal do bot
-/help - Esta mensagem de ajuda
-/add_entregador &lt;telegram_id&gt; &lt;nome&gt; [socio] - Cadastra entregador
-/entregadores - Lista todos os entregadores
-/ranking - Ranking de gamificacao
-/prever &lt;origem&gt; | &lt;destino&gt; [prioridade] - Previsao de tempo IA
-/distribuir &lt;arquivo.xlsx&gt; &lt;num_entregadores&gt; - Divide romaneio inteligente
+1️⃣ <code>/importar</code>
+   📄 Manda quantos romaneios quiser (.xlsx/.csv)
+   🔄 Sistema consolida tudo automaticamente
 
-<b>=== FLUXO COMPLETO - PASSO A PASSO ===</b>
+2️⃣ <b>Selecionar Entregadores</b>
+   👥 Bot mostra lista de disponíveis
+   ✅ Você escolhe quem vai trabalhar hoje
 
-<b>1. CADASTRAR ENTREGADORES (uma vez)</b>
-   /add_entregador 123456789 "Joao Silva" socio
-   /add_entregador 987654321 "Maria Santos" colaborador
-   
-   Diferenca:
-   - Socio: Nao paga por pacote (is_partner=true)
-   - Colaborador: R$ 1,00 por pacote entregue
+3️⃣ <code>/otimizar</code>
+   🧠 Divide geograficamente (K-means)
+   🛣️ Otimiza cada rota (Scooter Mode)
+   📲 Envia mapa HTML pra cada entregador
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+<b>🛠️ GERENCIAR EQUIPE:</b>
+
+<code>/add_entregador</code> - Cadastra novo entregador
+<code>/entregadores</code> - Lista time completo
+<code>/ranking</code> - Gamificação e conquistas
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+<b>📊 MONITORAR:</b>
+
+<code>/status</code> - Progresso em tempo real
+<code>/financeiro</code> - Custos por entregador
+<code>/prever</code> - Predição de tempo IA
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+<b>🤝 TIPOS DE ENTREGADOR:</b>
+
+🔸 <b>PARCEIRO</b> (Sócio)
+   • Custo: R$ 0,00/pacote
+   • Ideal: Donos do negócio
+
+🔹 <b>COLABORADOR</b> (Terceiro)
+   • Custo: R$ 1,00/pacote (customizável)
+   • Ideal: Freelancers
+
+<b>Exemplo:</b>
+<code>/add_entregador 123456 Joao parceiro 50 0</code>
+<code>/add_entregador 789012 Maria terceiro 30 1.5</code>
 
 <b>2. RECEBER ROMANEIO DA SHOPEE</b>
    Baixe o arquivo Excel do portal Shopee
@@ -199,20 +261,28 @@ Versao: 20/10 - Scooter Mode + Mapa Interativo
         # Help para ENTREGADOR
         partner = BotConfig.get_partner_by_id(user_id)
         if not partner:
-            await update.message.reply_text("❌ Você não está cadastrado como entregador.")
+            await update.message.reply_text(
+                "⛔ <b>ACESSO NEGADO</b>\n\n"
+                "Você não está cadastrado como entregador.\n\n"
+                "Fale com o admin pra solicitar cadastro!",
+                parse_mode='HTML'
+            )
             return
         
+        tipo = "🤝 PARCEIRO" if partner.is_partner else "💼 COLABORADOR"
+        
         help_text = f"""
-<b>CENTRAL DE AJUDA - ENTREGADOR</b>
+📚 <b>MANUAL DO ENTREGADOR</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Ola, <b>{partner.name}</b>!
+👋 Opa, <b>{partner.name}</b>!
+📛 Tipo: {tipo}
+📦 Capacidade: {partner.max_capacity} pacotes/dia
+💰 Ganho: R$ {partner.cost_per_package:.2f}/pacote
 
-<b>=== COMANDOS ===</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━
 
-/start - Menu principal
-/help - Esta mensagem de ajuda
-
-<b>=== COMO FUNCIONA - PASSO A PASSO ===</b>
+<b>🚀 COMO FUNCIONA (4 PASSOS):</b>
 
 <b>1. RECEBER ROTA DO DIA</b>
    O admin vai enviar sua rota otimizada:
@@ -365,9 +435,14 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
         session_manager.set_admin_state(user_id, "awaiting_base_address")
         
         await update.message.reply_text(
-            "🏠 <b>Defina o endereço da BASE</b>\n\n"
-            "Onde o carro estará estacionado hoje?\n"
-            "Ex: <i>Rua das Flores, 123 - São Paulo</i>",
+            "� <b>NOVA SESSÃO INICIADA!</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"📅 Data: <b>{today}</b>\n\n"
+            "🎯 <b>PRÓXIMO PASSO:</b>\n"
+            "Defina o <b>endereço da BASE</b> (onde o carro está)\n\n"
+            "📝 <b>Exemplo:</b>\n"
+            "<i>Rua das Flores, 123 - Botafogo, RJ</i>\n\n"
+            "❗ Envie o endereço completo na próxima mensagem.",
             parse_mode='HTML'
         )
     
@@ -387,12 +462,23 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
         session_manager.set_admin_state(user_id, "awaiting_romaneios")
         
         await update.message.reply_text(
-            f"✅ Base definida: <b>{base_address}</b>\n\n"
-            "📋 Agora envie os <b>romaneios</b>:\n\n"
-            "📝 <b>Opção 1:</b> Cole texto (um endereço por linha)\n"
-            "📄 <b>Opção 2:</b> Anexe arquivo CSV\n"
-            "📕 <b>Opção 3:</b> Anexe arquivo PDF\n\n"
-            "Quando terminar, digite: <code>/fechar_rota</code>",
+            f"✅ <b>BASE CONFIGURADA!</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"📍 Local: <b>{base_address}</b>\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"🚀 <b>PRÓXIMO PASSO:</b> Envie os romaneios!\n\n"
+            f"<b>📂 MÉTODOS ACEITOS:</b>\n\n"
+            f"📄 <b>1. Arquivo Excel (.xlsx)</b>\n"
+            f"   Formato Shopee (RECOMENDADO)\n"
+            f"   Usa: <code>/importar</code>\n\n"
+            f"📝 <b>2. Texto Direto</b>\n"
+            f"   Cole endereços (um por linha)\n\n"
+            f"📊 <b>3. Arquivo CSV</b>\n"
+            f"   Formato: tracking,endereco,lat,lon\n\n"
+            f"📕 <b>4. PDF Scaneado</b>\n"
+            f"   OCR automático (legado)\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"💡 Quando terminar: <code>/fechar_rota</code>",
             parse_mode='HTML'
         )
     
@@ -414,7 +500,11 @@ async def handle_document_message(update: Update, context: ContextTypes.DEFAULT_
     
     if state != "awaiting_romaneios":
         await update.message.reply_text(
-            "❌ Inicie uma sessão primeiro: <b>📦 Nova Sessão do Dia</b>",
+            "⛔ <b>SESSÃO NÃO INICIADA</b>\n\n"
+            "Você precisa iniciar uma sessão antes de enviar arquivos!\n\n"
+            "🎯 Aperte o botão:\n"
+            "<b>📦 Nova Sessão do Dia</b>\n\n"
+            "Ou use <code>/start</code> pra ver o menu.",
             parse_mode='HTML'
         )
         return
@@ -429,17 +519,35 @@ async def handle_document_message(update: Update, context: ContextTypes.DEFAULT_
     # Parse baseado no tipo
     try:
         if file_name.endswith('.csv'):
-            await update.message.reply_text("📄 Processando CSV...")
+            await update.message.reply_text(
+                "📄 <b>PROCESSANDO CSV...</b>\n\n"
+                "• Lendo linhas do arquivo\n"
+                "• Validando formato\n"
+                "• Extraíndo endereços\n\n"
+                "⏳ <i>Aguarde...</i>",
+                parse_mode='HTML'
+            )
             addresses = parse_csv_romaneio(bytes(file_content))
         
         elif file_name.endswith('.pdf'):
-            await update.message.reply_text("📕 Processando PDF...")
+            await update.message.reply_text(
+                "📕 <b>PROCESSANDO PDF...</b>\n\n"
+                "• Extraindo texto (OCR)\n"
+                "• Identificando endereços\n"
+                "• Validando dados\n\n"
+                "⏳ <i>Isso pode demorar 10-20 segundos...</i>",
+                parse_mode='HTML'
+            )
             addresses = parse_pdf_romaneio(bytes(file_content))
         
         else:
             await update.message.reply_text(
-                "❌ Formato não suportado.\n"
-                "Aceito: <b>.csv</b>, <b>.pdf</b>",
+                "❌ <b>FORMATO NÃO SUPORTADO!</b>\n\n"
+                "📂 <b>Formatos aceitos:</b>\n"
+                "• <b>.xlsx</b> - Excel Shopee (RECOMENDADO)\n"
+                "• <b>.csv</b> - CSV genérico\n"
+                "• <b>.pdf</b> - PDF scaneado (OCR)\n\n"
+                "💡 Dica: Use o formato Excel da Shopee!",
                 parse_mode='HTML'
             )
             return
@@ -450,8 +558,17 @@ async def handle_document_message(update: Update, context: ContextTypes.DEFAULT_
     except Exception as e:
         logger.error(f"Erro ao processar arquivo: {e}")
         await update.message.reply_text(
-            f"❌ Erro ao processar arquivo:\n<code>{str(e)}</code>\n\n"
-            "Tente enviar manualmente (um endereço por linha).",
+            f"❌ <b>ERRO NO PROCESSAMENTO!</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"🚫 Detalhes do erro:\n"
+            f"<code>{str(e)[:200]}</code>\n\n"
+            f"💡 <b>ALTERNATIVAS:</b>\n\n"
+            f"1️⃣ Cole os endereços manualmente\n"
+            f"   (um por linha)\n\n"
+            f"2️⃣ Use arquivo Excel da Shopee\n"
+            f"   Formato oficial: DD-MM-YYYY Nome.xlsx\n\n"
+            f"3️⃣ Verifique o formato do arquivo\n"
+            f"   CSV: tracking,endereco,lat,lon",
             parse_mode='HTML'
         )
 
@@ -461,7 +578,18 @@ async def process_text_romaneio(update: Update, context: ContextTypes.DEFAULT_TY
     addresses = parse_text_romaneio(text)
     
     if not addresses:
-        await update.message.reply_text("❌ Nenhum endereço válido encontrado.")
+        await update.message.reply_text(
+            "❌ <b>NENHUM ENDEREÇO IDENTIFICADO</b>\n\n"
+            "Não consegui encontrar endereços válidos no texto!\n\n"
+            "<b>📝 FORMATO ESPERADO:</b>\n"
+            "Rua Exemplo, 123 - Bairro, Cidade\n"
+            "Av. Principal, 456 - Outro Bairro\n\n"
+            "<b>💡 DICAS:</b>\n"
+            "• Um endereço por linha\n"
+            "• Inclua rua, número e bairro\n"
+            "• Evite abreviações demais",
+            parse_mode='HTML'
+        )
         return
     
     await create_romaneio_from_addresses(update, context, addresses)
@@ -709,20 +837,44 @@ async def show_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     session = session_manager.get_active_session()
     
     if not session:
-        await update.message.reply_text("❌ Nenhuma sessão ativa.")
+        await update.message.reply_text(
+            "📭 <b>NENHUMA SESSÃO ATIVA</b>\n\n"
+            "Use <code>/importar</code> para começar um novo dia de entregas!",
+            parse_mode='HTML'
+        )
         return
     
-    msg = f"📊 <b>STATUS - {session.date}</b>\n\n"
-    msg += f"📍 Base: {session.base_address}\n"
-    msg += f"📦 Total: {session.total_packages} pacotes\n"
-    msg += f"✅ Entregues: {session.total_delivered}\n"
-    msg += f"⏳ Pendentes: {session.total_pending}\n\n"
+    # Barra de progresso visual
+    total = session.total_packages
+    entregues = session.total_delivered
+    percent = (entregues / total * 100) if total > 0 else 0
+    bar_length = 10
+    filled = int(bar_length * percent / 100)
+    bar = "█" * filled + "░" * (bar_length - filled)
+    
+    msg = f"📊 <b>STATUS DA OPERAÇÃO</b>\n"
+    msg += f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+    msg += f"📅 Data: <b>{session.date}</b>\n"
+    msg += f"📍 Base: {session.base_address}\n\n"
+    msg += f"<b>📦 ENTREGAS:</b>\n"
+    msg += f"{bar} {percent:.0f}%\n\n"
+    msg += f"✅ Entregues: <b>{entregues}</b>\n"
+    msg += f"⏳ Pendentes: <b>{session.total_pending}</b>\n"
+    msg += f"📊 Total: <b>{total}</b> pacotes\n\n"
     
     if session.routes:
-        msg += "<b>Rotas:</b>\n"
-        for route in session.routes:
-            status = f"{route.delivered_count}/{route.total_packages} ({route.completion_rate:.1f}%)"
-            msg += f"• {route.id}: {route.assigned_to_name or 'Não atribuída'} - {status}\n"
+        msg += "<b>🚚 ROTAS ATIVAS:</b>\n\n"
+        for i, route in enumerate(session.routes, 1):
+            entregador = route.assigned_to_name or "❓ Sem entregador"
+            progresso = f"{route.delivered_count}/{route.total_packages}"
+            percent_rota = route.completion_rate
+            
+            emoji_status = "🟢" if percent_rota == 100 else "🟡" if percent_rota > 50 else "🔴"
+            
+            msg += f"{emoji_status} <b>Rota {i}</b> - {entregador}\n"
+            msg += f"   📦 {progresso} ({percent_rota:.0f}%) | 🛣️ {route.total_distance_km:.1f}km\n\n"
+    
+    msg += "━━━━━━━━━━━━━━━━━━━━━━━"
     
     await update.message.reply_text(msg, parse_mode='HTML')
 
@@ -732,12 +884,19 @@ async def show_financial_report(update: Update, context: ContextTypes.DEFAULT_TY
     session = session_manager.get_active_session()
     
     if not session:
-        await update.message.reply_text("❌ Nenhuma sessão ativa.")
+        await update.message.reply_text(
+            "📭 <b>NENHUMA SESSÃO ATIVA</b>\n\n"
+            "Não há dados financeiros para exibir.",
+            parse_mode='HTML'
+        )
         return
     
-    msg = f"💰 <b>RELATÓRIO FINANCEIRO - {session.date}</b>\n\n"
+    msg = f"💰 <b>RELATÓRIO FINANCEIRO</b>\n"
+    msg += f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+    msg += f"📅 Data: <b>{session.date}</b>\n\n"
     
     costs_by_deliverer = {}
+    deliveries_by_deliverer = {}
     
     for route in session.routes:
         if route.assigned_to_telegram_id:
@@ -745,13 +904,31 @@ async def show_financial_report(update: Update, context: ContextTypes.DEFAULT_TY
             if partner:
                 cost = route.delivered_count * partner.cost_per_package
                 costs_by_deliverer[partner.name] = costs_by_deliverer.get(partner.name, 0) + cost
+                deliveries_by_deliverer[partner.name] = deliveries_by_deliverer.get(partner.name, 0) + route.delivered_count
     
-    total_cost = 0
-    for name, cost in costs_by_deliverer.items():
-        msg += f"• {name}: R$ {cost:.2f}\n"
-        total_cost += cost
+    if costs_by_deliverer:
+        msg += "<b>💸 CUSTOS POR ENTREGADOR:</b>\n\n"
+        for name in sorted(costs_by_deliverer.keys()):
+            cost = costs_by_deliverer[name]
+            deliveries = deliveries_by_deliverer[name]
+            emoji = "🤝" if cost == 0 else "💼"
+            msg += f"{emoji} <b>{name}</b>\n"
+            msg += f"   📦 {deliveries} entregas\n"
+            msg += f"   💵 R$ {cost:.2f}\n\n"
     
-    msg += f"\n<b>CUSTO TOTAL: R$ {total_cost:.2f}</b>"
+    total_cost = sum(costs_by_deliverer.values())
+    total_deliveries = sum(deliveries_by_deliverer.values())
+    
+    msg += "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+    msg += f"<b>📊 TOTAIS:</b>\n"
+    msg += f"📦 Entregas: <b>{total_deliveries}</b>\n"
+    msg += f"💰 Custo Total: <b>R$ {total_cost:.2f}</b>\n\n"
+    
+    if total_deliveries > 0:
+        avg_cost = total_cost / total_deliveries
+        msg += f"📈 Custo Médio: R$ {avg_cost:.2f}/entrega\n\n"
+    
+    msg += "━━━━━━━━━━━━━━━━━━━━━━━"
     
     await update.message.reply_text(msg, parse_mode='HTML')
 
@@ -769,14 +946,23 @@ async def cmd_add_deliverer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     args = context.args
     if len(args) < 3:
         await update.message.reply_text(
-            "📝 <b>Uso:</b>\n"
-            "<code>/add_entregador &lt;telegram_id&gt; &lt;nome&gt; &lt;tipo&gt; &lt;capacidade&gt; &lt;custo&gt;</code>\n\n"
-            "<b>Exemplo:</b>\n"
-            "<code>/add_entregador 123456789 João parceiro 50 0</code>\n"
-            "<code>/add_entregador 987654321 Maria terceiro 30 1.00</code>\n\n"
-            "<b>Tipos:</b> parceiro | terceiro\n"
-            "<b>Capacidade:</b> Máximo de pacotes por dia\n"
-            "<b>Custo:</b> R$ por pacote (0 para parceiro)",
+            "� <b>CADASTRAR NOVO ENTREGADOR</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            "<b>📝 FORMATO:</b>\n"
+            "<code>/add_entregador &lt;id&gt; &lt;nome&gt; &lt;tipo&gt; &lt;capacidade&gt; &lt;custo&gt;</code>\n\n"
+            "<b>🎯 EXEMPLOS:</b>\n\n"
+            "🤝 <b>Parceiro (Sócio):</b>\n"
+            "<code>/add_entregador 123456789 Joao parceiro 50 0</code>\n\n"
+            "💼 <b>Colaborador (Freelancer):</b>\n"
+            "<code>/add_entregador 987654321 Maria terceiro 30 1.50</code>\n\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            "<b>💡 PARÂMETROS:</b>\n\n"
+            "🏷️ <b>ID:</b> Telegram ID (número)\n"
+            "📛 <b>Nome:</b> Nome do entregador\n"
+            "🎯 <b>Tipo:</b> parceiro ou terceiro\n"
+            "📦 <b>Capacidade:</b> Pacotes/dia (ex: 50)\n"
+            "💰 <b>Custo:</b> R$ por pacote (ex: 1.50)\n\n"
+            "❗ Parceiros sempre têm custo R$ 0,00",
             parse_mode='HTML'
         )
         return
@@ -801,16 +987,28 @@ async def cmd_add_deliverer(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         if success:
             tipo_emoji = "🤝" if is_partner else "💼"
+            tipo_texto = "PARCEIRO" if is_partner else "COLABORADOR"
+            
             await update.message.reply_text(
-                f"✅ <b>Entregador cadastrado!</b>\n\n"
-                f"{tipo_emoji} <b>{name}</b>\n"
-                f"🆔 Telegram: {telegram_id}\n"
-                f"📦 Capacidade: {capacidade} pacotes/dia\n"
-                f"💰 Custo: R$ {custo:.2f}/pacote",
+                f"✅ <b>ENTREGADOR CADASTRADO COM SUCESSO!</b>\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"{tipo_emoji} <b>{name.upper()}</b>\n\n"
+                f"📛 Tipo: {tipo_texto}\n"
+                f"🆔 Telegram ID: <code>{telegram_id}</code>\n"
+                f"📦 Capacidade: <b>{capacidade}</b> pacotes/dia\n"
+                f"💰 Custo: <b>R$ {custo:.2f}</b>/pacote\n\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"🎯 Agora {name} pode receber rotas!\n"
+                f"🔔 Ele(a) receberá notificação no Telegram.",
                 parse_mode='HTML'
             )
         else:
-            await update.message.reply_text("❌ Erro: Entregador já existe!")
+            await update.message.reply_text(
+                "❌ <b>ERRO NO CADASTRO</b>\n\n"
+                "Esse entregador já está cadastrado no sistema.\n\n"
+                "Use <code>/entregadores</code> para ver a lista.",
+                parse_mode='HTML'
+            )
     
     except (ValueError, IndexError) as e:
         await update.message.reply_text(f"❌ Erro nos parâmetros: {e}")
@@ -827,27 +1025,48 @@ async def cmd_list_deliverers(update: Update, context: ContextTypes.DEFAULT_TYPE
     deliverers = deliverer_service.get_all_deliverers()
     
     if not deliverers:
-        await update.message.reply_text("📭 Nenhum entregador cadastrado ainda.\n\nUse /add_entregador")
+        await update.message.reply_text(
+            "📭 <b>NENHUM ENTREGADOR CADASTRADO</b>\n\n"
+            "Seu time está vazio! Use:\n\n"
+            "<code>/add_entregador</code> - Cadastrar novo entregador",
+            parse_mode='HTML'
+        )
         return
     
     active = [d for d in deliverers if d.is_active]
     inactive = [d for d in deliverers if not d.is_active]
     
-    msg = "👥 <b>ENTREGADORES CADASTRADOS</b>\n\n"
+    msg = "👥 <b>TIME DE ENTREGADORES</b>\n"
+    msg += "━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
     
     if active:
-        msg += "✅ <b>ATIVOS:</b>\n\n"
-        for d in active:
-            tipo = "🤝 Parceiro" if d.is_partner else "💼 Terceiro"
-            stats = f"{d.total_deliveries} entregas | {d.success_rate:.1f}% sucesso"
-            msg += f"• <b>{d.name}</b> ({tipo})\n"
-            msg += f"  🆔 {d.telegram_id} | 📦 {d.max_capacity} pacotes\n"
-            msg += f"  💰 R$ {d.cost_per_package:.2f}/pacote | {stats}\n\n"
+        msg += f"✅ <b>ATIVOS</b> ({len(active)})\n\n"
+        for i, d in enumerate(active, 1):
+            tipo_emoji = "🤝" if d.is_partner else "💼"
+            tipo_texto = "Parceiro" if d.is_partner else "Terceiro"
+            
+            # Status baseado na taxa de sucesso
+            if d.success_rate >= 95:
+                status_emoji = "🌟"
+            elif d.success_rate >= 80:
+                status_emoji = "🟢"
+            elif d.success_rate >= 60:
+                status_emoji = "🟡"
+            else:
+                status_emoji = "🔴"
+            
+            msg += f"{status_emoji} <b>{i}. {d.name}</b> ({tipo_emoji} {tipo_texto})\n"
+            msg += f"   🆔 ID: <code>{d.telegram_id}</code>\n"
+            msg += f"   📦 Capacidade: {d.max_capacity} pacotes/dia\n"
+            msg += f"   💰 Custo: R$ {d.cost_per_package:.2f}/pacote\n"
+            msg += f"   📊 Stats: {d.total_deliveries} entregas | {d.success_rate:.0f}% sucesso\n\n"
     
     if inactive:
-        msg += "❌ <b>INATIVOS:</b>\n\n"
+        msg += f"\n❌ <b>INATIVOS</b> ({len(inactive)})\n\n"
         for d in inactive:
             msg += f"• {d.name} (ID: {d.telegram_id})\n"
+    
+    msg += "\n━━━━━━━━━━━━━━━━━━━━━━━━━━"
     
     await update.message.reply_text(msg, parse_mode='HTML')
 
@@ -860,20 +1079,35 @@ async def cmd_ranking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     leaderboard = gamification_service.get_leaderboard(limit=10)
     
     if not leaderboard:
-        await update.message.reply_text("🎮 Ranking ainda vazio. Comece a fazer entregas!")
+        await update.message.reply_text(
+            "🎮 <b>RANKING VAZIO</b>\n\n"
+            "Ninguém fez entregas ainda!\n"
+            "Comece a trabalhar e domine a parada! 🔥",
+            parse_mode='HTML'
+        )
         return
     
-    msg = "🏆 <b>RANKING DOS ENTREGADORES</b>\n\n"
+    msg = "🏆 <b>RANKING DOS ENTREGADORES</b>\n"
+    msg += "━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
     
     for entry in leaderboard:
         # Medalhas
-        medal = "🥇" if entry.rank == 1 else "🥈" if entry.rank == 2 else "🥉" if entry.rank == 3 else f"{entry.rank}º"
+        if entry.rank == 1:
+            medal = "🥇"
+        elif entry.rank == 2:
+            medal = "🥈"
+        elif entry.rank == 3:
+            medal = "🥉"
+        else:
+            medal = f"🟦 {entry.rank}º"
         
         # Badges
         badge_icons = " ".join([b.type.value.split()[0] for b in entry.badges[:3]])
+        if not badge_icons:
+            badge_icons = "—"
         
         # Streak
-        streak_text = f"🔥{entry.streak_days}" if entry.streak_days > 0 else ""
+        streak_text = f"🔥 {entry.streak_days}d" if entry.streak_days > 0 else ""
         
         msg += f"{medal} <b>{entry.name}</b>\n"
         msg += f"   ⭐ {entry.score} pts | {badge_icons} {streak_text}\n\n"
@@ -970,8 +1204,21 @@ async def cmd_distribuir_rota(update: Update, context: ContextTypes.DEFAULT_TYPE
     args = context.args
     if len(args) < 2:
         await update.message.reply_text(
-            "Uso: /distribuir <arquivo.xlsx> <num_entregadores>\n\n"
-            "Exemplo: /distribuir romaneio.xlsx 3"
+            "🧠 <b>OTIMIZAR E DISTRIBUIR ROTAS</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            "<b>📝 FORMATO:</b>\n"
+            "<code>/otimizar &lt;arquivo.xlsx&gt; &lt;N_entregadores&gt;</code>\n\n"
+            "<b>🎯 EXEMPLO:</b>\n"
+            "<code>/otimizar romaneio_05-11.xlsx 3</code>\n\n"
+            "<b>⚡ O QUE ACONTECE:</b>\n"
+            "1️⃣ Lê romaneio da Shopee\n"
+            "2️⃣ Agrupa entregas por STOP (mesmo prédio)\n"
+            "3️⃣ Divide geograficamente (K-means)\n"
+            "4️⃣ Otimiza cada rota (Scooter Mode)\n"
+            "5️⃣ Gera mapa HTML interativo\n"
+            "6️⃣ Envia pra cada entregador automaticamente\n\n"
+            "❗ Certifique-se de ter <code>/importar</code> o arquivo antes!",
+            parse_mode='HTML'
         )
         return
     
@@ -982,7 +1229,15 @@ async def cmd_distribuir_rota(update: Update, context: ContextTypes.DEFAULT_TYPE
         await update.message.reply_text("Numero de entregadores deve ser um inteiro.")
         return
     
-    await update.message.reply_text("Processando romaneio...")
+    await update.message.reply_text(
+        "⏳ <b>PROCESSANDO ROMANEIO...</b>\n\n"
+        "• Carregando entregas do arquivo\n"
+        "• Agrupando por STOP\n"
+        "• Dividindo entre entregadores\n"
+        "• Otimizando rotas (Scooter Mode)\n\n"
+        "🔥 <i>Isso pode levar uns 10-20 segundos...</i>",
+        parse_mode='HTML'
+    )
     
     try:
         # Import aqui para evitar circular import
@@ -997,8 +1252,12 @@ async def cmd_distribuir_rota(update: Update, context: ContextTypes.DEFAULT_TYPE
         all_deliverers = deliverer_service.list_deliverers()
         if len(all_deliverers) < num_entregadores:
             await update.message.reply_text(
-                f"Erro: Cadastrados {len(all_deliverers)} entregadores, mas precisa de {num_entregadores}.\n"
-                f"Use /add_entregador para cadastrar mais."
+                f"❌ <b>ENTREGADORES INSUFICIENTES!</b>\n\n"
+                f"👥 Cadastrados: <b>{len(all_deliverers)}</b>\n"
+                f"✅ Necessários: <b>{num_entregadores}</b>\n\n"
+                f"🚨 <b>Faltam {num_entregadores - len(all_deliverers)} entregadores!</b>\n\n"
+                f"Use <code>/add_entregador</code> pra cadastrar mais.",
+                parse_mode='HTML'
             )
             return
         
@@ -1011,15 +1270,29 @@ async def cmd_distribuir_rota(update: Update, context: ContextTypes.DEFAULT_TYPE
         routes = divider.divide_romaneio(deliveries, num_entregadores, entregadores_info)
         
         # Envia resumo pro admin
-        summary = f"<b>ROTA DISTRIBUIDA</b>\n\n"
-        summary += f"Total: {len(deliveries)} pacotes\n"
-        summary += f"Entregadores: {num_entregadores}\n\n"
+        total_distance = sum(r.total_distance_km for r in routes)
+        total_time = sum(r.total_time_minutes for r in routes)
+        
+        summary = f"✅ <b>ROTAS OTIMIZADAS E DISTRIBUÍDAS!</b>\n"
+        summary += f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        summary += f"📦 <b>RESUMO GERAL:</b>\n"
+        summary += f"• Total: {len(deliveries)} pacotes\n"
+        summary += f"• Entregadores: {num_entregadores}\n"
+        summary += f"• Distância Total: {total_distance:.1f} km\n"
+        summary += f"• Tempo Total: {total_time:.0f} min\n\n"
+        
+        summary += f"👥 <b>ROTAS POR ENTREGADOR:</b>\n\n"
         
         for i, route in enumerate(routes, 1):
-            summary += f"{i}. {route.entregador_nome}\n"
-            summary += f"   Pacotes: {route.total_packages}\n"
-            summary += f"   Paradas: {len(route.stops)}\n"
-            summary += f"   Tempo: {route.total_time_minutes:.0f} min\n\n"
+            summary += f"🔸 <b>{i}. {route.entregador_nome}</b>\n"
+            summary += f"   📦 {route.total_packages} pacotes | 📍 {len(route.stops)} paradas\n"
+            summary += f"   🛣️ {route.total_distance_km:.1f}km | ⏱️ {route.total_time_minutes:.0f}min\n"
+            summary += f"   ⚡ Atalhos: {route.shortcuts}\n\n"
+        
+        summary += f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        summary += f"📲 Mapas HTML enviados para cada entregador!\n"
+        summary += f"👀 Monitore pelo dashboard: http://localhost:8765\n\n"
+        summary += f"🔥 <i>Bora faturar!</i>"
         
         await update.message.reply_text(summary, parse_mode='HTML')
         
@@ -1050,15 +1323,20 @@ async def cmd_distribuir_rota(update: Update, context: ContextTypes.DEFAULT_TYPE
             # Envia pro entregador
             try:
                 msg = (
-                    f"<b>SUA ROTA FOI GERADA!</b>\n\n"
-                    f"Pacotes: {route.total_packages}\n"
-                    f"Paradas: {len(route.stops)}\n"
-                    f"Distancia: {route.total_distance_km:.2f} km\n"
-                    f"Tempo estimado: {route.total_time_minutes:.0f} min\n"
-                    f"Atalhos detectados: {route.shortcuts}\n\n"
-                    f"Inicio: {route.start_point[2][:50]}...\n"
-                    f"Fim: {route.end_point[2][:50]}...\n\n"
-                    f"Abrindo mapa interativo..."
+                    f"🏍️ <b>SUA ROTA DO DIA ESTÁ PRONTA!</b>\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                    f"📦 <b>RESUMO:</b>\n"
+                    f"• Pacotes: <b>{route.total_packages}</b>\n"
+                    f"• Paradas: <b>{len(route.stops)}</b>\n"
+                    f"• Distância: <b>{route.total_distance_km:.1f} km</b>\n"
+                    f"• Tempo: <b>{route.total_time_minutes:.0f} min</b>\n"
+                    f"• Atalhos: <b>{route.shortcuts}</b> ⚡\n\n"
+                    f"🎯 <b>INÍCIO:</b>\n{route.start_point[2][:60]}\n\n"
+                    f"🏁 <b>FIM:</b>\n{route.end_point[2][:60]}\n\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                    f"🗺️ Baixe o <b>mapa HTML</b> abaixo!\n"
+                    f"🔥 Abra no navegador e siga os pins!\n\n"
+                    f"<i>Boa sorte, parceiro! 🚀</i>"
                 )
                 
                 await context.bot.send_message(
@@ -1095,8 +1373,10 @@ def run_bot():
     # Handlers
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("help", cmd_help))
+    app.add_handler(CommandHandler("importar", handle_document_message))  # Novo comando!
+    app.add_handler(CommandHandler("otimizar", cmd_distribuir_rota))  # Renomeado!
+    app.add_handler(CommandHandler("distribuir", cmd_distribuir_rota))  # Mantido por compatibilidade
     app.add_handler(CommandHandler("fechar_rota", cmd_fechar_rota))
-    app.add_handler(CommandHandler("distribuir", cmd_distribuir_rota))
     app.add_handler(CommandHandler("add_entregador", cmd_add_deliverer))
     app.add_handler(CommandHandler("entregadores", cmd_list_deliverers))
     app.add_handler(CommandHandler("ranking", cmd_ranking))
