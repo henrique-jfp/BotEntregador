@@ -559,29 +559,6 @@ async def show_financial_report(update: Update, context: ContextTypes.DEFAULT_TY
     await update.message.reply_text(msg, parse_mode='HTML')
 
 
-# ==================== HEALTH CHECK (para Render) ====================
-
-def run_health_server():
-    """Servidor HTTP minimalista para health check do Render"""
-    import os
-    from http.server import HTTPServer, BaseHTTPRequestHandler
-    
-    class HealthHandler(BaseHTTPRequestHandler):
-        def do_GET(self):
-            self.send_response(200)
-            self.send_header('Content-type', 'text/plain')
-            self.end_headers()
-            self.wfile.write(b'Bot is running! 🚀')
-        
-        def log_message(self, format, *args):
-            pass  # Silencia logs HTTP
-    
-    port = int(os.getenv('PORT', 10000))
-    server = HTTPServer(('0.0.0.0', port), HealthHandler)
-    logger.info(f"🌐 Health server rodando na porta {port}")
-    server.serve_forever()
-
-
 # ==================== MAIN ====================
 
 def run_bot():
