@@ -8,6 +8,7 @@ from .genetic_optimizer import genetic_optimizer
 from .gamification_service import gamification_service
 from .dashboard_service import dashboard_ws
 from .ml_predictor import predictor
+from .scooter_optimizer import scooter_optimizer
 
 __all__ = [
     'deliverer_service',
@@ -15,5 +16,6 @@ __all__ = [
     'genetic_optimizer',
     'gamification_service',
     'dashboard_ws',
-    'predictor'
+    'predictor',
+    'scooter_optimizer'
 ]

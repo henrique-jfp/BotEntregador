@@ -38,18 +38,19 @@ class DeliveryTimePredictor:
             except:
                 pass
         
-        # Modelo inicial: regressão linear simples
+        # Modelo inicial: calibrado para SCOOTER ELÉTRICA
         return {
-            'type': 'heuristic',
-            'base_time': 5,  # minutos base
-            'distance_factor': 2.5,  # min/km
-            'rush_hour_penalty': 1.3,
+            'type': 'heuristic_scooter',
+            'base_time': 3,  # minutos base (scooter é mais rápido)
+            'distance_factor': 2.0,  # min/km (pode ir em linha reta!)
+            'rush_hour_penalty': 1.15,  # Menos afetado por tráfego
             'priority_factors': {
                 'low': 0.8,
                 'normal': 1.0,
                 'high': 1.2,
                 'urgent': 1.5
-            }
+            },
+            'shortcut_bonus': 0.85  # 15% mais rápido com atalhos
         }
     
     def predict(self, features: PredictionFeatures) -> float:
@@ -70,7 +71,13 @@ class DeliveryTimePredictor:
             return self._heuristic_predict(features)
     
     def _heuristic_predict(self, f: PredictionFeatures) -> float:
-        """Predição baseada em heurísticas"""
+        """
+        Predição baseada em heurísticas.
+        CALIBRADO PARA SCOOTER ELÉTRICA:
+        - Pode ir em linha reta (contramão, calçada)
+        - Menos afetado por tráfego
+        - Mais rápido em distâncias curtas
+        """
         model = self.model
         
         # Tempo base

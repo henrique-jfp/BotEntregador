@@ -10,7 +10,7 @@ from .config import BotConfig, DeliveryPartner
 from .session import session_manager, Romaneio, Route
 from .clustering import DeliveryPoint, TerritoryDivider
 from .parsers import parse_csv_romaneio, parse_pdf_romaneio, parse_text_romaneio
-from .services import deliverer_service, geocoding_service, genetic_optimizer, gamification_service, predictor, dashboard_ws
+from .services import deliverer_service, geocoding_service, genetic_optimizer, gamification_service, predictor, dashboard_ws, scooter_optimizer
 import uuid
 
 logging.basicConfig(level=logging.INFO)
@@ -722,18 +722,19 @@ async def cmd_ranking(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def cmd_predict_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """🤖 Previsão de tempo de entrega com IA"""
+    """🤖 Previsão de tempo de entrega com IA - MODO SCOOTER"""
     user_id = update.effective_user.id
     
     if not context.args or len(context.args) < 1:
         await update.message.reply_text(
-            "🤖 <b>Previsão de Tempo de Entrega</b>\n\n"
+            "🛵 <b>Previsão de Tempo - MODO SCOOTER</b>\n\n"
             "<b>Uso:</b>\n"
             "<code>/prever DISTANCIA_KM [PRIORIDADE]</code>\n\n"
             "<b>Exemplo:</b>\n"
             "<code>/prever 5.2 high</code>\n"
             "<code>/prever 3.0</code>\n\n"
-            "Prioridades: low, normal, high, urgent",
+            "Prioridades: low, normal, high, urgent\n\n"
+            "💡 <b>Modo Scooter:</b> Pode usar contramão, calçadas e atalhos!",
             parse_mode='HTML'
         )
         return
@@ -752,10 +753,17 @@ async def cmd_predict_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         # Avalia precisão do modelo
         accuracy = predictor.evaluate_accuracy()
-        
-        msg = f"🤖 <b>PREVISÃO DE TEMPO - IA</b>\n\n"
-        msg += f"📏 Distância: {distance} km\n"
+        🛵 <b>PREVISÃO - MODO SCOOTER ELÉTRICA</b>\n\n"
+        msg += f"📏 Distância em linha reta: {distance} km\n"
         msg += f"⚡ Prioridade: {priority.upper()}\n"
+        msg += f"⏱️ Tempo estimado: <b>{estimated:.1f} minutos</b>\n\n"
+        
+        msg += f"💨 <b>Vantagens Scooter:</b>\n"
+        msg += f"✅ Pode usar contramão e calçadas\n"
+        msg += f"✅ Atalhos não disponíveis para carros\n"
+        msg += f"✅ Menos afetado por tráfego\n"
+        msg += f"✅ Mais rápido em distâncias curtas\n\n"
+        
         msg += f"⏱️ Tempo estimado: <b>{estimated:.1f} minutos</b>\n\n"
         msg += f"📊 <b>Precisão do Modelo:</b>\n"
         
