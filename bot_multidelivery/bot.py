@@ -753,26 +753,24 @@ async def cmd_predict_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         # Avalia precisão do modelo
         accuracy = predictor.evaluate_accuracy()
-        🛵 <b>PREVISÃO - MODO SCOOTER ELÉTRICA</b>\n\n"
-        msg += f"📏 Distância em linha reta: {distance} km\n"
-        msg += f"⚡ Prioridade: {priority.upper()}\n"
-        msg += f"⏱️ Tempo estimado: <b>{estimated:.1f} minutos</b>\n\n"
+        msg = f"<b>PREVISAO - MODO SCOOTER ELETRICA</b>\n\n"
+        msg += f"Distancia em linha reta: {distance} km\n"
+        msg += f"Prioridade: {priority.upper()}\n"
+        msg += f"Tempo estimado: <b>{estimated:.1f} minutos</b>\n\n"
         
-        msg += f"💨 <b>Vantagens Scooter:</b>\n"
-        msg += f"✅ Pode usar contramão e calçadas\n"
-        msg += f"✅ Atalhos não disponíveis para carros\n"
-        msg += f"✅ Menos afetado por tráfego\n"
-        msg += f"✅ Mais rápido em distâncias curtas\n\n"
-        
-        msg += f"⏱️ Tempo estimado: <b>{estimated:.1f} minutos</b>\n\n"
-        msg += f"📊 <b>Precisão do Modelo:</b>\n"
+        msg += f"<b>Vantagens Scooter:</b>\n"
+        msg += f"- Pode usar contramao e calcadas\n"
+        msg += f"- Atalhos nao disponiveis para carros\n"
+        msg += f"- Menos afetado por trafego\n"
+        msg += f"- Mais rapido em distancias curtas\n\n"
+        msg += f"<b>Precisao do Modelo:</b>\n"
         
         if 'error' in accuracy:
-            msg += f"⚠️ {accuracy['error']}\n"
+            msg += f"[!] {accuracy['error']}\n"
         else:
-            msg += f"✅ Accuracy: {accuracy['accuracy']}\n"
-            msg += f"📉 Erro médio: {accuracy['mae']:.1f} min\n"
-            msg += f"📦 Baseado em {accuracy['samples']} entregas\n"
+            msg += f"[OK] Accuracy: {accuracy['accuracy']}\n"
+            msg += f"Erro medio: {accuracy['mae']:.1f} min\n"
+            msg += f"Baseado em {accuracy['samples']} entregas\n"
         
         await update.message.reply_text(msg, parse_mode='HTML')
     
