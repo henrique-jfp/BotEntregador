@@ -93,7 +93,7 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if user_id == BotConfig.ADMIN_TELEGRAM_ID:
         # Help para ADMIN
-        help_text = f"""
+        help_text = """
 📖 <b>MANUAL DO ADMIN - BOT MULTI-ENTREGADOR</b>
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -128,7 +128,6 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 <code>/financeiro</code> - Custos por entregador
 <code>/prever</code> - Predição de tempo IA
 
-
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 <b>🤝 TIPOS DE ENTREGADOR:</b>
@@ -141,121 +140,36 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
    • Custo: R$ 1,00/pacote (customizável)
    • Ideal: Freelancers
 
-<b>Exemplo:</b>
+<b>📝 Exemplo de uso:</b>
 <code>/add_entregador 123456 Joao parceiro 50 0</code>
 <code>/add_entregador 789012 Maria terceiro 30 1.5</code>
 
-<b>2. RECEBER ROMANEIO DA SHOPEE</b>
-   Baixe o arquivo Excel do portal Shopee
-   Formato: "DD-MM-YYYY Nome.xlsx"
-   Contem: tracking, endereco, lat/lon, stop groups
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-<b>3. DISTRIBUIR ROTA AUTOMATICAMENTE</b>
-   /distribuir "05-11-2025 Henrique.xlsx" 3
-   
-   O que acontece:
-   - Le 29 entregas do Excel
-   - Agrupa por STOP (mesmo predio)
-   - Divide geograficamente (K-means clustering)
-   - Otimiza rota de cada entregador (scooter mode)
-   - Envia mapa interativo HTML pro chat de cada um
-   
-   Cada entregador recebe:
-   - Resumo: pacotes, paradas, distancia, tempo
-   - Arquivo HTML com mapa Leaflet.js
-   - Pins clicaveis com Google Maps deeplink
-   - Botoes: Entregue / Insucesso / Transferir
+<b>📂 FORMATOS ACEITOS:</b>
 
-<b>4. MONITORAR EM TEMPO REAL</b>
-   Dashboard WebSocket: http://localhost:8765/dashboard
-   
-   Veja:
-   - Total de entregas / Entregues / Taxa sucesso
-   - Tempo medio por entrega
-   - Ranking ao vivo
-   - Lista de pacotes com status
+🔹 <b>Excel Shopee</b> (RECOMENDADO)
+   Lat/lon já vem pronto!
 
-<b>5. ANALISAR DESEMPENHO</b>
-   /ranking - Gamificacao com conquistas
-   /entregadores - Status de cada um
-   
-   Status Atual (botao):
-   - Progresso por entregador
-   - Percentual de conclusao
-   - Pacotes pendentes
+🔹 <b>CSV Genérico</b>
+   tracking,endereco,lat,lon,prioridade
 
-<b>6. RELATORIO FINANCEIRO</b>
-   Relatorio Financeiro (botao):
-   - Custos por entregador
-   - Socios: R$ 0
-   - Colaboradores: R$ 1/pacote
-   - Total do dia
+🔹 <b>Texto Manual</b>
+   Um endereço por linha
 
-<b>=== FORMATOS SUPORTADOS ===</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-<b>Excel Shopee (RECOMENDADO):</b>
-Colunas: AT ID, Sequence, Stop, SPX TN, Destination Address, 
-         Bairro, City, Zipcode, Latitude, Longitude
-Vantagem: Lat/lon ja vem pronto (zero geocoding!)
+<b>🧠 ALGORITMO SCOOTER MODE:</b>
 
-<b>CSV Generico:</b>
-tracking,endereco,lat,lon,prioridade
-BR123,Rua X 123,-22.9,-43.1,alta
+✅ Agrupa entregas por STOP (mesmo prédio)
+✅ Divide geograficamente (K-means)
+✅ Otimiza rota (distância euclidiana)
+✅ 79% economia vs rota original Shopee
 
-<b>Texto (legado):</b>
-Cole enderecos um por linha
-Aceita numeracao (1., 2.) e emojis
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-<b>PDF (legado):</b>
-Anexe documento
-OCR automatico se escaneado
-
-<b>=== PREVISAO DE TEMPO IA ===</b>
-
-/prever Botafogo | Copacabana alta
-
-Considera:
-- Distancia em linha reta (scooter)
-- Horario (rush hour 7-9h, 17-19h)
-- Trafego estimado
-- Prioridade do pacote
-- Historico de entregas
-
-Modo Scooter vantagens:
-- Pode usar contramao e calcadas
-- Atalhos nao disponiveis para carros
-- Menos afetado por trafego
-- Mais rapido em distancias curtas
-
-<b>=== ALGORITMO DE OTIMIZACAO ===</b>
-
-<b>Stop Clustering:</b>
-29 entregas -> 7 stops (4.1x eficiencia)
-Agrupa multiplas entregas no mesmo predio
-
-<b>K-means Geografico:</b>
-Divide stops entre entregadores
-Minimiza distancia total
-Balanceia carga de trabalho
-
-<b>Scooter Optimizer:</b>
-Usa distancia euclidiana (linha reta)
-Algoritmo guloso: sempre mais proximo
-79% economia vs rota Shopee original
-
-<b>=== KEYS NECESSARIAS ===</b>
-
-.env file:
-TELEGRAM_TOKEN=seu_token_aqui
-ADMIN_TELEGRAM_ID=seu_id_numerico
-GOOGLE_CLOUD_CREDENTIALS=caminho/para/credentials.json
-GEMINI_API_KEY=sua_key_gemini (opcional)
-
-<b>=== SUPORTE ===</b>
-
-Problemas? Contate o desenvolvedor
-GitHub: github.com/seu-repo
-Versao: 20/10 - Scooter Mode + Mapa Interativo
+💡 Use <code>/help</code> a qualquer momento!
+🚀 Versão 20/10 - Scooter Mode + Mapa Interativo
 """
     else:
         # Help para ENTREGADOR
@@ -271,6 +185,8 @@ Versao: 20/10 - Scooter Mode + Mapa Interativo
         
         tipo = "🤝 PARCEIRO" if partner.is_partner else "💼 COLABORADOR"
         
+        pagamento = "Você é <b>SÓCIO</b>\nNão paga por pacote\nParticipa dos lucros" if partner.is_partner else f"Você é <b>COLABORADOR</b>\nR$ {partner.cost_per_package:.2f} por pacote\nPagamento no final do dia"
+        
         help_text = f"""
 📚 <b>MANUAL DO ENTREGADOR</b>
 ━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -284,127 +200,65 @@ Versao: 20/10 - Scooter Mode + Mapa Interativo
 
 <b>🚀 COMO FUNCIONA (4 PASSOS):</b>
 
-<b>1. RECEBER ROTA DO DIA</b>
-   O admin vai enviar sua rota otimizada:
-   
-   Voce recebe:
-   - Resumo: X pacotes, Y paradas, Z minutos
-   - Arquivo HTML: rota_seu_nome.html
-   - Distancia total e atalhos detectados
-   - Ponto inicial e final
+<b>1️⃣ RECEBER ROTA</b>
+   Admin envia sua rota otimizada
+   Você recebe arquivo HTML interativo
 
-<b>2. ABRIR MAPA INTERATIVO</b>
-   Baixe o arquivo HTML enviado
-   Abra no navegador (Chrome/Safari/Firefox)
-   
-   O mapa mostra:
-   - Pins numerados (ordem otimizada)
-   - Linha conectando os pontos
-   - Sua localizacao atual
-   - Header com progresso (X de Y paradas)
+<b>2️⃣ ABRIR MAPA</b>
+   Baixa o HTML e abre no navegador
+   Pins numerados + linha conectando
 
-<b>3. NAVEGAR ENTRE PARADAS</b>
-   Click no pin da proxima parada
-   
-   Card mostra:
-   - Numero da parada
-   - Endereco completo
-   - Quantidade de pacotes naquele local
-   - Status (atual/pendente/entregue)
-   
-   Botao "Abrir no Google Maps":
-   - Abre navegacao GPS automatica
-   - Te leva ate o endereco exato
+<b>3️⃣ NAVEGAR</b>
+   Clica no pin da próxima parada
+   Botão "Google Maps" abre navegação
 
-<b>4. MARCAR STATUS DA ENTREGA</b>
-   Depois de entregar:
-   
-   [Entregue] - Entrega bem sucedida
-   - Marca pin como laranja (concluido)
-   - Atualiza contador no header
-   - Notifica o admin
-   
-   [Insucesso] - Nao conseguiu entregar
-   - Marca pin como vermelho (falhou)
-   - Registra motivo (destinatario ausente, etc)
-   - Admin pode redistribuir
-   
-   [Transferir] - Transferir para outro entregador
-   - Solicita transferencia ao admin
-   - Util se pacote pesado demais
-   - Ou se saiu da sua rota
+<b>4️⃣ MARCAR ENTREGAS</b>
+   ✅ Entregue - Sucesso
+   ❌ Insucesso - Não conseguiu
+   🔄 Transferir - Passar pra outro
 
-<b>5. VISUALIZAR PROGRESSO</b>
-   Header do mapa atualiza em tempo real:
-   "3 de 7 paradas | 14 pacotes"
-   
-   Cores dos pins:
-   - Verde: Parada atual
-   - Roxo: Pendente (ainda nao visitou)
-   - Laranja: Entregue (completo)
-   - Vermelho: Insucesso (falhou)
+━━━━━━━━━━━━━━━━━━━━━━━━━
 
-<b>=== STOPS (GRUPOS DE ENTREGAS) ===</b>
+<b>🎯 STOPS (GRUPOS):</b>
 
-1 STOP = 1 ENDERECO com multiplas entregas
+1 STOP = Múltiplas entregas no mesmo local
 
-Exemplo: Predio X, Apto 201, 603, 903
-= 3 entregas no mesmo stop
+Exemplo: Prédio X
+• Apto 201, 603, 903 = 3 entregas
+• Faz todas de uma vez = Eficiência!
 
-Vantagem:
-- Faz todas de uma vez
-- Economiza tempo de deslocamento
-- Maior eficiencia
+━━━━━━━━━━━━━━━━━━━━━━━━━
 
-<b>=== MODO SCOOTER - DIFERENCIAIS ===</b>
+<b>🏍️ MODO SCOOTER:</b>
 
-Seu algoritmo e otimizado para scooter eletrica:
+Seu algoritmo considera:
+✅ Contrafluxo (quando seguro)
+✅ Calçadas e atalhos
+✅ Vielas e becos
+✅ 79% mais rápido que rota original!
 
-Pode fazer:
-- Contramao (quando seguro)
-- Calcadas (trafego lento)
-- Atalhos entre predios
-- Vielas e becos
+━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Por isso a rota e DIFERENTE da Shopee!
-Economia: ate 79% menos distancia
+<b>💰 PAGAMENTO:</b>
 
-<b>=== PAGAMENTO ===</b>
+{pagamento}
 
-{'Voce e <b>SOCIO</b>\nNao paga por pacote entregue\nParticipa dos lucros mensais' if partner.is_partner else 'Voce e <b>COLABORADOR</b>\nR$ 1,00 por pacote entregue\nPagamento no final do dia'}
+━━━━━━━━━━━━━━━━━━━━━━━━━
 
-<b>=== DICAS PRO ===</b>
+<b>💡 DICAS PRO:</b>
 
-1. Siga a ordem sugerida
-   - IA ja otimizou pra voce
-   - Economiza tempo e bateria
-   
-2. Marque logo apos entregar
-   - Admin acompanha em tempo real
-   - Evita confusao no final do dia
-   
-3. Use o Google Maps deeplink
-   - Mais preciso que endereco digitado
-   - Ja vem com lat/lon exata
-   
-4. Agrupe entregas do mesmo stop
-   - Faca todas antes de sair do predio
-   - Evita voltar no mesmo lugar
-   
-5. Consulte o mapa sempre que precisar
-   - Arquivo HTML funciona offline
-   - Pode abrir quantas vezes quiser
+• Siga a ordem do mapa (IA otimizou)
+• Marque logo após entregar
+• Use o Google Maps deeplink
+• Agrupe entregas do mesmo STOP
 
-<b>=== SUPORTE ===</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Problemas com:
-- Mapa nao abre: Use Chrome/Firefox atualizado
-- Google Maps nao funciona: Verifique GPS do celular
-- Botoes nao respondem: Recarregue pagina (F5)
+<b>🆘 SUPORTE:</b>
 
-Duvidas? Fale com o admin!
+Problemas? Fale com o admin!
 
-Boas entregas!
+🚀 Boas entregas, parceiro!
 """
     
     await update.message.reply_text(help_text, parse_mode='HTML')
