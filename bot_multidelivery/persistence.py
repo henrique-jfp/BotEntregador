@@ -153,6 +153,21 @@ class DataStore:
         
         return packages
     
+    def get_all_packages(self) -> List[dict]:
+        """Retorna todos os pacotes como dicts (para gamification)"""
+        if not self.packages_file.exists():
+            return []
+        
+        packages = []
+        with open(self.packages_file, 'r', encoding='utf-8') as f:
+            for line in f:
+                try:
+                    packages.append(json.loads(line))
+                except:
+                    continue
+        
+        return packages
+    
     # ==================== RELATÓRIOS ====================
     
     def save_financial_report(self, report: FinancialReport):
