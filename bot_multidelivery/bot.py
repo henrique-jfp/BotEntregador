@@ -67,11 +67,11 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 /start - Menu principal do bot
 /help - Esta mensagem de ajuda
-/add_entregador <telegram_id> <nome> [socio] - Cadastra entregador
+/add_entregador &lt;telegram_id&gt; &lt;nome&gt; [socio] - Cadastra entregador
 /entregadores - Lista todos os entregadores
 /ranking - Ranking de gamificacao
-/prever <origem> | <destino> [prioridade] - Previsao de tempo IA
-/distribuir <arquivo.xlsx> <num_entregadores> - Divide romaneio inteligente
+/prever &lt;origem&gt; | &lt;destino&gt; [prioridade] - Previsao de tempo IA
+/distribuir &lt;arquivo.xlsx&gt; &lt;num_entregadores&gt; - Divide romaneio inteligente
 
 <b>=== FLUXO COMPLETO - PASSO A PASSO ===</b>
 
@@ -770,7 +770,7 @@ async def cmd_add_deliverer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(args) < 3:
         await update.message.reply_text(
             "📝 <b>Uso:</b>\n"
-            "<code>/add_entregador TELEGRAM_ID NOME TIPO CAPACIDADE CUSTO</code>\n\n"
+            "<code>/add_entregador &lt;telegram_id&gt; &lt;nome&gt; &lt;tipo&gt; &lt;capacidade&gt; &lt;custo&gt;</code>\n\n"
             "<b>Exemplo:</b>\n"
             "<code>/add_entregador 123456789 João parceiro 50 0</code>\n"
             "<code>/add_entregador 987654321 Maria terceiro 30 1.00</code>\n\n"
