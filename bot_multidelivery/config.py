@@ -26,13 +26,8 @@ class BotConfig:
     # Admin que controla tudo
     ADMIN_TELEGRAM_ID = int(os.getenv('ADMIN_TELEGRAM_ID', '0'))
     
-    # Entregadores cadastrados (pode vir de DB depois)
-    DELIVERY_PARTNERS: List[DeliveryPartner] = [
-        DeliveryPartner(telegram_id=123456789, name="João (Sócio)", is_partner=True),
-        DeliveryPartner(telegram_id=987654321, name="Maria (Sócio)", is_partner=True),
-        DeliveryPartner(telegram_id=111222333, name="Carlos", is_partner=False),
-        DeliveryPartner(telegram_id=444555666, name="Ana", is_partner=False),
-    ]
+    # Entregadores cadastrados (LEGADO - usar deliverer_service agora)
+    DELIVERY_PARTNERS: List[DeliveryPartner] = []
     
     # Constantes
     MAX_ROMANEIOS_PER_BATCH = 10
@@ -40,7 +35,18 @@ class BotConfig:
     
     @classmethod
     def get_partner_by_id(cls, telegram_id: int) -> DeliveryPartner | None:
-        return next((p for p in cls.DELIVERY_PARTNERS if p.telegram_id == telegram_id), None)
+        """LEGADO - Usa deliverer_service internamente"""
+        from .services import deliverer_service
+        
+        deliverer = deliverer_service.get_deliverer(telegram_id)
+        if deliverer:
+            # Converte Deliverer para DeliveryPartner (compatibilidade)
+            return DeliveryPartner(
+                telegram_id=deliverer.telegram_id,
+                name=deliverer.name,
+                is_partner=deliverer.is_partner
+            )
+        return None
     
     @classmethod
     def get_partner_name(cls, telegram_id: int) -> str:

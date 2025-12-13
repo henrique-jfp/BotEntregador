@@ -6,14 +6,26 @@ Agora com suporte a ID e prioridade.
 
 import csv
 import io
-from typing import List, Dict, Tuple
+from typing import List, Dict
 
 
 def parse_csv_romaneio(file_content: bytes) -> List[Dict[str, str]]:
     """
     Parse romaneio em formato CSV com suporte a metadados.
     
-    Retorna lista de dicts com: address, id (opcional), priority (opcional)
+    Args:
+        file_content: Conteúdo do arquivo CSV em bytes
+        
+    Returns:
+        Lista de dicts com:
+        - address: Endereço (obrigatório)
+        - id: ID do pacote (opcional, gera automático se não tiver)
+        - priority: Prioridade (opcional, padrão: normal)
+        
+    Formatos aceitos:
+        1. id,endereco,prioridade
+        2. endereco,prioridade
+        3. endereco (apenas)
     """
     Parse romaneio em formato CSV.
     
@@ -55,40 +67,43 @@ def parse_csv_romaneio(file_content: bytes) -> List[Dict[str, str]]:
     return parse_text_romaneio(text)
 
 
-def _extract_addresses_from_rows(rows: List[dict]) -> List[str]:
+def _extract_addresses_from_rows(rows: List[dict]) -> List[Dict[str, str]]:
     """
-    Extrai endereços de linhas CSV baseado nas colunas disponíveis.
+    Extrai endereços e metadados de linhas CSV.
+    
+    Returns:
+        Lista de dicts com: address, id (opcional), priority (opcional)
     """
     if not rows:
         return []
     
-    addresses = []
-    headers = [h.lower().strip() for h in rows[0].keys()]
+    paMapear colunas
+    id_cols = ['id', 'package_id', 'pacote_id', 'codigo', 'code']
+    priority_cols = ['prioridade', 'priority', 'prio']
+    address_columns = ['endereco', 'endereço', 'address', 'addr', 'end']
+    
+    id_col = next((c for c in id_cols if c in headers), None)
+    priority_col = next((c for c in priority_cols if c in headers), None)
     
     # Estratégia 1: Procura coluna de endereço completo
-    address_columns = ['endereco', 'endereço', 'address', 'addr', 'end']
     for col_name in address_columns:
         if col_name in headers:
-            for row in rows:
+            for i, row in enumerate(rows):
                 addr = row.get(col_name) or row.get(col_name.title())
                 if addr and addr.strip():
+                    package = {
+                        'address': addr.strip(),
+                        'id': row.get(id_col, f'PKG{i:03d}') if id_col else f'PKG{i:03d}',
+                        'priority': row.get(priority_col, 'normal').lower() if priority_col else 'normal'
+                    }
+                    packages.append(package)
+            if packages:
+                return packagdr.strip():
                     addresses.append(addr.strip())
             if addresses:
                 return addresses
     
-    # Estratégia 2: Combina colunas separadas (rua + número + bairro + cidade)
-    street_cols = ['rua', 'street', 'logradouro', 'avenida', 'av']
-    number_cols = ['numero', 'número', 'number', 'num', 'n']
-    district_cols = ['bairro', 'district', 'neighborhood']
-    city_cols = ['cidade', 'city', 'municipio', 'município']
-    
-    street_col = next((c for c in street_cols if c in headers), None)
-    number_col = next((c for c in number_cols if c in headers), None)
-    district_col = next((c for c in district_cols if c in headers), None)
-    city_col = next((c for c in city_cols if c in headers), None)
-    
-    if street_col:
-        for row in rows:
+    # Estrati, row in enumerate(rows):
             parts = []
             
             # Rua
@@ -111,6 +126,28 @@ def _extract_addresses_from_rows(rows: List[dict]) -> List[str]:
             # Cidade
             if city_col:
                 city = row.get(city_col, '').strip()
+                if city:
+                    parts.append(city)
+            
+            if parts:
+                package = {
+                    'address': ', '.join(parts),
+                    'id': row.get(id_col, f'PKG{i:03d}') if id_col else f'PKG{i:03d}',
+                    'priority': row.get(priority_col, 'normal').lower() if priority_col else 'normal'
+                }
+                packages.append(package)
+        
+        if packages:
+            i, row in enumerate(rows):
+            addr = row.get(col_name, '').strip()
+            if addr:
+                package = {
+                    'address': addr,
+                    'id': f'PKG{i:03d}',
+                    'priority': 'normal'
+                }
+                packages.append(package)
+        return packag row.get(city_col, '').strip()
                 if city:
                     parts.append(city)
             

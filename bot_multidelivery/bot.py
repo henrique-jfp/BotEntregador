@@ -10,6 +10,7 @@ from .config import BotConfig, DeliveryPartner
 from .session import session_manager, Romaneio, Route
 from .clustering import DeliveryPoint, TerritoryDivider
 from .parsers import parse_csv_romaneio, parse_pdf_romaneio, parse_text_romaneio
+from .services import deliverer_service
 import uuid
 
 logging.basicConfig(level=logging.INFO)
@@ -559,6 +560,102 @@ async def show_financial_report(update: Update, context: ContextTypes.DEFAULT_TY
     await update.message.reply_text(msg, parse_mode='HTML')
 
 
+# ==================== DELIVERER MANAGEMENT ====================
+
+async def cmd_add_deliverer(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Adiciona novo entregador - Admin only"""
+    user_id = update.effective_user.id
+    
+    if user_id != BotConfig.ADMIN_TELEGRAM_ID:
+        await update.message.reply_text("❌ Comando exclusivo para admin.")
+        return
+    
+    args = context.args
+    if len(args) < 3:
+        await update.message.reply_text(
+            "📝 <b>Uso:</b>\n"
+            "<code>/add_entregador TELEGRAM_ID NOME TIPO CAPACIDADE CUSTO</code>\n\n"
+            "<b>Exemplo:</b>\n"
+            "<code>/add_entregador 123456789 João parceiro 50 0</code>\n"
+            "<code>/add_entregador 987654321 Maria terceiro 30 1.00</code>\n\n"
+            "<b>Tipos:</b> parceiro | terceiro\n"
+            "<b>Capacidade:</b> Máximo de pacotes por dia\n"
+            "<b>Custo:</b> R$ por pacote (0 para parceiro)",
+            parse_mode='HTML'
+        )
+        return
+    
+    try:
+        telegram_id = int(args[0])
+        name = args[1]
+        tipo = args[2].lower()
+        capacidade = int(args[3]) if len(args) > 3 else 50
+        custo = float(args[4]) if len(args) > 4 else (0 if tipo == "parceiro" else 1.0)
+        
+        is_partner = tipo == "parceiro"
+        
+        # Usa deliverer_service para adicionar
+        success = deliverer_service.add_deliverer(
+            telegram_id=telegram_id,
+            name=name,
+            is_partner=is_partner,
+            max_capacity=capacidade,
+            cost_per_package=custo
+        )
+        
+        if success:
+            tipo_emoji = "🤝" if is_partner else "💼"
+            await update.message.reply_text(
+                f"✅ <b>Entregador cadastrado!</b>\n\n"
+                f"{tipo_emoji} <b>{name}</b>\n"
+                f"🆔 Telegram: {telegram_id}\n"
+                f"📦 Capacidade: {capacidade} pacotes/dia\n"
+                f"💰 Custo: R$ {custo:.2f}/pacote",
+                parse_mode='HTML'
+            )
+        else:
+            await update.message.reply_text("❌ Erro: Entregador já existe!")
+    
+    except (ValueError, IndexError) as e:
+        await update.message.reply_text(f"❌ Erro nos parâmetros: {e}")
+
+
+async def cmd_list_deliverers(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Lista todos os entregadores - Admin only"""
+    user_id = update.effective_user.id
+    
+    if user_id != BotConfig.ADMIN_TELEGRAM_ID:
+        await update.message.reply_text("❌ Comando exclusivo para admin.")
+        return
+    
+    deliverers = deliverer_service.get_all_deliverers()
+    
+    if not deliverers:
+        await update.message.reply_text("📭 Nenhum entregador cadastrado ainda.\n\nUse /add_entregador")
+        return
+    
+    active = [d for d in deliverers if d.is_active]
+    inactive = [d for d in deliverers if not d.is_active]
+    
+    msg = "👥 <b>ENTREGADORES CADASTRADOS</b>\n\n"
+    
+    if active:
+        msg += "✅ <b>ATIVOS:</b>\n\n"
+        for d in active:
+            tipo = "🤝 Parceiro" if d.is_partner else "💼 Terceiro"
+            stats = f"{d.total_deliveries} entregas | {d.success_rate:.1f}% sucesso"
+            msg += f"• <b>{d.name}</b> ({tipo})\n"
+            msg += f"  🆔 {d.telegram_id} | 📦 {d.max_capacity} pacotes\n"
+            msg += f"  💰 R$ {d.cost_per_package:.2f}/pacote | {stats}\n\n"
+    
+    if inactive:
+        msg += "❌ <b>INATIVOS:</b>\n\n"
+        for d in inactive:
+            msg += f"• {d.name} (ID: {d.telegram_id})\n"
+    
+    await update.message.reply_text(msg, parse_mode='HTML')
+
+
 # ==================== MAIN ====================
 
 def run_bot():
@@ -569,11 +666,13 @@ def run_bot():
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("help", cmd_help))
     app.add_handler(CommandHandler("fechar_rota", cmd_fechar_rota))
+    app.add_handler(CommandHandler("add_entregador", cmd_add_deliverer))
+    app.add_handler(CommandHandler("entregadores", cmd_list_deliverers))
     app.add_handler(MessageHandler(filters.Document.ALL, handle_document_message))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_message))
     app.add_handler(CallbackQueryHandler(handle_callback_query))
     
-    logger.info("🚀 Bot iniciado! Suporta: texto, CSV, PDF")
+    logger.info("🚀 Bot iniciado! Suporta: texto, CSV, PDF + Deliverer Management")
     app.run_polling()
 
 
