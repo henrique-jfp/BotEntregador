@@ -11,6 +11,7 @@ from .session import session_manager, Romaneio, Route
 from .clustering import DeliveryPoint, TerritoryDivider
 from .parsers import parse_csv_romaneio, parse_pdf_romaneio, parse_text_romaneio
 from .services import deliverer_service, geocoding_service, genetic_optimizer, gamification_service, predictor, dashboard_ws, scooter_optimizer
+from .services.map_generator import MapGenerator
 import uuid
 
 logging.basicConfig(level=logging.INFO)
@@ -299,8 +300,9 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
         return
 
     if state == "adding_deliverer_id":
+        digits_only = ''.join(ch for ch in text if ch.isdigit())
         try:
-            telegram_id = int(text.strip())
+            telegram_id = int(digits_only)
         except ValueError:
             await update.message.reply_text(
                 "⚠️ ID inválido. Envie só números (ex: 123456789).",
@@ -324,33 +326,6 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
             parse_mode='HTML',
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
-        return
-
-    if state == "adding_deliverer_capacity_manual":
-        try:
-            capacity = int(text.strip())
-            if capacity <= 0:
-                raise ValueError
-        except ValueError:
-            await update.message.reply_text(
-                "⚠️ Capacidade inválida. Envie um número inteiro positivo (ex: 50).",
-                parse_mode='HTML'
-            )
-            return
-
-        data = session_manager.get_temp_data(user_id, "new_deliverer") or {}
-        data["capacity"] = capacity
-        session_manager.save_temp_data(user_id, "new_deliverer", data)
-
-        is_partner = data.get("is_partner", False)
-        if is_partner:
-            await send_deliverer_summary(update, user_id, data)
-        else:
-            session_manager.set_admin_state(user_id, "adding_deliverer_cost")
-            await update.message.reply_text(
-                "💰 Qual o <b>custo por pacote</b>? (ex: 1.50)",
-                parse_mode='HTML'
-            )
         return
 
     if state == "adding_deliverer_cost":
@@ -449,7 +424,7 @@ async def send_deliverer_summary(update: Update, user_id: int, data: dict):
     name = data.get("name", "—")
     telegram_id = data.get("telegram_id", "—")
     is_partner = data.get("is_partner", False)
-    capacity = data.get("capacity", 50)
+    capacity = data.get("capacity", 9999)
     cost = 0.0 if is_partner else data.get("cost", 1.0)
 
     session_manager.set_admin_state(user_id, "confirming_deliverer")
@@ -467,7 +442,7 @@ async def send_deliverer_summary(update: Update, user_id: int, data: dict):
         f"👤 Nome: <b>{name}</b>\n"
         f"🆔 ID: <code>{telegram_id}</code>\n"
         f"🏷️ Tipo: {tipo_txt}\n"
-        f"📦 Capacidade: <b>{capacity}</b> pacotes/dia\n"
+        f"📦 Capacidade: <b>flexível</b> (define por rota)\n"
         f"💰 Custo: R$ {cost:.2f}/pacote\n\n"
         "Confirmar cadastro?"
     )
@@ -675,6 +650,24 @@ async def cmd_fechar_rota(update: Update, context: ContextTypes.DEFAULT_TYPE):
             cluster=cluster,
             optimized_order=optimized
         )
+        # Gera mapa para preview/admin
+        stops_data = []
+        for i, point in enumerate(optimized):
+            status = 'current' if i == 0 else 'pending'
+            stops_data.append((point.lat, point.lng, point.address, 1, status))
+
+        eta_minutes = max(10, route.total_distance_km / 25 * 60 + len(optimized) * 3)
+        html = MapGenerator.generate_interactive_map(
+            stops=stops_data,
+            entregador_nome=f"{route.id}",
+            current_stop=0,
+            total_packages=route.total_packages,
+            total_distance_km=route.total_distance_km,
+            total_time_min=eta_minutes
+        )
+        map_file = f"map_{route.id}.html"
+        MapGenerator.save_map(html, map_file)
+        route.map_file = map_file
         routes.append(route)
     
     session_manager.set_routes(routes)
@@ -689,15 +682,46 @@ async def cmd_fechar_rota(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for route in routes:
         summary += f"<b>{route.id}</b>: {route.total_packages} pacotes\n"
     
-    summary += "\n🚀 Agora atribua as rotas aos entregadores:"
-    
-    keyboard = []
+    summary += "\n🚀 Agora atribua as rotas aos entregadores (pré-visualize os mapas abaixo):"
+    await update.message.reply_text(summary, parse_mode='HTML')
+
+    # Envia mapas para o admin pré-visualizar e escolher entregador
     for route in routes:
-        keyboard.append([InlineKeyboardButton(f"Atribuir {route.id}", callback_data=f"assign_route_{route.id}")])
-    
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    await update.message.reply_text(summary, parse_mode='HTML', reply_markup=reply_markup)
+        caption = (
+            f"🗺️ <b>Preview {route.id}</b>\n"
+            f"📦 Pacotes: {route.total_packages}\n"
+            f"🛣️ Distância: {route.total_distance_km:.1f} km\n"
+            f"⏱️ ETA: ~{max(10, route.total_distance_km/25*60 + len(route.optimized_order)*3):.0f} min\n\n"
+            "Selecione o entregador:" )
+
+        keyboard = [[InlineKeyboardButton("Escolher entregador", callback_data=f"assign_route_{route.id}")]]
+
+        if route.map_file:
+            try:
+                with open(route.map_file, 'rb') as f:
+                    await context.bot.send_document(
+                        chat_id=BotConfig.ADMIN_TELEGRAM_ID,
+                        document=f,
+                        filename=route.map_file,
+                        caption=caption,
+                        parse_mode='HTML',
+                        reply_markup=InlineKeyboardMarkup(keyboard)
+                    )
+            except Exception as e:
+                logger.warning(f"Falha ao enviar mapa {route.id} para admin: {e}")
+                await context.bot.send_message(
+                    chat_id=BotConfig.ADMIN_TELEGRAM_ID,
+                    text=caption,
+                    parse_mode='HTML',
+                    reply_markup=InlineKeyboardMarkup(keyboard)
+                )
+        else:
+            await context.bot.send_message(
+                chat_id=BotConfig.ADMIN_TELEGRAM_ID,
+                text=caption,
+                parse_mode='HTML',
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
 
 
 async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -712,10 +736,11 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
         session_manager.save_temp_data(query.from_user.id, "assigning_route", route_id)
         
         # Mostra lista de entregadores
+        deliverers = [d for d in deliverer_service.get_all_deliverers() if d.is_active]
         keyboard = []
-        for partner in BotConfig.DELIVERY_PARTNERS:
+        for partner in deliverers:
             keyboard.append([InlineKeyboardButton(
-                f"{partner.name} {'(Sócio)' if partner.is_partner else ''}",
+                f"{partner.name} {'(Sócio)' if partner.is_partner else ' (Colaborador)'}",
                 callback_data=f"deliverer_{partner.telegram_id}"
             )])
         
@@ -759,46 +784,15 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
 
     elif data.startswith("add_partner_"):
         is_partner = data.endswith("yes")
-        session_manager.set_admin_state(query.from_user.id, "adding_deliverer_capacity")
         temp = session_manager.get_temp_data(query.from_user.id, "new_deliverer") or {}
         temp["is_partner"] = is_partner
+        temp["capacity"] = 9999  # Sem limite; rotas definem qtd de pacotes
         if is_partner:
             temp["cost"] = 0.0
-        session_manager.save_temp_data(query.from_user.id, "new_deliverer", temp)
-
-        keyboard = [
-            [InlineKeyboardButton("30", callback_data="add_capacity_30"), InlineKeyboardButton("50", callback_data="add_capacity_50"), InlineKeyboardButton("80", callback_data="add_capacity_80")],
-            [InlineKeyboardButton("Outro", callback_data="add_capacity_other")]
-        ]
-
-        await query.edit_message_text(
-            "📦 Quantos pacotes/dia cabem?",
-            parse_mode='HTML',
-            reply_markup=InlineKeyboardMarkup(keyboard)
-        )
-
-    elif data.startswith("add_capacity_"):
-        temp = session_manager.get_temp_data(query.from_user.id, "new_deliverer") or {}
-        choice = data.replace("add_capacity_", "")
-
-        if choice == "other":
-            session_manager.set_admin_state(query.from_user.id, "adding_deliverer_capacity_manual")
-            await query.edit_message_text(
-                "✏️ Digite a <b>capacidade</b> manualmente (número de pacotes/dia).",
-                parse_mode='HTML'
-            )
-            return
-
-        try:
-            capacity = int(choice)
-        except ValueError:
-            capacity = 50
-        temp["capacity"] = capacity
-        session_manager.save_temp_data(query.from_user.id, "new_deliverer", temp)
-
-        if temp.get("is_partner", False):
+            session_manager.save_temp_data(query.from_user.id, "new_deliverer", temp)
             await send_deliverer_summary(update, query.from_user.id, temp)
         else:
+            session_manager.save_temp_data(query.from_user.id, "new_deliverer", temp)
             session_manager.set_admin_state(query.from_user.id, "adding_deliverer_cost")
             await query.edit_message_text(
                 "💰 Qual o <b>custo por pacote</b>? (ex: 1.50)",
@@ -807,7 +801,7 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
 
     elif data == "confirm_add_deliverer":
         temp = session_manager.get_temp_data(query.from_user.id, "new_deliverer") or {}
-        required = ["name", "telegram_id", "capacity", "is_partner"]
+        required = ["name", "telegram_id", "is_partner"]
         if not all(key in temp for key in required):
             await query.edit_message_text(
                 "⚠️ Dados incompletos. Refaça o cadastro com /add_entregador.",
@@ -830,7 +824,7 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
             telegram_id=temp["telegram_id"],
             name=temp["name"],
             is_partner=temp.get("is_partner", False),
-            max_capacity=temp.get("capacity", 50)
+            max_capacity=temp.get("capacity", 9999)
         )
 
         # Atualiza custo customizado se colaborador
@@ -883,6 +877,25 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
 
 async def send_route_to_deliverer(context: ContextTypes.DEFAULT_TYPE, telegram_id: int, route: Route, session):
     """Envia rota formatada para o entregador"""
+    # Garante que existe mapa HTML
+    if not route.map_file:
+        stops_data = []
+        for i, point in enumerate(route.optimized_order):
+            status = 'current' if i == 0 else 'pending'
+            stops_data.append((point.lat, point.lng, point.address, 1, status))
+
+        eta_minutes = max(10, route.total_distance_km / 25 * 60 + len(route.optimized_order) * 3)
+        html = MapGenerator.generate_interactive_map(
+            stops=stops_data,
+            entregador_nome=f"{route.id}",
+            current_stop=0,
+            total_packages=route.total_packages,
+            total_distance_km=route.total_distance_km,
+            total_time_min=eta_minutes
+        )
+        route.map_file = f"map_{route.id}.html"
+        MapGenerator.save_map(html, route.map_file)
+
     message = f"🗺️ <b>SUA ROTA - {route.id}</b>\n\n"
     message += f"📍 Base: {session.base_address}\n"
     message += f"📦 Total: {route.total_packages} pacotes\n\n"
@@ -899,6 +912,18 @@ async def send_route_to_deliverer(context: ContextTypes.DEFAULT_TYPE, telegram_i
         text=message,
         parse_mode='HTML'
     )
+
+    if route.map_file:
+        try:
+            with open(route.map_file, 'rb') as f:
+                await context.bot.send_document(
+                    chat_id=telegram_id,
+                    document=f,
+                    filename=route.map_file,
+                    caption="🗺️ Abra o mapa HTML para navegar a rota."
+                )
+        except Exception as e:
+            logger.warning(f"Falha ao enviar mapa para entregador {telegram_id}: {e}")
 
 
 # ==================== DELIVERER HANDLERS ====================

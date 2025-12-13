@@ -29,6 +29,7 @@ class Route:
     assigned_to_name: Optional[str] = None
     optimized_order: List[DeliveryPoint] = field(default_factory=list)
     delivered_packages: List[str] = field(default_factory=list)  # package_ids
+    map_file: Optional[str] = None  # Caminho do mapa HTML gerado
     
     @property
     def total_packages(self) -> int:
