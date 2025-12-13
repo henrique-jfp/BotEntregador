@@ -1,0 +1,325 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rota - Henrique - Entregador 1</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            overflow: hidden;
+        }
+        
+        #map {
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        .header {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        .header .title {
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
+        
+        .header .stats {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+        
+        .bottom-card {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-radius: 20px 20px 0 0;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.2);
+            padding: 20px;
+            z-index: 1000;
+            max-height: 40vh;
+            overflow-y: auto;
+            display: none;
+        }
+        
+        .bottom-card.visible {
+            display: block;
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+        
+        .card-number {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        
+        .card-close {
+            background: #f5f5f5;
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            font-size: 20px;
+            cursor: pointer;
+        }
+        
+        .card-address {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .card-info {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .btn:active {
+            transform: scale(0.95);
+        }
+        
+        .btn-success {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .btn-danger {
+            background: #F44336;
+            color: white;
+        }
+        
+        .btn-transfer {
+            background: #2196F3;
+            color: white;
+        }
+        
+        .btn-maps {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin-bottom: 10px;
+        }
+        
+        .marker-icon {
+            background: white;
+            border: 3px solid;
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="title">Henrique - Entregador 1</div>
+        <div class="stats">
+            <span id="progress">1 de 4 paradas</span> | 
+            <span>14 pacotes</span>
+        </div>
+    </div>
+    
+    <div id="map"></div>
+    
+    <div id="bottom-card" class="bottom-card">
+        <div class="card-header">
+            <div id="card-number" class="card-number"></div>
+            <button class="card-close" onclick="closeCard()">×</button>
+        </div>
+        <div id="card-address" class="card-address"></div>
+        <div id="card-info" class="card-info"></div>
+        
+        <button id="btn-maps" class="btn btn-maps" onclick="openGoogleMaps()">
+            Abrir no Google Maps
+        </button>
+        
+        <div class="action-buttons">
+            <button class="btn btn-success" onclick="markDelivered()">
+                Entregue
+            </button>
+            <button class="btn btn-danger" onclick="markFailed()">
+                Insucesso
+            </button>
+            <button class="btn btn-transfer" onclick="transferPackage()">
+                Transferir
+            </button>
+        </div>
+    </div>
+    
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        // Dados dos markers
+        const markers = [{"lat": -22.9450391, "lon": -43.1842129, "address": "Rua Muniz Barreto, 396, Botafogo", "packages": 3, "status": "completed", "number": 1, "color": "#FF9800", "is_current": false}, {"lat": -22.946, "lon": -43.185, "address": "Rua Marqu\u00eas de Olinda, 18", "packages": 5, "status": "current", "number": 2, "color": "#4CAF50", "is_current": true}, {"lat": -22.947, "lon": -43.186, "address": "Rua Volunt\u00e1rios da P\u00e1tria, 1", "packages": 4, "status": "pending", "number": 3, "color": "#9C27B0", "is_current": false}, {"lat": -22.948, "lon": -43.187, "address": "Rua da Passagem, 7", "packages": 2, "status": "pending", "number": 4, "color": "#9C27B0", "is_current": false}];
+        let currentMarker = null;
+        
+        // Inicializa mapa
+        const map = L.map('map').setView([-22.946509775, -43.185553225], 15);
+        
+        // Tile layer (OpenStreetMap)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(map);
+        
+        // Adiciona markers
+        markers.forEach((m, idx) => {
+            const icon = L.divIcon({
+                className: 'marker-icon',
+                html: `<div style="border-color: ${m.color}; color: ${m.color}">${m.number}</div>`,
+                iconSize: [35, 35]
+            });
+            
+            const marker = L.marker([m.lat, m.lon], { icon }).addTo(map);
+            
+            marker.on('click', () => {
+                openCard(m);
+            });
+            
+            // Destaca marker atual
+            if (m.is_current) {
+                marker.setZIndexOffset(1000);
+            }
+        });
+        
+        // Desenha polyline conectando pontos
+        const points = markers.map(m => [m.lat, m.lon]);
+        L.polyline(points, {
+            color: '#667eea',
+            weight: 3,
+            opacity: 0.7,
+            dashArray: '10, 10'
+        }).addTo(map);
+        
+        // Funcoes
+        function openCard(marker) {
+            currentMarker = marker;
+            
+            document.getElementById('card-number').textContent = marker.number;
+            document.getElementById('card-address').textContent = marker.address;
+            document.getElementById('card-info').textContent = 
+                `Entrega ${marker.packages} unidade${marker.packages > 1 ? 's' : ''} | Status: ${marker.status}`;
+            
+            document.getElementById('bottom-card').classList.add('visible');
+        }
+        
+        function closeCard() {
+            document.getElementById('bottom-card').classList.remove('visible');
+        }
+        
+        function openGoogleMaps() {
+            if (!currentMarker) return;
+            
+            const url = `https://www.google.com/maps/dir/?api=1&destination=${currentMarker.lat},${currentMarker.lon}`;
+            window.open(url, '_blank');
+        }
+        
+        function markDelivered() {
+            if (!currentMarker) return;
+            
+            // Envia callback pro bot
+            window.Telegram.WebApp.sendData(JSON.stringify({
+                action: 'delivered',
+                stop: currentMarker.number,
+                address: currentMarker.address
+            }));
+            
+            alert(`Marcado como entregue: Stop ${currentMarker.number}`);
+            closeCard();
+        }
+        
+        function markFailed() {
+            if (!currentMarker) return;
+            
+            window.Telegram.WebApp.sendData(JSON.stringify({
+                action: 'failed',
+                stop: currentMarker.number,
+                address: currentMarker.address
+            }));
+            
+            alert(`Marcado como insucesso: Stop ${currentMarker.number}`);
+            closeCard();
+        }
+        
+        function transferPackage() {
+            if (!currentMarker) return;
+            
+            window.Telegram.WebApp.sendData(JSON.stringify({
+                action: 'transfer',
+                stop: currentMarker.number,
+                address: currentMarker.address
+            }));
+            
+            alert(`Solicitar transferencia: Stop ${currentMarker.number}`);
+            closeCard();
+        }
+        
+        // Abre automaticamente primeiro marker
+        if (markers.length > 0) {
+            const firstPending = markers.find(m => m.status === 'pending' || m.status === 'current');
+            if (firstPending) {
+                openCard(firstPending);
+            }
+        }
+    </script>
+</body>
+</html>

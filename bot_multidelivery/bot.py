@@ -782,6 +782,136 @@ async def cmd_predict_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ==================== MAIN ====================
 
+async def cmd_distribuir_rota(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Comando /distribuir <excel_path> <num_entregadores> - Distribui romaneio entre entregadores"""
+    user_id = update.effective_user.id
+    
+    if user_id != BotConfig.ADMIN_TELEGRAM_ID:
+        await update.message.reply_text("Apenas o admin pode distribuir rotas.")
+        return
+    
+    # Parse argumentos
+    args = context.args
+    if len(args) < 2:
+        await update.message.reply_text(
+            "Uso: /distribuir <arquivo.xlsx> <num_entregadores>\n\n"
+            "Exemplo: /distribuir romaneio.xlsx 3"
+        )
+        return
+    
+    excel_path = args[0]
+    try:
+        num_entregadores = int(args[1])
+    except ValueError:
+        await update.message.reply_text("Numero de entregadores deve ser um inteiro.")
+        return
+    
+    await update.message.reply_text("Processando romaneio...")
+    
+    try:
+        # Import aqui para evitar circular import
+        from bot.services.shopee_parser import ShopeeRomaneioParser
+        from bot_multidelivery.services.roteo_divider import RoteoDivider
+        from bot_multidelivery.services.map_generator import MapGenerator
+        
+        # Parse Excel
+        deliveries = ShopeeRomaneioParser.parse(excel_path)
+        
+        # Pega entregadores disponiveis
+        all_deliverers = deliverer_service.list_deliverers()
+        if len(all_deliverers) < num_entregadores:
+            await update.message.reply_text(
+                f"Erro: Cadastrados {len(all_deliverers)} entregadores, mas precisa de {num_entregadores}.\n"
+                f"Use /add_entregador para cadastrar mais."
+            )
+            return
+        
+        # Monta dicionario de entregadores
+        selected = all_deliverers[:num_entregadores]
+        entregadores_info = {d['telegram_id']: d['name'] for d in selected}
+        
+        # Divide romaneio
+        divider = RoteoDivider()
+        routes = divider.divide_romaneio(deliveries, num_entregadores, entregadores_info)
+        
+        # Envia resumo pro admin
+        summary = f"<b>ROTA DISTRIBUIDA</b>\n\n"
+        summary += f"Total: {len(deliveries)} pacotes\n"
+        summary += f"Entregadores: {num_entregadores}\n\n"
+        
+        for i, route in enumerate(routes, 1):
+            summary += f"{i}. {route.entregador_nome}\n"
+            summary += f"   Pacotes: {route.total_packages}\n"
+            summary += f"   Paradas: {len(route.stops)}\n"
+            summary += f"   Tempo: {route.total_time_minutes:.0f} min\n\n"
+        
+        await update.message.reply_text(summary, parse_mode='HTML')
+        
+        # Envia mapa pro chat de cada entregador
+        for route in routes:
+            # Prepara dados dos stops
+            stops_data = []
+            for i, (lat, lon, deliveries_list) in enumerate(route.stops):
+                address = deliveries_list[0].address
+                num_packages = len(deliveries_list)
+                status = 'current' if i == 0 else 'pending'
+                stops_data.append((lat, lon, address, num_packages, status))
+            
+            # Gera HTML do mapa
+            html = MapGenerator.generate_interactive_map(
+                stops=stops_data,
+                entregador_nome=route.entregador_nome,
+                current_stop=0,
+                total_packages=route.total_packages,
+                total_distance_km=route.total_distance_km,
+                total_time_min=route.total_time_minutes
+            )
+            
+            # Salva temporariamente
+            map_file = f"rota_{route.entregador_id}.html"
+            MapGenerator.save_map(html, map_file)
+            
+            # Envia pro entregador
+            try:
+                msg = (
+                    f"<b>SUA ROTA FOI GERADA!</b>\n\n"
+                    f"Pacotes: {route.total_packages}\n"
+                    f"Paradas: {len(route.stops)}\n"
+                    f"Distancia: {route.total_distance_km:.2f} km\n"
+                    f"Tempo estimado: {route.total_time_minutes:.0f} min\n"
+                    f"Atalhos detectados: {route.shortcuts}\n\n"
+                    f"Inicio: {route.start_point[2][:50]}...\n"
+                    f"Fim: {route.end_point[2][:50]}...\n\n"
+                    f"Abrindo mapa interativo..."
+                )
+                
+                await context.bot.send_message(
+                    chat_id=route.entregador_id,
+                    text=msg,
+                    parse_mode='HTML'
+                )
+                
+                # Envia arquivo HTML
+                with open(map_file, 'rb') as f:
+                    await context.bot.send_document(
+                        chat_id=route.entregador_id,
+                        document=f,
+                        filename=f"rota_{route.entregador_nome.replace(' ', '_')}.html",
+                        caption="Abra este arquivo no navegador para ver o mapa interativo!"
+                    )
+                
+            except Exception as e:
+                logger.error(f"Erro enviando rota para {route.entregador_id}: {e}")
+        
+        await update.message.reply_text("Rotas enviadas para todos os entregadores!")
+        
+    except FileNotFoundError:
+        await update.message.reply_text(f"Arquivo nao encontrado: {excel_path}")
+    except Exception as e:
+        logger.error(f"Erro ao distribuir rota: {e}")
+        await update.message.reply_text(f"Erro: {str(e)}")
+
+
 def run_bot():
     """Inicia o bot"""
     app = Application.builder().token(BotConfig.TELEGRAM_TOKEN).build()
@@ -790,6 +920,7 @@ def run_bot():
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("help", cmd_help))
     app.add_handler(CommandHandler("fechar_rota", cmd_fechar_rota))
+    app.add_handler(CommandHandler("distribuir", cmd_distribuir_rota))
     app.add_handler(CommandHandler("add_entregador", cmd_add_deliverer))
     app.add_handler(CommandHandler("entregadores", cmd_list_deliverers))
     app.add_handler(CommandHandler("ranking", cmd_ranking))
