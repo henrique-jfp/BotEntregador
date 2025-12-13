@@ -10,7 +10,7 @@ from .config import BotConfig, DeliveryPartner
 from .session import session_manager, Romaneio, Route
 from .clustering import DeliveryPoint, TerritoryDivider
 from .parsers import parse_csv_romaneio, parse_pdf_romaneio, parse_text_romaneio
-from .services import deliverer_service
+from .services import deliverer_service, geocoding_service, genetic_optimizer, gamification_service
 import uuid
 
 logging.basicConfig(level=logging.INFO)
@@ -310,9 +310,8 @@ async def create_romaneio_from_addresses(update: Update, context: ContextTypes.D
             package_id = f"PKG{i:03d}"
             priority = "normal"
         
-        # TODO: Geocoding real com Google API
-        lat = -23.5505 + (i * 0.01)  # Simulado
-        lng = -46.6333 + (i * 0.01)  # Simulado
+        # Geocoding com cache inteligente
+        lat, lng = geocoding_service.geocode(address)
         
         points.append(DeliveryPoint(
             address=address,
@@ -667,6 +666,51 @@ async def cmd_list_deliverers(update: Update, context: ContextTypes.DEFAULT_TYPE
     await update.message.reply_text(msg, parse_mode='HTML')
 
 
+async def cmd_ranking(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """🎮 Ranking de entregadores com gamificação"""
+    user_id = update.effective_user.id
+    
+    # Qualquer um pode ver ranking
+    leaderboard = gamification_service.get_leaderboard(limit=10)
+    
+    if not leaderboard:
+        await update.message.reply_text("🎮 Ranking ainda vazio. Comece a fazer entregas!")
+        return
+    
+    msg = "🏆 <b>RANKING DOS ENTREGADORES</b>\n\n"
+    
+    for entry in leaderboard:
+        # Medalhas
+        medal = "🥇" if entry.rank == 1 else "🥈" if entry.rank == 2 else "🥉" if entry.rank == 3 else f"{entry.rank}º"
+        
+        # Badges
+        badge_icons = " ".join([b.type.value.split()[0] for b in entry.badges[:3]])
+        
+        # Streak
+        streak_text = f"🔥{entry.streak_days}" if entry.streak_days > 0 else ""
+        
+        msg += f"{medal} <b>{entry.name}</b>\n"
+        msg += f"   ⭐ {entry.score} pts | {badge_icons} {streak_text}\n\n"
+    
+    # Stats pessoais (se é entregador)
+    personal_stats = gamification_service.get_deliverer_stats(user_id)
+    if personal_stats:
+        msg += f"\n📊 <b>SUAS STATS:</b>\n"
+        msg += f"Rank: #{personal_stats['rank']} | Score: {personal_stats['score']}\n"
+        msg += f"Entregas: {personal_stats['total_deliveries']} | "
+        msg += f"Sucesso: {personal_stats['success_rate']:.1f}%\n"
+        
+        if personal_stats['streak_days'] > 0:
+            msg += f"🔥 Streak: {personal_stats['streak_days']} dias\n"
+        
+        if personal_stats['badges']:
+            msg += f"\n🏅 Badges: {len(personal_stats['badges'])}\n"
+            for badge in personal_stats['badges'][:5]:
+                msg += f"  {badge.type.value}\n"
+    
+    await update.message.reply_text(msg, parse_mode='HTML')
+
+
 # ==================== MAIN ====================
 
 def run_bot():
@@ -679,6 +723,7 @@ def run_bot():
     app.add_handler(CommandHandler("fechar_rota", cmd_fechar_rota))
     app.add_handler(CommandHandler("add_entregador", cmd_add_deliverer))
     app.add_handler(CommandHandler("entregadores", cmd_list_deliverers))
+    app.add_handler(CommandHandler("ranking", cmd_ranking))
     app.add_handler(MessageHandler(filters.Document.ALL, handle_document_message))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_message))
     app.add_handler(CallbackQueryHandler(handle_callback_query))
