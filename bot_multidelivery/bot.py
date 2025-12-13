@@ -283,6 +283,94 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
     """Fluxo do admin"""
     user_id = update.effective_user.id
     state = session_manager.get_admin_state(user_id)
+
+    # Wizard: cadastro de entregador
+    if state == "adding_deliverer_name":
+        data = session_manager.get_temp_data(user_id, "new_deliverer") or {}
+        data["name"] = text.strip()
+        session_manager.save_temp_data(user_id, "new_deliverer", data)
+        session_manager.set_admin_state(user_id, "adding_deliverer_id")
+
+        await update.message.reply_text(
+            "📲 Informe o <b>Telegram ID</b> do entregador (apenas números).\n\n"
+            "Exemplo: 123456789",
+            parse_mode='HTML'
+        )
+        return
+
+    if state == "adding_deliverer_id":
+        try:
+            telegram_id = int(text.strip())
+        except ValueError:
+            await update.message.reply_text(
+                "⚠️ ID inválido. Envie só números (ex: 123456789).",
+                parse_mode='HTML'
+            )
+            return
+
+        data = session_manager.get_temp_data(user_id, "new_deliverer") or {}
+        data["telegram_id"] = telegram_id
+        session_manager.save_temp_data(user_id, "new_deliverer", data)
+        session_manager.set_admin_state(user_id, "adding_deliverer_partner")
+
+        keyboard = [[
+            InlineKeyboardButton("🤝 Sim, é sócio", callback_data="add_partner_yes"),
+            InlineKeyboardButton("💼 Não, é colaborador", callback_data="add_partner_no")
+        ]]
+
+        await update.message.reply_text(
+            "🤔 Esse entregador é <b>sócio</b>?\n\n"
+            "Sócios têm custo R$ 0,00/pacote.",
+            parse_mode='HTML',
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+        return
+
+    if state == "adding_deliverer_capacity_manual":
+        try:
+            capacity = int(text.strip())
+            if capacity <= 0:
+                raise ValueError
+        except ValueError:
+            await update.message.reply_text(
+                "⚠️ Capacidade inválida. Envie um número inteiro positivo (ex: 50).",
+                parse_mode='HTML'
+            )
+            return
+
+        data = session_manager.get_temp_data(user_id, "new_deliverer") or {}
+        data["capacity"] = capacity
+        session_manager.save_temp_data(user_id, "new_deliverer", data)
+
+        is_partner = data.get("is_partner", False)
+        if is_partner:
+            await send_deliverer_summary(update, user_id, data)
+        else:
+            session_manager.set_admin_state(user_id, "adding_deliverer_cost")
+            await update.message.reply_text(
+                "💰 Qual o <b>custo por pacote</b>? (ex: 1.50)",
+                parse_mode='HTML'
+            )
+        return
+
+    if state == "adding_deliverer_cost":
+        try:
+            cost = float(text.strip().replace(',', '.'))
+            if cost < 0:
+                raise ValueError
+        except ValueError:
+            await update.message.reply_text(
+                "⚠️ Valor inválido. Envie um número (ex: 1.50).",
+                parse_mode='HTML'
+            )
+            return
+
+        data = session_manager.get_temp_data(user_id, "new_deliverer") or {}
+        data["cost"] = cost
+        session_manager.save_temp_data(user_id, "new_deliverer", data)
+
+        await send_deliverer_summary(update, user_id, data)
+        return
     
     if text == "📦 Nova Sessão do Dia":
         # Inicia nova sessão
@@ -354,6 +442,39 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
             "🤔 Não entendi. Use os botões do menu ou /help para ver os comandos.",
             parse_mode='HTML'
         )
+
+
+async def send_deliverer_summary(update: Update, user_id: int, data: dict):
+    """Mostra resumo e pede confirmação do novo entregador."""
+    name = data.get("name", "—")
+    telegram_id = data.get("telegram_id", "—")
+    is_partner = data.get("is_partner", False)
+    capacity = data.get("capacity", 50)
+    cost = 0.0 if is_partner else data.get("cost", 1.0)
+
+    session_manager.set_admin_state(user_id, "confirming_deliverer")
+
+    tipo_txt = "🤝 Sócio (custo R$ 0,00)" if is_partner else "💼 Colaborador"
+
+    keyboard = [
+        [InlineKeyboardButton("✅ Confirmar cadastro", callback_data="confirm_add_deliverer")],
+        [InlineKeyboardButton("❌ Cancelar", callback_data="cancel_add_deliverer")]
+    ]
+
+    msg = (
+        "📋 <b>Confirmar entregador</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"👤 Nome: <b>{name}</b>\n"
+        f"🆔 ID: <code>{telegram_id}</code>\n"
+        f"🏷️ Tipo: {tipo_txt}\n"
+        f"📦 Capacidade: <b>{capacity}</b> pacotes/dia\n"
+        f"💰 Custo: R$ {cost:.2f}/pacote\n\n"
+        "Confirmar cadastro?"
+    )
+
+    target_message = update.message or (update.callback_query.message if update.callback_query else None)
+    if target_message:
+        await target_message.reply_text(msg, parse_mode='HTML', reply_markup=InlineKeyboardMarkup(keyboard))
 
 
 async def handle_document_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -636,6 +757,108 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
                     parse_mode='HTML'
                 )
 
+    elif data.startswith("add_partner_"):
+        is_partner = data.endswith("yes")
+        session_manager.set_admin_state(query.from_user.id, "adding_deliverer_capacity")
+        temp = session_manager.get_temp_data(query.from_user.id, "new_deliverer") or {}
+        temp["is_partner"] = is_partner
+        if is_partner:
+            temp["cost"] = 0.0
+        session_manager.save_temp_data(query.from_user.id, "new_deliverer", temp)
+
+        keyboard = [
+            [InlineKeyboardButton("30", callback_data="add_capacity_30"), InlineKeyboardButton("50", callback_data="add_capacity_50"), InlineKeyboardButton("80", callback_data="add_capacity_80")],
+            [InlineKeyboardButton("Outro", callback_data="add_capacity_other")]
+        ]
+
+        await query.edit_message_text(
+            "📦 Quantos pacotes/dia cabem?",
+            parse_mode='HTML',
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+
+    elif data.startswith("add_capacity_"):
+        temp = session_manager.get_temp_data(query.from_user.id, "new_deliverer") or {}
+        choice = data.replace("add_capacity_", "")
+
+        if choice == "other":
+            session_manager.set_admin_state(query.from_user.id, "adding_deliverer_capacity_manual")
+            await query.edit_message_text(
+                "✏️ Digite a <b>capacidade</b> manualmente (número de pacotes/dia).",
+                parse_mode='HTML'
+            )
+            return
+
+        try:
+            capacity = int(choice)
+        except ValueError:
+            capacity = 50
+        temp["capacity"] = capacity
+        session_manager.save_temp_data(query.from_user.id, "new_deliverer", temp)
+
+        if temp.get("is_partner", False):
+            await send_deliverer_summary(update, query.from_user.id, temp)
+        else:
+            session_manager.set_admin_state(query.from_user.id, "adding_deliverer_cost")
+            await query.edit_message_text(
+                "💰 Qual o <b>custo por pacote</b>? (ex: 1.50)",
+                parse_mode='HTML'
+            )
+
+    elif data == "confirm_add_deliverer":
+        temp = session_manager.get_temp_data(query.from_user.id, "new_deliverer") or {}
+        required = ["name", "telegram_id", "capacity", "is_partner"]
+        if not all(key in temp for key in required):
+            await query.edit_message_text(
+                "⚠️ Dados incompletos. Refaça o cadastro com /add_entregador.",
+                parse_mode='HTML'
+            )
+            session_manager.clear_admin_state(query.from_user.id)
+            return
+
+        # Verifica duplicidade
+        existing = deliverer_service.get_deliverer(temp["telegram_id"])
+        if existing:
+            await query.edit_message_text(
+                "❌ Já existe um entregador com esse ID.",
+                parse_mode='HTML'
+            )
+            session_manager.clear_admin_state(query.from_user.id)
+            return
+
+        deliverer = deliverer_service.add_deliverer(
+            telegram_id=temp["telegram_id"],
+            name=temp["name"],
+            is_partner=temp.get("is_partner", False),
+            max_capacity=temp.get("capacity", 50)
+        )
+
+        # Atualiza custo customizado se colaborador
+        if not deliverer.is_partner and "cost" in temp:
+            deliverer_service.update_deliverer(temp["telegram_id"], cost_per_package=temp["cost"])
+
+        tipo_emoji = "🤝" if deliverer.is_partner else "💼"
+        custo = 0.0 if deliverer.is_partner else temp.get("cost", deliverer.cost_per_package)
+
+        await query.edit_message_text(
+            f"✅ <b>Entregador cadastrado!</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"{tipo_emoji} <b>{deliverer.name}</b>\n"
+            f"🆔 ID: <code>{deliverer.telegram_id}</code>\n"
+            f"📦 Capacidade: {deliverer.max_capacity} pacotes/dia\n"
+            f"💰 Custo: R$ {custo:.2f}/pacote",
+            parse_mode='HTML'
+        )
+
+        session_manager.clear_admin_state(query.from_user.id)
+
+    elif data == "cancel_add_deliverer":
+        session_manager.clear_admin_state(query.from_user.id)
+        await query.edit_message_text(
+            "Cadastro cancelado.",
+            parse_mode='HTML'
+        )
+
     elif data.startswith("deliver_"):
         package_id = data.replace("deliver_", "")
         delivered = session_manager.mark_package_delivered(query.from_user.id, package_id)
@@ -832,76 +1055,19 @@ async def cmd_add_deliverer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user_id != BotConfig.ADMIN_TELEGRAM_ID:
         await update.message.reply_text("❌ Comando exclusivo para admin.")
         return
-    
-    args = context.args
-    if len(args) < 3:
-        await update.message.reply_text(
-            "� <b>CADASTRAR NOVO ENTREGADOR</b>\n"
-            "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            "<b>📝 FORMATO:</b>\n"
-            "<code>/add_entregador &lt;id&gt; &lt;nome&gt; &lt;tipo&gt; &lt;capacidade&gt; &lt;custo&gt;</code>\n\n"
-            "<b>🎯 EXEMPLOS:</b>\n\n"
-            "🤝 <b>Parceiro (Sócio):</b>\n"
-            "<code>/add_entregador 123456789 Joao parceiro 50 0</code>\n\n"
-            "💼 <b>Colaborador (Freelancer):</b>\n"
-            "<code>/add_entregador 987654321 Maria terceiro 30 1.50</code>\n\n"
-            "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            "<b>💡 PARÂMETROS:</b>\n\n"
-            "🏷️ <b>ID:</b> Telegram ID (número)\n"
-            "📛 <b>Nome:</b> Nome do entregador\n"
-            "🎯 <b>Tipo:</b> parceiro ou terceiro\n"
-            "📦 <b>Capacidade:</b> Pacotes/dia (ex: 50)\n"
-            "💰 <b>Custo:</b> R$ por pacote (ex: 1.50)\n\n"
-            "❗ Parceiros sempre têm custo R$ 0,00",
-            parse_mode='HTML'
-        )
-        return
-    
-    try:
-        telegram_id = int(args[0])
-        name = args[1]
-        tipo = args[2].lower()
-        capacidade = int(args[3]) if len(args) > 3 else 50
-        custo = float(args[4]) if len(args) > 4 else (0 if tipo == "parceiro" else 1.0)
-        
-        is_partner = tipo == "parceiro"
-        
-        # Usa deliverer_service para adicionar
-        success = deliverer_service.add_deliverer(
-            telegram_id=telegram_id,
-            name=name,
-            is_partner=is_partner,
-            max_capacity=capacidade,
-            cost_per_package=custo
-        )
-        
-        if success:
-            tipo_emoji = "🤝" if is_partner else "💼"
-            tipo_texto = "PARCEIRO" if is_partner else "COLABORADOR"
-            
-            await update.message.reply_text(
-                f"✅ <b>ENTREGADOR CADASTRADO COM SUCESSO!</b>\n"
-                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                f"{tipo_emoji} <b>{name.upper()}</b>\n\n"
-                f"📛 Tipo: {tipo_texto}\n"
-                f"🆔 Telegram ID: <code>{telegram_id}</code>\n"
-                f"📦 Capacidade: <b>{capacidade}</b> pacotes/dia\n"
-                f"💰 Custo: <b>R$ {custo:.2f}</b>/pacote\n\n"
-                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                f"🎯 Agora {name} pode receber rotas!\n"
-                f"🔔 Ele(a) receberá notificação no Telegram.",
-                parse_mode='HTML'
-            )
-        else:
-            await update.message.reply_text(
-                "❌ <b>ERRO NO CADASTRO</b>\n\n"
-                "Esse entregador já está cadastrado no sistema.\n\n"
-                "Use <code>/entregadores</code> para ver a lista.",
-                parse_mode='HTML'
-            )
-    
-    except (ValueError, IndexError) as e:
-        await update.message.reply_text(f"❌ Erro nos parâmetros: {e}")
+
+    # Inicia wizard guiado
+    session_manager.clear_admin_state(user_id)
+    session_manager.set_admin_state(user_id, "adding_deliverer_name")
+    session_manager.save_temp_data(user_id, "new_deliverer", {})
+
+    await update.message.reply_text(
+        "🧑‍💼 <b>Cadastro de Entregador</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "Vamos cadastrar em 4 passos rápidos.\n\n"
+        "1️⃣ Nome completo do entregador?",
+        parse_mode='HTML'
+    )
 
 
 async def cmd_list_deliverers(update: Update, context: ContextTypes.DEFAULT_TYPE):
