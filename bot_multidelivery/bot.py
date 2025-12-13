@@ -498,7 +498,36 @@ async def handle_document_message(update: Update, context: ContextTypes.DEFAULT_
     
     # Parse baseado no tipo
     try:
-        if file_name.endswith('.csv'):
+        if file_name.endswith('.xlsx') or file_name.endswith('.xls'):
+            await update.message.reply_text(
+                "📊 <b>PROCESSANDO EXCEL SHOPEE...</b>\n\n"
+                "• Lendo planilha\n"
+                "• Extraindo lat/long embutidos\n"
+                "• Validando dados\n\n"
+                "⏳ <i>Aguarde...</i>",
+                parse_mode='HTML'
+            )
+            # Salva temporariamente para openpyxl
+            import tempfile
+            with tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False) as tmp:
+                tmp.write(bytes(file_content))
+                tmp_path = tmp.name
+            
+            try:
+                from bot.services.shopee_parser import ShopeeRomaneioParser
+                deliveries = ShopeeRomaneioParser.parse(tmp_path)
+                addresses = [{
+                    'id': d.tracking,
+                    'address': f"{d.address}, {d.bairro}, {d.city}",
+                    'lat': d.latitude,
+                    'lon': d.longitude,
+                    'priority': 'normal'
+                } for d in deliveries]
+            finally:
+                import os
+                os.unlink(tmp_path)
+        
+        elif file_name.endswith('.csv'):
             await update.message.reply_text(
                 "📄 <b>PROCESSANDO CSV...</b>\n\n"
                 "• Lendo linhas do arquivo\n"
@@ -589,13 +618,21 @@ async def create_romaneio_from_addresses(update: Update, context: ContextTypes.D
             address = addr.get("address", "")
             package_id = addr.get("id", f"PKG{i:03d}")
             priority = addr.get("priority", "normal")
+            # Se veio do Excel Shopee, já tem lat/lon
+            lat = addr.get("lat")
+            lon = addr.get("lon")
         else:
             address = addr
             package_id = f"PKG{i:03d}"
             priority = "normal"
+            lat = None
+            lon = None
         
-        # Geocoding com cache inteligente
-        lat, lng = geocoding_service.geocode(address)
+        # Geocoding com cache inteligente (só se não vier pronto)
+        if lat is None or lon is None:
+            lat, lng = geocoding_service.geocode(address)
+        else:
+            lng = lon
         
         # IA preditiva: estima tempo de entrega
         base_lat, base_lng = -23.5505, -46.6333  # TODO: pegar da sessão
@@ -1512,7 +1549,17 @@ def run_bot():
     except KeyboardInterrupt:
         logger.info("🛑 Bot encerrado pelo usuário.")
     except Exception as e:
-        logger.error(f"❌ Erro no polling: {e}", exc_info=True)
+        from telegram.error import Conflict
+        if isinstance(e, Conflict):
+            logger.error(
+                "❌ CONFLITO: Múltiplas instâncias do bot rodando!\n"
+                "Soluções:\n"
+                "1. Pare qualquer bot rodando localmente\n"
+                "2. No Render: certifique que é Background Worker (não Web Service)\n"
+                "3. Aguarde 1-2 minutos para timeout do outro bot"
+            )
+        else:
+            logger.error(f"❌ Erro no polling: {e}", exc_info=True)
 
 
 if __name__ == "__main__":
