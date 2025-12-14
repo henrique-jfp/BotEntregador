@@ -740,6 +740,9 @@ async def cmd_fechar_rota(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(summary, parse_mode='HTML')
 
     # Envia mapas para o admin pré-visualizar e escolher entregador
+    import asyncio
+    from telegram.error import NetworkError, TimedOut
+    
     for route in routes:
         caption = (
             f"🗺️ <b>Preview {route.id}</b>\n"
@@ -752,20 +755,45 @@ async def cmd_fechar_rota(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if route.map_file:
             try:
+                # Verifica tamanho do arquivo antes de enviar
+                import os
+                file_size = os.path.getsize(route.map_file)
+                
+                # Limite do Telegram: 50MB, mas vamos usar 20MB como segurança
+                if file_size > 20 * 1024 * 1024:
+                    logger.warning(f"Arquivo {route.map_file} muito grande ({file_size} bytes), enviando só mensagem")
+                    raise ValueError("Arquivo muito grande")
+                
                 with open(route.map_file, 'rb') as f:
-                    await context.bot.send_document(
-                        chat_id=BotConfig.ADMIN_TELEGRAM_ID,
-                        document=f,
-                        filename=route.map_file,
-                        caption=caption,
-                        parse_mode='HTML',
-                        reply_markup=InlineKeyboardMarkup(keyboard)
+                    # Timeout de 30 segundos para envio
+                    await asyncio.wait_for(
+                        context.bot.send_document(
+                            chat_id=BotConfig.ADMIN_TELEGRAM_ID,
+                            document=f,
+                            filename=route.map_file,
+                            caption=caption,
+                            parse_mode='HTML',
+                            reply_markup=InlineKeyboardMarkup(keyboard),
+                            read_timeout=30,
+                            write_timeout=30
+                        ),
+                        timeout=45.0
                     )
-            except Exception as e:
-                logger.warning(f"Falha ao enviar mapa {route.id} para admin: {e}")
+                    logger.info(f"✅ Mapa {route.id} enviado com sucesso")
+                    
+            except (asyncio.TimeoutError, NetworkError, TimedOut, ValueError) as e:
+                logger.warning(f"⚠️ Timeout/erro ao enviar mapa {route.id}: {e}. Enviando só texto...")
                 await context.bot.send_message(
                     chat_id=BotConfig.ADMIN_TELEGRAM_ID,
-                    text=caption,
+                    text=caption + f"\n\n⚠️ Mapa disponível em: {route.map_file}",
+                    parse_mode='HTML',
+                    reply_markup=InlineKeyboardMarkup(keyboard)
+                )
+            except Exception as e:
+                logger.error(f"❌ Falha ao enviar mapa {route.id} para admin: {e}")
+                await context.bot.send_message(
+                    chat_id=BotConfig.ADMIN_TELEGRAM_ID,
+                    text=caption + "\n\n❌ Erro ao enviar mapa",
                     parse_mode='HTML',
                     reply_markup=InlineKeyboardMarkup(keyboard)
                 )
@@ -776,6 +804,9 @@ async def cmd_fechar_rota(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 parse_mode='HTML',
                 reply_markup=InlineKeyboardMarkup(keyboard)
             )
+        
+        # Pequeno delay entre envios para evitar rate limit
+        await asyncio.sleep(0.5)
 
 
 async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -971,16 +1002,44 @@ async def send_route_to_deliverer(context: ContextTypes.DEFAULT_TYPE, telegram_i
     )
 
     if route.map_file:
+        import asyncio
+        from telegram.error import NetworkError, TimedOut
         try:
-            with open(route.map_file, 'rb') as f:
-                await context.bot.send_document(
+            import os
+            file_size = os.path.getsize(route.map_file)
+            
+            if file_size > 20 * 1024 * 1024:
+                logger.warning(f"Arquivo {route.map_file} muito grande para entregador {telegram_id}")
+                await context.bot.send_message(
                     chat_id=telegram_id,
-                    document=f,
-                    filename=route.map_file,
-                    caption="🗺️ Abra o mapa HTML para navegar a rota."
+                    text=f"⚠️ Mapa muito grande. Disponível em: {route.map_file}"
                 )
+            else:
+                with open(route.map_file, 'rb') as f:
+                    await asyncio.wait_for(
+                        context.bot.send_document(
+                            chat_id=telegram_id,
+                            document=f,
+                            filename=route.map_file,
+                            caption="🗺️ Abra o mapa HTML para navegar a rota.",
+                            read_timeout=30,
+                            write_timeout=30
+                        ),
+                        timeout=45.0
+                    )
+                    logger.info(f"✅ Mapa enviado para entregador {telegram_id}")
+        except (asyncio.TimeoutError, NetworkError, TimedOut) as e:
+            logger.warning(f"⚠️ Timeout ao enviar mapa para entregador {telegram_id}: {e}")
+            await context.bot.send_message(
+                chat_id=telegram_id,
+                text=f"⚠️ Não foi possível enviar o mapa. Disponível em: {route.map_file}"
+            )
         except Exception as e:
-            logger.warning(f"Falha ao enviar mapa para entregador {telegram_id}: {e}")
+            logger.error(f"❌ Falha ao enviar mapa para entregador {telegram_id}: {e}")
+            await context.bot.send_message(
+                chat_id=telegram_id,
+                text="❌ Erro ao enviar mapa. Contate o administrador."
+            )
 
 
 # ==================== DELIVERER HANDLERS ====================
@@ -1508,8 +1567,9 @@ async def cmd_distribuir_rota(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 
 def run_bot():
-    """Inicia o bot"""
+    """Inicia o bot com retry automático"""
     import os
+    import time
     
     # Validação crítica de variáveis de ambiente
     token = os.getenv('TELEGRAM_BOT_TOKEN') or BotConfig.TELEGRAM_TOKEN
@@ -1529,45 +1589,79 @@ def run_bot():
     
     logger.info(f"✅ Token presente: {token[:10]}...{token[-4:]}")
     
-    try:
-        app = Application.builder().token(token).build()
-    except Exception as e:
-        logger.error(f"❌ Erro ao criar Application: {e}")
-        return
+    max_retries = 5
+    retry_count = 0
     
-    # Handlers
-    app.add_handler(CommandHandler("start", cmd_start))
-    app.add_handler(CommandHandler("help", cmd_help))
-    app.add_handler(CommandHandler("importar", handle_document_message))  # Novo comando!
-    app.add_handler(CommandHandler("otimizar", cmd_distribuir_rota))  # Renomeado!
-    app.add_handler(CommandHandler("distribuir", cmd_distribuir_rota))  # Mantido por compatibilidade
-    app.add_handler(CommandHandler("fechar_rota", cmd_fechar_rota))
-    app.add_handler(CommandHandler("add_entregador", cmd_add_deliverer))
-    app.add_handler(CommandHandler("entregadores", cmd_list_deliverers))
-    app.add_handler(CommandHandler("ranking", cmd_ranking))
-    app.add_handler(CommandHandler("prever", cmd_predict_time))
-    app.add_handler(MessageHandler(filters.Document.ALL, handle_document_message))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_message))
-    app.add_handler(CallbackQueryHandler(handle_callback_query))
-    
-    logger.info("🚀 Bot iniciado! Suporta: texto, CSV, PDF + Deliverer Management")
-    
-    try:
-        app.run_polling(drop_pending_updates=True, allowed_updates=["message", "callback_query"])
-    except KeyboardInterrupt:
-        logger.info("🛑 Bot encerrado pelo usuário.")
-    except Exception as e:
-        from telegram.error import Conflict
-        if isinstance(e, Conflict):
-            logger.error(
-                "❌ CONFLITO: Múltiplas instâncias do bot rodando!\n"
-                "Soluções:\n"
-                "1. Pare qualquer bot rodando localmente\n"
-                "2. No Render: certifique que é Background Worker (não Web Service)\n"
-                "3. Aguarde 1-2 minutos para timeout do outro bot"
+    while retry_count < max_retries:
+        try:
+            app = Application.builder().token(token).build()
+            
+            # Handlers
+            app.add_handler(CommandHandler("start", cmd_start))
+            app.add_handler(CommandHandler("help", cmd_help))
+            app.add_handler(CommandHandler("importar", handle_document_message))  # Novo comando!
+            app.add_handler(CommandHandler("otimizar", cmd_distribuir_rota))  # Renomeado!
+            app.add_handler(CommandHandler("distribuir", cmd_distribuir_rota))  # Mantido por compatibilidade
+            app.add_handler(CommandHandler("fechar_rota", cmd_fechar_rota))
+            app.add_handler(CommandHandler("add_entregador", cmd_add_deliverer))
+            app.add_handler(CommandHandler("entregadores", cmd_list_deliverers))
+            app.add_handler(CommandHandler("ranking", cmd_ranking))
+            app.add_handler(CommandHandler("prever", cmd_predict_time))
+            app.add_handler(MessageHandler(filters.Document.ALL, handle_document_message))
+            app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_message))
+            app.add_handler(CallbackQueryHandler(handle_callback_query))
+            
+            logger.info(f"🚀 Bot iniciado! (Tentativa {retry_count + 1}/{max_retries})")
+            
+            # Configurações de timeout mais robustas
+            app.run_polling(
+                drop_pending_updates=True, 
+                allowed_updates=["message", "callback_query"],
+                read_timeout=30,
+                write_timeout=30,
+                connect_timeout=30,
+                pool_timeout=30
             )
-        else:
-            logger.error(f"❌ Erro no polling: {e}", exc_info=True)
+            
+            # Se chegou aqui, o bot foi parado normalmente
+            break
+            
+        except KeyboardInterrupt:
+            logger.info("🛑 Bot encerrado pelo usuário.")
+            break
+        except Exception as e:
+            from telegram.error import Conflict, NetworkError, TimedOut
+            
+            if isinstance(e, Conflict):
+                logger.error(
+                    "❌ CONFLITO: Múltiplas instâncias do bot rodando!\n"
+                    "Soluções:\n"
+                    "1. Pare qualquer bot rodando localmente\n"
+                    "2. No Render: certifique que é Background Worker (não Web Service)\n"
+                    "3. Aguarde 1-2 minutos para timeout do outro bot"
+                )
+                break  # Não tenta reconectar em caso de conflito
+                
+            elif isinstance(e, (NetworkError, TimedOut)):
+                retry_count += 1
+                wait_time = min(30, 5 * retry_count)  # Espera progressiva: 5, 10, 15, 20, 25 segundos
+                logger.warning(
+                    f"⚠️ Erro de rede/timeout: {e}\n"
+                    f"🔄 Tentando reconectar em {wait_time} segundos... "
+                    f"(Tentativa {retry_count}/{max_retries})"
+                )
+                time.sleep(wait_time)
+            else:
+                retry_count += 1
+                logger.error(f"❌ Erro no polling: {e}", exc_info=True)
+                if retry_count < max_retries:
+                    wait_time = 10
+                    logger.info(f"🔄 Tentando reconectar em {wait_time} segundos...")
+                    time.sleep(wait_time)
+    
+    if retry_count >= max_retries:
+        logger.error("❌ Número máximo de tentativas alcançado. Bot encerrado.")
+        print("\n⚠️ Bot parou após múltiplas falhas. Verifique sua conexão e tente novamente.")
 
 
 if __name__ == "__main__":
