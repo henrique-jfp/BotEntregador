@@ -35,11 +35,25 @@ Bot do Telegram (via @BotFather)
 
 ### 2. Clone e Setup
 
+**Opção A: Deploy Local (Windows/Mac/Linux)**
 ```bash
-git clone https://github.com/seu-usuario/BotEntregador.git
+git clone https://github.com/henrique-jfp/BotEntregador.git
 cd BotEntregador
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
+
+**Opção B: Deploy 24/7 no Servidor Termux (M21s) - Deploy Automático**
+```bash
+cd ~
+curl -O https://raw.githubusercontent.com/henrique-jfp/BotEntregador/main/deploy.sh
+bash deploy.sh
+```
+📖 Guia completo: [DEPLOY_M21S_TERMUX.md](DEPLOY_M21S_TERMUX.md)
+
+**Opção C: Deploy no Render**  
+📖 Veja: [DEPLOY_RENDER.md](DEPLOY_RENDER.md)
 
 ### 3. Configuração de Ambiente
 
