@@ -154,6 +154,42 @@ class GeocodingService:
         
         self.api_calls_today += 1
     
+    async def geocode_address(self, address: str) -> Optional[Tuple[float, float]]:
+        """
+        Versão async do geocode para uso com Telegram bot.
+        Retorna (lat, lng) ou None se falhar.
+        """
+        try:
+            return self.geocode(address)
+        except Exception:
+            return None
+    
+    async def reverse_geocode(self, lat: float, lng: float) -> Optional[str]:
+        """
+        Reverse geocoding: coordenadas → endereço
+        """
+        # Tenta Google Maps API primeiro
+        if self.api_key and self.api_calls_today < 100:
+            try:
+                import requests
+                url = "https://maps.googleapis.com/maps/api/geocode/json"
+                params = {
+                    'latlng': f"{lat},{lng}",
+                    'key': self.api_key
+                }
+                
+                response = requests.get(url, params=params, timeout=5)
+                data = response.json()
+                
+                if data['status'] == 'OK' and data['results']:
+                    self._increment_api_call()
+                    return data['results'][0]['formatted_address']
+            except Exception:
+                pass
+        
+        # Fallback: retorna as coordenadas formatadas
+        return f"Lat: {lat:.6f}, Lng: {lng:.6f}"
+    
     def get_stats(self) -> dict:
         """Estatísticas do serviço"""
         cache_stats = self.cache.stats()

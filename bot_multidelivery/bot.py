@@ -358,10 +358,14 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
             "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
             f"📅 Data: <b>{today}</b>\n\n"
             "🎯 <b>PRÓXIMO PASSO:</b>\n"
-            "Defina o <b>endereço da BASE</b> (onde o carro está)\n\n"
-            "📝 <b>Exemplo:</b>\n"
-            "<i>Rua das Flores, 123 - Botafogo, RJ</i>\n\n"
-            "❗ Envie o endereço completo na próxima mensagem.",
+            "Defina a <b>LOCALIZAÇÃO DA BASE</b> (onde o carro/bike está)\n\n"
+            "📍 <b>OPÇÃO 1 (RECOMENDADO):</b>\n"
+            "   Use o 📎 anexo → 📍 Localização do Telegram\n"
+            "   ✅ Otimiza bateria das bikes!\n\n"
+            "📝 <b>OPÇÃO 2:</b>\n"
+            "   Digite o endereço completo\n"
+            "   <i>Ex: Rua das Flores, 123 - Botafogo, RJ</i>\n\n"
+            "❗ Envie a localização ou endereço na próxima mensagem.",
             parse_mode='HTML'
         )
     
@@ -378,10 +382,24 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
         await cmd_ranking(update, context)
     
     elif state == "awaiting_base_address":
-        # Geocodifica base (simulado por enquanto)
+        # Geocodifica o endereço digitado
         base_address = text
-        # TODO: Integrar com Google Geocoding API real
-        base_lat, base_lng = -23.5505, -46.6333  # Simulado
+        
+        # Tenta geocodificar com o serviço disponível
+        try:
+            coords = await geocoding_service.geocode_address(base_address)
+            if coords:
+                base_lat, base_lng = coords
+            else:
+                base_lat, base_lng = -23.5505, -46.6333  # Fallback SP
+                await update.message.reply_text(
+                    "⚠️ Não consegui localizar o endereço exato. Usando coordenadas aproximadas.\n"
+                    "📍 Use o anexo de localização do Telegram para maior precisão!",
+                    parse_mode='HTML'
+                )
+        except Exception as e:
+            logger.warning(f"Erro ao geocodificar: {e}")
+            base_lat, base_lng = -23.5505, -46.6333  # Fallback
         
         session_manager.set_base_location(base_address, base_lat, base_lng)
         session_manager.set_admin_state(user_id, "awaiting_romaneios")
@@ -389,7 +407,8 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
         await update.message.reply_text(
             f"✅ <b>BASE CONFIGURADA!</b>\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"📍 Local: <b>{base_address}</b>\n\n"
+            f"📍 Local: <b>{base_address}</b>\n"
+            f"🌐 Coords: <code>{base_lat:.6f}, {base_lng:.6f}</code>\n\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
             f"🚀 <b>PRÓXIMO PASSO:</b> Envie os romaneios!\n\n"
             f"<b>📂 MÉTODOS ACEITOS:</b>\n\n"
@@ -417,6 +436,65 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
             "🤔 Não entendi. Use os botões do menu ou /help para ver os comandos.",
             parse_mode='HTML'
         )
+
+
+async def handle_location_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handler para localização do Telegram (anexo de location)"""
+    user_id = update.effective_user.id
+    
+    # Apenas admin pode definir localização da base
+    if user_id != BotConfig.ADMIN_TELEGRAM_ID:
+        await update.message.reply_text("❌ Apenas o admin pode definir a base.")
+        return
+    
+    state = session_manager.get_admin_state(user_id)
+    
+    if state != "awaiting_base_address":
+        await update.message.reply_text(
+            "⚠️ Não estou esperando uma localização agora.\n"
+            "Use 📦 Nova Sessão do Dia para começar.",
+            parse_mode='HTML'
+        )
+        return
+    
+    # Extrai coordenadas da localização
+    location = update.message.location
+    base_lat = location.latitude
+    base_lng = location.longitude
+    
+    # Tenta fazer reverse geocoding para obter o endereço
+    try:
+        address = await geocoding_service.reverse_geocode(base_lat, base_lng)
+        base_address = address if address else f"Coordenadas: {base_lat:.6f}, {base_lng:.6f}"
+    except Exception as e:
+        logger.warning(f"Erro no reverse geocoding: {e}")
+        base_address = f"Coordenadas: {base_lat:.6f}, {base_lng:.6f}"
+    
+    session_manager.set_base_location(base_address, base_lat, base_lng)
+    session_manager.set_admin_state(user_id, "awaiting_romaneios")
+    
+    await update.message.reply_text(
+        f"✅ <b>BASE CONFIGURADA COM LOCALIZAÇÃO EXATA!</b>\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"📍 Local: <b>{base_address}</b>\n"
+        f"🌐 Coords: <code>{base_lat:.6f}, {base_lng:.6f}</code>\n"
+        f"🚴 <b>Otimizado para economia de bateria!</b>\n\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"🚀 <b>PRÓXIMO PASSO:</b> Envie os romaneios!\n\n"
+        f"<b>📂 MÉTODOS ACEITOS:</b>\n\n"
+        f"📄 <b>1. Arquivo Excel (.xlsx)</b>\n"
+        f"   Formato Shopee (RECOMENDADO)\n"
+        f"   Usa: <code>/importar</code>\n\n"
+        f"📝 <b>2. Texto Direto</b>\n"
+        f"   Cole endereços (um por linha)\n\n"
+        f"📊 <b>3. Arquivo CSV</b>\n"
+        f"   Formato: tracking,endereco,lat,lon\n\n"
+        f"📕 <b>4. PDF Scaneado</b>\n"
+        f"   OCR automático (legado)\n\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"💡 Quando terminar: <code>/fechar_rota</code>",
+        parse_mode='HTML'
+    )
 
 
 async def send_deliverer_summary(update: Update, user_id: int, data: dict):
@@ -474,9 +552,13 @@ async def handle_document_message(update: Update, context: ContextTypes.DEFAULT_
             "🟢 <b>Sessão criada automaticamente!</b>\n"
             "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
             f"📅 Data: <b>{today}</b>\n\n"
-            "🎯 Antes de importar, defina o <b>endereço da BASE</b>:\n\n"
-            "📝 <b>Exemplo:</b>\n"
-            "<i>Rua das Flores, 123 - Botafogo, RJ</i>",
+            "🎯 Antes de importar, defina a <b>LOCALIZAÇÃO DA BASE</b>:\n\n"
+            "📍 <b>OPÇÃO 1 (RECOMENDADO):</b>\n"
+            "   Use o 📎 anexo → 📍 Localização do Telegram\n"
+            "   ✅ Otimiza bateria das bikes!\n\n"
+            "📝 <b>OPÇÃO 2:</b>\n"
+            "   Digite o endereço completo\n"
+            "   <i>Ex: Rua das Flores, 123 - Botafogo, RJ</i>",
             parse_mode='HTML'
         )
         return
@@ -1608,6 +1690,7 @@ def run_bot():
             app.add_handler(CommandHandler("ranking", cmd_ranking))
             app.add_handler(CommandHandler("prever", cmd_predict_time))
             app.add_handler(MessageHandler(filters.Document.ALL, handle_document_message))
+            app.add_handler(MessageHandler(filters.LOCATION, handle_location_message))
             app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_message))
             app.add_handler(CallbackQueryHandler(handle_callback_query))
             
