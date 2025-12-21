@@ -97,47 +97,42 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # HELP ADMIN - Versão Compacta
         # ════════════════════════════════════════
         
-        help_text = """<b>🚀 BOT MULTI-ENTREGADOR v2.1</b>
-<i>Sistema Inteligente de Logística Last-Mile</i>
+        help_text = """<b>🚀 BOT MULTI-ENTREGADOR v3.0</b>
+<i>Sistema Inteligente com IA + Dashboard</i>
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-<b>O QUE ESTE BOT FAZ?</b>
+<b>⚡ COMANDOS PRINCIPAIS</b>
 
-✅ <b>Otimiza rotas</b> de entrega usando IA
-✅ <b>Divide geograficamente</b> entre entregadores
-✅ <b>Gera mapas interativos</b> HTML para cada um
-✅ <b>Economiza 79%</b> vs rotas manuais tradicionais
-✅ <b>Monitora em tempo real</b> o progresso
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-<b>⚡ COMANDOS RÁPIDOS</b>
-
-<code>/add_entregador</code> — Cadastrar membro da equipe
-<code>/entregadores</code> — Ver equipe completa
+<b>📦 OPERACIONAL:</b>
+<code>/add_entregador</code> — Cadastrar equipe
 <code>/importar</code> — Enviar romaneios
-<code>/otimizar</code> — Distribuir rotas otimizadas
+<code>/otimizar</code> — Distribuir rotas IA
 
 <b>💰 FINANCEIRO:</b>
-<code>/fechar_dia</code> — Fechar dia manual
-<code>/fechar_dia_auto</code> — Fechar com Banco Inter
-<code>/financeiro</code> — Relatórios (dia/semana/mês)
-<code>/fechar_semana</code> — Fechamento semanal
-<code>/exportar</code> — Excel/PDF
+<code>/fechar_dia</code> — Fechamento manual
+<code>/financeiro</code> — Relatórios completos
+<code>/fechar_semana</code> — Divisão sócios
+
+<b>🚀 AVANÇADO:</b>
+<code>/dashboard</code> — Interface web gráfica
+<code>/exportar</code> — Excel/PDF profissional
 <code>/projecoes</code> — Previsões IA
-<code>/dashboard</code> — Dashboard web
+<code>/fechar_dia_auto</code> — Banco Inter
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-💡 <b>Use os botões abaixo</b> para guias detalhados"""
+💡 <b>Clique nos botões</b> para guias detalhados"""
 
-        # Botões reorganizados conforme solicitado
+        # Botões com nova opção de funcionalidades avançadas
         keyboard = [
             [InlineKeyboardButton("🚀 Iniciar Operação", callback_data="help_start_operation")],
             [
                 InlineKeyboardButton("👥 Gerenciar Equipe", callback_data="help_team_management"),
-                InlineKeyboardButton("📊 Monitoramento", callback_data="help_monitoring")
+                InlineKeyboardButton("💰 Financeiro", callback_data="help_financial")
+            ],
+            [
+                InlineKeyboardButton("🔮 Funcionalidades Avançadas", callback_data="help_advanced_features")
             ],
             [
                 InlineKeyboardButton("📂 Formatos de Arquivo", callback_data="help_file_formats"),
@@ -1541,39 +1536,171 @@ Sistema aprende com cada entrega:
             ]])
         )
     
+    elif data == "help_financial":
+        financial_text = """<b>💰 SISTEMA FINANCEIRO</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+<b>📊 COMANDOS BÁSICOS</b>
+
+<code>/fechar_dia</code>
+Fecha o dia manualmente
+• Informa receita do dia
+• Sistema calcula custos automaticamente
+• Gera relatório com lucro líquido
+
+<code>/financeiro [periodo]</code>
+Consulta relatórios financeiros
+• <code>dia</code> — Fechamento de hoje
+• <code>semana</code> — Últimos 7 dias
+• <code>mes</code> — Mês atual completo
+
+<code>/fechar_semana</code>
+Fechamento semanal com divisão
+• 10% vai para reserva empresa
+• 70/30 dividido entre sócios
+• Relatório completo gerado
+
+<code>/config_socios</code>
+Configura percentuais dos sócios
+Exemplo: <code>/config_socios João 70 Maria 30 10</code>
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+<b>💡 FLUXO DIÁRIO RECOMENDADO</b>
+
+1️⃣ Fim do dia → <code>/fechar_dia</code>
+2️⃣ Informa receita total
+3️⃣ Informa outros custos (gasolina, etc)
+4️⃣ Sistema calcula e salva automaticamente
+
+<b>🗓️ FLUXO SEMANAL</b>
+
+Domingo/Segunda → <code>/fechar_semana</code>
+• Revisa todos os dias da semana
+• Confirma divisão de lucros
+• Gera relatório para contabilidade"""
+
+        await query.edit_message_text(
+            financial_text,
+            parse_mode='HTML',
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton("« Voltar ao Menu", callback_data="help_main")
+            ]])
+        )
+    
+    elif data == "help_advanced_features":
+        advanced_text = """<b>🔮 FUNCIONALIDADES AVANÇADAS</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+<b>📊 DASHBOARD WEB</b>
+
+<code>/dashboard</code>
+Inicia interface web em <code>http://localhost:5000</code>
+
+<b>Recursos:</b>
+✅ Gráficos interativos (Chart.js)
+✅ Evolução de receitas e lucros
+✅ Distribuição de custos (pizza)
+✅ Divisão semanal entre sócios
+✅ Auto-refresh a cada 5 minutos
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+<b>📄 EXPORTAÇÃO PROFISSIONAL</b>
+
+<code>/exportar [formato] [dias]</code>
+
+<b>Exemplos:</b>
+• <code>/exportar excel 30</code> — Excel 30 dias
+• <code>/exportar pdf 7</code> — PDF última semana
+
+<b>Formato Excel:</b> Tabelas formatadas, cores, totais
+<b>Formato PDF:</b> Layout A4 landscape, divisão sócios
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+<b>🏦 INTEGRAÇÃO BANCO INTER</b>
+
+<code>/config_banco_inter</code>
+Configura API do Banco Inter
+Requer: Client ID, Secret, Certificados
+
+<code>/fechar_dia_auto</code>
+Fechamento automático com receita do banco
+• Busca extrato do dia
+• Calcula receita automaticamente
+• Solicita apenas outros custos
+
+<code>/saldo_banco</code>
+Consulta saldo em tempo real
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+<b>🤖 PROJEÇÕES COM IA</b>
+
+<code>/projecoes [dias]</code>
+
+<b>Exemplos:</b>
+• <code>/projecoes 7</code> — Próxima semana
+• <code>/projecoes 30</code> — Próximo mês
+
+<b>Algoritmo usa:</b>
+✓ Regressão linear
+✓ Análise de sazonalidade
+✓ Taxa de crescimento
+✓ Confiança (alta/média/baixa)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+<b>📚 DOCUMENTAÇÃO COMPLETA</b>
+
+Veja: <code>MANUAL_FUNCIONALIDADES_AVANCADAS.md</code>"""
+
+        await query.edit_message_text(
+            advanced_text,
+            parse_mode='HTML',
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton("« Voltar ao Menu", callback_data="help_main")
+            ]])
+        )
+    
     elif data == "help_main":
         # Volta para o /help principal - recriar a mensagem
-        help_text = """<b>🚀 BOT MULTI-ENTREGADOR v2.1</b>
-<i>Sistema Inteligente de Logística Last-Mile</i>
+        help_text = """<b>🚀 BOT MULTI-ENTREGADOR v3.0</b>
+<i>Sistema Inteligente com IA + Dashboard</i>
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-<b>O QUE ESTE BOT FAZ?</b>
+<b>⚡ COMANDOS PRINCIPAIS</b>
 
-✅ <b>Otimiza rotas</b> de entrega usando IA
-✅ <b>Divide geograficamente</b> entre entregadores
-✅ <b>Gera mapas interativos</b> HTML para cada um
-✅ <b>Economiza 79%</b> vs rotas manuais tradicionais
-✅ <b>Monitora em tempo real</b> o progresso
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-<b>⚡ COMANDOS RÁPIDOS</b>
-
-<code>/add_entregador</code> — Cadastrar membro da equipe
-<code>/entregadores</code> — Ver equipe completa
+<b>📦 OPERACIONAL:</b>
+<code>/add_entregador</code> — Cadastrar equipe
 <code>/importar</code> — Enviar romaneios
-<code>/otimizar</code> — Distribuir rotas otimizadas
+<code>/otimizar</code> — Distribuir rotas IA
+
+<b>💰 FINANCEIRO:</b>
+<code>/fechar_dia</code> — Fechamento manual
+<code>/financeiro</code> — Relatórios completos
+<code>/fechar_semana</code> — Divisão sócios
+
+<b>🚀 AVANÇADO:</b>
+<code>/dashboard</code> — Interface web gráfica
+<code>/exportar</code> — Excel/PDF profissional
+<code>/projecoes</code> — Previsões IA
+<code>/fechar_dia_auto</code> — Banco Inter
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-💡 <b>Use os botões abaixo</b> para guias detalhados"""
+💡 <b>Clique nos botões</b> para guias detalhados"""
 
         keyboard = [
             [InlineKeyboardButton("🚀 Iniciar Operação", callback_data="help_start_operation")],
             [
                 InlineKeyboardButton("👥 Gerenciar Equipe", callback_data="help_team_management"),
-                InlineKeyboardButton("📊 Monitoramento", callback_data="help_monitoring")
+                InlineKeyboardButton("💰 Financeiro", callback_data="help_financial")
+            ],
+            [
+                InlineKeyboardButton("🔮 Funcionalidades Avançadas", callback_data="help_advanced_features")
             ],
             [
                 InlineKeyboardButton("📂 Formatos de Arquivo", callback_data="help_file_formats"),
@@ -1589,43 +1716,47 @@ Sistema aprende com cada entrega:
         )
     
     # REMOVER HANDLERS ANTIGOS
-    elif data in ["help_import", "help_team", "help_status", "help_ranking", "help_quickstart", "help_back"]:
+    elif data in ["help_import", "help_team", "help_status", "help_ranking", "help_quickstart", "help_back", "help_monitoring"]:
         # Redireciona para o novo menu
         await query.answer("Use os novos botões do menu!", show_alert=True)
         # Volta para o menu principal
         data = "help_main"
         # Reprocessa
-        help_text = """<b>🚀 BOT MULTI-ENTREGADOR v2.1</b>
-<i>Sistema Inteligente de Logística Last-Mile</i>
+        help_text = """<b>🚀 BOT MULTI-ENTREGADOR v3.0</b>
+<i>Sistema Inteligente com IA + Dashboard</i>
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-<b>O QUE ESTE BOT FAZ?</b>
+<b>⚡ COMANDOS PRINCIPAIS</b>
 
-✅ <b>Otimiza rotas</b> de entrega usando IA
-✅ <b>Divide geograficamente</b> entre entregadores
-✅ <b>Gera mapas interativos</b> HTML para cada um
-✅ <b>Economiza 79%</b> vs rotas manuais tradicionais
-✅ <b>Monitora em tempo real</b> o progresso
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-<b>⚡ COMANDOS RÁPIDOS</b>
-
-<code>/add_entregador</code> — Cadastrar membro da equipe
-<code>/entregadores</code> — Ver equipe completa
+<b>📦 OPERACIONAL:</b>
+<code>/add_entregador</code> — Cadastrar equipe
 <code>/importar</code> — Enviar romaneios
-<code>/otimizar</code> — Distribuir rotas otimizadas
+<code>/otimizar</code> — Distribuir rotas IA
+
+<b>💰 FINANCEIRO:</b>
+<code>/fechar_dia</code> — Fechamento manual
+<code>/financeiro</code> — Relatórios completos
+<code>/fechar_semana</code> — Divisão sócios
+
+<b>🚀 AVANÇADO:</b>
+<code>/dashboard</code> — Interface web gráfica
+<code>/exportar</code> — Excel/PDF profissional
+<code>/projecoes</code> — Previsões IA
+<code>/fechar_dia_auto</code> — Banco Inter
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-💡 <b>Use os botões abaixo</b> para guias detalhados"""
+💡 <b>Clique nos botões</b> para guias detalhados"""
 
         keyboard = [
             [InlineKeyboardButton("🚀 Iniciar Operação", callback_data="help_start_operation")],
             [
                 InlineKeyboardButton("👥 Gerenciar Equipe", callback_data="help_team_management"),
-                InlineKeyboardButton("📊 Monitoramento", callback_data="help_monitoring")
+                InlineKeyboardButton("💰 Financeiro", callback_data="help_financial")
+            ],
+            [
+                InlineKeyboardButton("🔮 Funcionalidades Avançadas", callback_data="help_advanced_features")
             ],
             [
                 InlineKeyboardButton("📂 Formatos de Arquivo", callback_data="help_file_formats"),
