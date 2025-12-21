@@ -120,9 +120,13 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 <code>/otimizar</code> — Distribuir rotas otimizadas
 
 <b>💰 FINANCEIRO:</b>
-<code>/fechar_dia</code> — Fechar dia e dividir lucros
-<code>/financeiro</code> — Ver relatórios (dia/semana/mês)
+<code>/fechar_dia</code> — Fechar dia manual
+<code>/fechar_dia_auto</code> — Fechar com Banco Inter
+<code>/financeiro</code> — Relatórios (dia/semana/mês)
 <code>/fechar_semana</code> — Fechamento semanal
+<code>/exportar</code> — Excel/PDF
+<code>/projecoes</code> — Previsões IA
+<code>/dashboard</code> — Dashboard web
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -441,6 +445,60 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
         # Envia relatório formatado
         msg = financial_service.format_daily_report(report)
         msg += "\n\n✅ <b>Fechamento salvo com sucesso!</b>"
+        
+        await update.message.reply_text(msg, parse_mode='HTML')
+        return
+    
+    # Handler financeiro: fechamento automático (com banco inter)
+    if state == "closing_day_auto_costs":
+        if text.lower() == '/cancelar':
+            session_manager.clear_admin_state(user_id)
+            await update.message.reply_text("❌ Fechamento automático cancelado.")
+            return
+        
+        try:
+            other_costs = float(text.strip().replace(',', '.'))
+            if other_costs < 0:
+                raise ValueError
+        except ValueError:
+            await update.message.reply_text(
+                "⚠️ Valor inválido. Digite um número válido ou 0.",
+                parse_mode='HTML'
+            )
+            return
+        
+        # Busca dados temporários
+        temp_data = session_manager.admin_temp_data.get(user_id, {})
+        revenue = temp_data.get('revenue', 0)
+        delivery_costs = temp_data.get('delivery_costs', 0)
+        
+        # Busca session para pacotes/entregas
+        session = session_manager.get_current_session()
+        total_packages = 0
+        total_deliveries = 0
+        
+        if session and session.routes:
+            for route in session.routes:
+                total_packages += len(route.packages)
+                total_deliveries += 1
+        
+        # Cria relatório
+        report = financial_service.close_day(
+            date=datetime.now(),
+            revenue=revenue,
+            deliverer_costs=delivery_costs,
+            other_costs=other_costs,
+            total_packages=total_packages,
+            total_deliveries=total_deliveries
+        )
+        
+        # Limpa estado
+        session_manager.clear_admin_state(user_id)
+        
+        # Envia relatório
+        msg = financial_service.format_daily_report(report)
+        msg += "\n\n✅ <b>Fechamento automático concluído!</b>"
+        msg += "\n🏦 <i>Receita obtida do Banco Inter</i>"
         
         await update.message.reply_text(msg, parse_mode='HTML')
         return
@@ -2361,6 +2419,394 @@ async def cmd_config_socios(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
+async def cmd_exportar(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Comando /exportar [excel|pdf] [dias] - Exporta relatórios"""
+    user_id = update.effective_user.id
+    
+    if user_id != BotConfig.ADMIN_TELEGRAM_ID:
+        await update.message.reply_text("⛔ Apenas admin pode exportar")
+        return
+    
+    from .services import export_service
+    
+    # Parâmetros
+    formato = context.args[0] if len(context.args) > 0 else 'excel'
+    days = int(context.args[1]) if len(context.args) > 1 else 30
+    
+    await update.message.reply_text("📊 Gerando exportação, aguarde...")
+    
+    try:
+        # Busca dados
+        reports = []
+        end_date = datetime.now()
+        
+        for i in range(days):
+            date = end_date - timedelta(days=days - i - 1)
+            report = financial_service.get_daily_report(date)
+            
+            if report:
+                reports.append({
+                    'date': report.date,
+                    'revenue': report.revenue,
+                    'delivery_costs': report.delivery_costs,
+                    'other_costs': report.other_costs,
+                    'net_profit': report.net_profit,
+                    'total_packages': report.total_packages,
+                    'total_deliveries': report.total_deliveries
+                })
+        
+        if not reports:
+            await update.message.reply_text("❌ Sem dados para exportar")
+            return
+        
+        # Exporta
+        if formato.lower() == 'pdf':
+            # Para PDF, busca também config e relatório semanal
+            week_start = end_date - timedelta(days=6)
+            config = financial_service.partner_config
+            weekly_report = financial_service.get_weekly_report(week_start)
+            
+            weekly_summary = None
+            if weekly_report:
+                weekly_summary = {
+                    'gross_profit': weekly_report.gross_profit,
+                    'reserve_amount': weekly_report.reserve_amount,
+                    'distributable_profit': weekly_report.distributable_profit,
+                    'partner_1_share': weekly_report.partner_1_share,
+                    'partner_2_share': weekly_report.partner_2_share
+                }
+            
+            filepath = export_service.export_to_pdf(
+                reports,
+                week_start=week_start,
+                week_end=end_date,
+                partner_config={
+                    'partner_1_name': config.partner_1_name,
+                    'partner_2_name': config.partner_2_name,
+                    'partner_1_share': config.partner_1_share,
+                    'partner_2_share': config.partner_2_share,
+                    'reserve_percentage': config.reserve_percentage
+                },
+                weekly_summary=weekly_summary
+            )
+        else:
+            filepath = export_service.export_to_excel(
+                reports,
+                week_start=end_date - timedelta(days=6),
+                week_end=end_date
+            )
+        
+        # Envia arquivo
+        await update.message.reply_document(
+            document=open(filepath, 'rb'),
+            caption=f"📊 Relatório de {days} dias - {formato.upper()}"
+        )
+        
+        logger.info(f"Relatório exportado: {filepath}")
+    
+    except ImportError as e:
+        await update.message.reply_text(
+            f"❌ Biblioteca não instalada: {str(e)}\n\n"
+            f"Instale com:\n<code>pip install openpyxl reportlab</code>",
+            parse_mode='HTML'
+        )
+    except Exception as e:
+        logger.error(f"Erro ao exportar: {e}")
+        await update.message.reply_text(f"❌ Erro ao exportar: {e}")
+
+
+async def cmd_config_banco_inter(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Comando /config_banco_inter - Configura credenciais Banco Inter"""
+    user_id = update.effective_user.id
+    
+    if user_id != BotConfig.ADMIN_TELEGRAM_ID:
+        await update.message.reply_text("⛔ Apenas admin pode configurar")
+        return
+    
+    from .services import bank_inter_service
+    
+    if len(context.args) == 0:
+        # Mostra status
+        status = "✅ Configurado" if bank_inter_service.is_configured() else "❌ Não configurado"
+        
+        await update.message.reply_text(
+            f"""🏦 <b>BANCO INTER - API</b>
+
+<b>Status:</b> {status}
+
+<b>🔧 CONFIGURAR:</b>
+<code>/config_banco_inter CLIENT_ID CLIENT_SECRET CERT_PATH KEY_PATH CONTA</code>
+
+<b>📚 Como obter:</b>
+1. Acesse: https://developers.bancointer.com.br
+2. Crie uma aplicação
+3. Gere certificado digital
+4. Anote Client ID e Secret
+5. Use este comando com os dados
+
+<b>⚠️ IMPORTANTE:</b>
+• Mantenha as credenciais seguras
+• Certificados devem estar no servidor
+• Conta deve ser formato: 12345678""",
+            parse_mode='HTML'
+        )
+        return
+    
+    # Configura
+    if len(context.args) != 5:
+        await update.message.reply_text(
+            "❌ Formato inválido\n\n"
+            "<b>Use:</b>\n"
+            "<code>/config_banco_inter CLIENT_ID CLIENT_SECRET CERT_PATH KEY_PATH CONTA</code>",
+            parse_mode='HTML'
+        )
+        return
+    
+    try:
+        client_id = context.args[0]
+        client_secret = context.args[1]
+        cert_path = context.args[2]
+        key_path = context.args[3]
+        conta = context.args[4]
+        
+        bank_inter_service.configure_credentials(
+            client_id=client_id,
+            client_secret=client_secret,
+            cert_path=cert_path,
+            key_path=key_path,
+            conta_corrente=conta
+        )
+        
+        await update.message.reply_text(
+            "✅ <b>BANCO INTER CONFIGURADO!</b>\n\n"
+            "Agora você pode usar:\n"
+            "• <code>/fechar_dia_auto</code> - Fecha dia com receita do banco\n"
+            "• <code>/saldo_banco</code> - Consulta saldo atual",
+            parse_mode='HTML'
+        )
+    
+    except Exception as e:
+        logger.error(f"Erro ao configurar Banco Inter: {e}")
+        await update.message.reply_text(f"❌ Erro: {e}")
+
+
+async def cmd_fechar_dia_auto(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Comando /fechar_dia_auto - Fecha dia automaticamente com receita do banco"""
+    user_id = update.effective_user.id
+    
+    if user_id != BotConfig.ADMIN_TELEGRAM_ID:
+        await update.message.reply_text("⛔ Apenas admin")
+        return
+    
+    from .services import bank_inter_service
+    
+    if not bank_inter_service.is_configured():
+        await update.message.reply_text(
+            "❌ Banco Inter não configurado\n\n"
+            "Use <code>/config_banco_inter</code>",
+            parse_mode='HTML'
+        )
+        return
+    
+    await update.message.reply_text("🏦 Buscando receita do banco, aguarde...")
+    
+    try:
+        # Busca receita do dia
+        today = datetime.now()
+        receita = bank_inter_service.calcular_receita_do_dia(today)
+        
+        # Calcula custos dos entregadores
+        session = session_manager.get_current_session()
+        delivery_costs = 0
+        
+        if session and session.routes:
+            for route in session.routes:
+                partner = BotConfig.get_partner_by_id(route.deliverer_id)
+                if partner:
+                    delivery_costs += len(route.packages) * partner.cost_per_package
+        
+        # Solicita outros custos
+        session_manager.set_admin_state(user_id, "closing_day_auto_costs")
+        session_manager.admin_temp_data[user_id] = {
+            'revenue': receita,
+            'delivery_costs': delivery_costs
+        }
+        
+        await update.message.reply_text(
+            f"""💰 <b>FECHAMENTO AUTOMÁTICO</b>
+
+🏦 <b>Receita do Banco:</b> R$ {receita:,.2f}
+👥 <b>Custos Entregadores:</b> R$ {delivery_costs:,.2f}
+
+<b>📝 Outros custos operacionais?</b>
+(Gasolina, manutenção, etc)
+
+Digite o valor ou 0:""",
+            parse_mode='HTML'
+        )
+    
+    except Exception as e:
+        logger.error(f"Erro ao fechar dia automático: {e}")
+        await update.message.reply_text(
+            f"❌ Erro ao buscar dados do banco:\n{e}\n\n"
+            f"Verifique:\n"
+            f"• Credenciais corretas\n"
+            f"• Certificados válidos\n"
+            f"• Conexão com a internet",
+            parse_mode='HTML'
+        )
+
+
+async def cmd_saldo_banco(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Comando /saldo_banco - Consulta saldo do Banco Inter"""
+    user_id = update.effective_user.id
+    
+    if user_id != BotConfig.ADMIN_TELEGRAM_ID:
+        await update.message.reply_text("⛔ Apenas admin")
+        return
+    
+    from .services import bank_inter_service
+    
+    if not bank_inter_service.is_configured():
+        await update.message.reply_text(
+            "❌ Banco Inter não configurado\n\n"
+            "Use <code>/config_banco_inter</code>",
+            parse_mode='HTML'
+        )
+        return
+    
+    await update.message.reply_text("🏦 Consultando saldo...")
+    
+    try:
+        saldo_data = bank_inter_service.get_saldo_atual()
+        
+        disponivel = saldo_data.get('disponivel', 0)
+        bloqueado = saldo_data.get('bloqueado', 0)
+        
+        await update.message.reply_text(
+            f"""🏦 <b>BANCO INTER - SALDO</b>
+
+💰 <b>Disponível:</b> R$ {disponivel:,.2f}
+🔒 <b>Bloqueado:</b> R$ {bloqueado:,.2f}
+━━━━━━━━━━━━━━━━━━━━━━━
+💵 <b>Total:</b> R$ {(disponivel + bloqueado):,.2f}
+
+<i>Atualizado em: {datetime.now().strftime('%d/%m/%Y %H:%M')}</i>""",
+            parse_mode='HTML'
+        )
+    
+    except Exception as e:
+        logger.error(f"Erro ao consultar saldo: {e}")
+        await update.message.reply_text(f"❌ Erro ao consultar saldo:\n{e}")
+
+
+async def cmd_projecoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Comando /projecoes [dias] - Mostra projeções de lucro"""
+    user_id = update.effective_user.id
+    
+    if user_id != BotConfig.ADMIN_TELEGRAM_ID:
+        await update.message.reply_text("⛔ Apenas admin")
+        return
+    
+    from .services import projection_service
+    
+    days = int(context.args[0]) if len(context.args) > 0 else 7
+    
+    await update.message.reply_text("🔮 Calculando projeções...")
+    
+    try:
+        # Análise de crescimento
+        growth = projection_service.analyze_growth_rate(30)
+        
+        # Projeções
+        predictions = projection_service.predict_next_days(days)
+        
+        if not predictions:
+            await update.message.reply_text(
+                "❌ Dados insuficientes para projeções\n\n"
+                "São necessários pelo menos 7 dias de histórico"
+            )
+            return
+        
+        # Formata mensagem
+        msg = f"""🔮 <b>PROJEÇÕES DE LUCRO</b>
+
+📈 <b>Taxa de Crescimento:</b> {growth['growth_rate']:.1f}%
+📊 <b>Tendência:</b> {growth['trend']}
+
+━━━━━━━━━━━━━━━━━━━━━━━
+<b>📅 PRÓXIMOS {days} DIAS:</b>
+
+"""
+        
+        total_predicted = 0
+        
+        for pred in predictions:
+            date_obj = datetime.strptime(pred['date'], '%Y-%m-%d')
+            date_fmt = date_obj.strftime('%d/%m')
+            weekday = pred['weekday'][:3]
+            
+            confidence_emoji = "🟢" if pred['confidence'] == 'alta' else "🟡" if pred['confidence'] == 'média' else "🔴"
+            
+            msg += f"\n{confidence_emoji} <b>{date_fmt} ({weekday})</b>\n"
+            msg += f"   💰 Lucro: R$ {pred['predicted_profit']:,.2f}\n"
+            msg += f"   📈 Receita: R$ {pred['predicted_revenue']:,.2f}\n"
+            
+            total_predicted += pred['predicted_profit']
+        
+        msg += f"\n━━━━━━━━━━━━━━━━━━━━━━━"
+        msg += f"\n💵 <b>TOTAL PREVISTO:</b> R$ {total_predicted:,.2f}"
+        msg += f"\n📊 <b>MÉDIA DIÁRIA:</b> R$ {total_predicted/days:,.2f}"
+        
+        await update.message.reply_text(msg, parse_mode='HTML')
+    
+    except Exception as e:
+        logger.error(f"Erro ao gerar projeções: {e}")
+        await update.message.reply_text(f"❌ Erro: {e}")
+
+
+async def cmd_dashboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Comando /dashboard - Inicia dashboard web"""
+    user_id = update.effective_user.id
+    
+    if user_id != BotConfig.ADMIN_TELEGRAM_ID:
+        await update.message.reply_text("⛔ Apenas admin")
+        return
+    
+    from .services import start_dashboard_thread
+    
+    try:
+        # Inicia dashboard em thread
+        port = 5000
+        start_dashboard_thread(host='0.0.0.0', port=port)
+        
+        await update.message.reply_text(
+            f"""📊 <b>DASHBOARD WEB INICIADO!</b>
+
+🌐 <b>Acesse:</b>
+<code>http://localhost:{port}</code>
+
+<b>🎨 RECURSOS:</b>
+✅ Gráficos interativos em tempo real
+✅ Evolução de receitas e lucros
+✅ Distribuição de custos
+✅ Projeções futuras
+✅ Exportação Excel/PDF
+
+<b>💡 DICA:</b>
+Para acesso externo, use o IP público do servidor:
+<code>http://SEU_IP:{port}</code>
+
+━━━━━━━━━━━━━━━━━━━━━━━
+<i>Dashboard rodando em background...</i>""",
+            parse_mode='HTML'
+        )
+    
+    except Exception as e:
+        logger.error(f"Erro ao iniciar dashboard: {e}")
+        await update.message.reply_text(f"❌ Erro ao iniciar dashboard:\n{e}")
+
+
 # ==================== MAIN ====================
 
 async def cmd_distribuir_rota(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2595,6 +3041,15 @@ def run_bot():
             app.add_handler(CommandHandler("financeiro", cmd_financeiro))
             app.add_handler(CommandHandler("fechar_semana", cmd_fechar_semana))
             app.add_handler(CommandHandler("config_socios", cmd_config_socios))
+            
+            # Comandos avançados
+            app.add_handler(CommandHandler("exportar", cmd_exportar))
+            app.add_handler(CommandHandler("config_banco_inter", cmd_config_banco_inter))
+            app.add_handler(CommandHandler("fechar_dia_auto", cmd_fechar_dia_auto))
+            app.add_handler(CommandHandler("saldo_banco", cmd_saldo_banco))
+            app.add_handler(CommandHandler("projecoes", cmd_projecoes))
+            app.add_handler(CommandHandler("dashboard", cmd_dashboard))
+            
             app.add_handler(MessageHandler(filters.Document.ALL, handle_document_message))
             app.add_handler(MessageHandler(filters.LOCATION, handle_location_message))
             app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_message))

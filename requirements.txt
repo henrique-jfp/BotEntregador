@@ -29,3 +29,7 @@ pdfplumber==0.11.0  # PDF com texto extraível
 PyPDF2==3.0.1  # Alternativa para PDF
 pytesseract==0.3.10  # OCR para PDFs escaneados (requer Tesseract instalado)
 pdf2image==1.17.0  # Converte PDF em imagem para OCR
+
+# Exportação e Dashboard
+reportlab==4.0.7  # Geração de PDF
+requests==2.31.0  # HTTP client para API Banco Inter
