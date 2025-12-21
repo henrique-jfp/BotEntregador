@@ -9,6 +9,7 @@ from .gamification_service import gamification_service
 from .dashboard_service import dashboard_ws
 from .ml_predictor import predictor
 from .scooter_optimizer import scooter_optimizer
+from .financial_service import financial_service
 
 __all__ = [
     'deliverer_service',
@@ -17,5 +18,6 @@ __all__ = [
     'gamification_service',
     'dashboard_ws',
     'predictor',
-    'scooter_optimizer'
+    'scooter_optimizer',
+    'financial_service'
 ]
