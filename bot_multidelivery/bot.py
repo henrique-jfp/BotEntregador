@@ -1676,7 +1676,16 @@ def run_bot():
     
     while retry_count < max_retries:
         try:
-            app = Application.builder().token(token).build()
+            # Configurar timeouts no builder do Application
+            app = (
+                Application.builder()
+                .token(token)
+                .read_timeout(30)
+                .write_timeout(30)
+                .connect_timeout(30)
+                .pool_timeout(30)
+                .build()
+            )
             
             # Handlers
             app.add_handler(CommandHandler("start", cmd_start))
@@ -1696,14 +1705,10 @@ def run_bot():
             
             logger.info(f"🚀 Bot iniciado! (Tentativa {retry_count + 1}/{max_retries})")
             
-            # Configurações de timeout mais robustas
+            # run_polling sem parâmetros de timeout (já configurados no builder)
             app.run_polling(
                 drop_pending_updates=True, 
-                allowed_updates=["message", "callback_query"],
-                read_timeout=30,
-                write_timeout=30,
-                connect_timeout=30,
-                pool_timeout=30
+                allowed_updates=["message", "callback_query"]
             )
             
             # Se chegou aqui, o bot foi parado normalmente
