@@ -12,6 +12,7 @@ from .clustering import DeliveryPoint, TerritoryDivider
 from .parsers import parse_csv_romaneio, parse_pdf_romaneio, parse_text_romaneio
 from .services import deliverer_service, geocoding_service, genetic_optimizer, gamification_service, predictor, dashboard_ws, scooter_optimizer, financial_service
 from .services.map_generator import MapGenerator
+from .services.barcode_separator import barcode_separator, RouteColor
 import uuid
 
 logging.basicConfig(level=logging.INFO)
@@ -304,7 +305,11 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
     """Fluxo do admin"""
     user_id = update.effective_user.id
     state = session_manager.get_admin_state(user_id)
-
+    
+    # PRIORIDADE: Se modo separação ativo, tenta processar como código de barras
+    if await handle_admin_barcode_scan(update, context, text):
+        return  # Foi processado, não continua pro resto
+    
     # Wizard: cadastro de entregador
     if state == "adding_deliverer_name":
         data = session_manager.get_temp_data(user_id, "new_deliverer") or {}
@@ -2938,6 +2943,153 @@ Para acesso externo, use o IP público do servidor:
         await update.message.reply_text(f"❌ Erro ao iniciar dashboard:\n{e}")
 
 
+# ==================== MODO SEPARAÇÃO POR COR ====================
+
+async def cmd_modo_separacao(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """🎨 Inicia modo separação - bipar códigos de barras"""
+    user_id = update.effective_user.id
+    
+    if user_id != BotConfig.ADMIN_TELEGRAM_ID:
+        await update.message.reply_text("⛔ Apenas admin pode usar este modo")
+        return
+    
+    session = session_manager.get_active_session()
+    
+    if not session or not session.routes:
+        await update.message.reply_text(
+            "❌ <b>NENHUMA ROTA DIVIDIDA!</b>\n\n"
+            "Fluxo correto:\n"
+            "1️⃣ <code>/fechar_rota</code> - Divide rotas\n"
+            "2️⃣ Atribui entregadores\n"
+            "3️⃣ <code>/modo_separacao</code> - Ativa separação\n\n"
+            "💡 <i>Divida as rotas primeiro!</i>",
+            parse_mode='HTML'
+        )
+        return
+    
+    # Mapeia rotas para cores (máximo 4 cores)
+    cores_disponiveis = [RouteColor.RED, RouteColor.GREEN, RouteColor.BLUE, RouteColor.YELLOW]
+    
+    if len(session.routes) > len(cores_disponiveis):
+        await update.message.reply_text(
+            f"❌ <b>MUITAS ROTAS!</b>\n\n"
+            f"🎨 Etiquetadora: {len(cores_disponiveis)} cores\n"
+            f"📦 Rotas divididas: {len(session.routes)}\n\n"
+            f"⚠️ <i>Reduza o número de rotas ou use mais etiquetadoras</i>",
+            parse_mode='HTML'
+        )
+        return
+    
+    # Prepara dados das rotas
+    routes_data = {}
+    mensagem_cores = "🎨 <b>CORES DAS ROTAS:</b>\n\n"
+    
+    for i, route in enumerate(session.routes):
+        cor = cores_disponiveis[i]
+        entregador = route.assigned_to_name or f"Rota {i+1}"
+        
+        routes_data[route.id] = {
+            "deliverer": entregador,
+            "color": cor,
+            "packages": [{"id": p.package_id, "address": p.address} for p in route.optimized_order]
+        }
+        
+        mensagem_cores += f"{cor.emoji()} <b>{cor.value}</b> → {entregador}\n"
+        mensagem_cores += f"   📦 {len(route.optimized_order)} pacotes\n\n"
+    
+    # Ativa modo separação
+    result = barcode_separator.start_separation_mode(session.id, routes_data)
+    
+    mensagem = f"""🎨 <b>MODO SEPARAÇÃO ATIVADO!</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+{mensagem_cores}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+<b>🔍 COMO USAR:</b>
+
+1️⃣ Pegue um pacote da pilha
+2️⃣ Bipe o código de barras (QR/barras)
+3️⃣ Bot responde com a COR
+4️⃣ Cole a etiqueta colorida
+5️⃣ Próximo pacote!
+
+<b>⚡ VELOCIDADE:</b>
+~3 segundos por pacote = 20 pacotes/minuto
+
+<b>📊 PROGRESSO:</b>
+Use <code>/status_separacao</code> para ver quantos faltam
+
+<b>🏁 FINALIZAR:</b>
+Quando terminar: <code>/fim_separacao</code>
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💡 <b>DICA:</b> Conecte o leitor USB e bipe direto!
+O código aparece automaticamente no chat.
+
+🔥 <b>BORA SEPARAR!</b>"""
+    
+    await update.message.reply_text(mensagem, parse_mode='HTML')
+
+
+async def cmd_fim_separacao(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """🏁 Finaliza modo separação e mostra relatório"""
+    user_id = update.effective_user.id
+    
+    if user_id != BotConfig.ADMIN_TELEGRAM_ID:
+        await update.message.reply_text("⛔ Apenas admin")
+        return
+    
+    if not barcode_separator.active:
+        await update.message.reply_text(
+            "⚠️ <b>MODO SEPARAÇÃO INATIVO</b>\n\n"
+            "Use <code>/modo_separacao</code> para começar.",
+            parse_mode='HTML'
+        )
+        return
+    
+    # Finaliza e pega relatório
+    relatorio = barcode_separator.end_separation()
+    
+    await update.message.reply_text(relatorio, parse_mode='HTML')
+
+
+async def cmd_status_separacao(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """📊 Mostra status atual da separação"""
+    user_id = update.effective_user.id
+    
+    if user_id != BotConfig.ADMIN_TELEGRAM_ID:
+        await update.message.reply_text("⛔ Apenas admin")
+        return
+    
+    status = barcode_separator.get_status()
+    await update.message.reply_text(status, parse_mode='HTML')
+
+
+# Intercept barcode scans in text messages (admin only)
+async def handle_admin_barcode_scan(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str):
+    """Detecta e processa códigos de barras escaneados"""
+    user_id = update.effective_user.id
+    
+    # Só processa se modo separação estiver ativo
+    if not barcode_separator.active:
+        return False  # Não foi um scan
+    
+    # Códigos de barras geralmente são alfanuméricos sem espaços
+    # Shopee: letras + números (ex: BR123ABC456)
+    # Mercado Livre: numérico longo (ex: 123456789012)
+    if len(text) >= 6 and (text.isalnum() or text.isnumeric()):
+        response = barcode_separator.scan_package(text)
+        
+        if response:
+            await update.message.reply_text(response, parse_mode='HTML')
+            return True  # Foi processado como scan
+    
+    return False  # Não foi um scan
+
+
 # ==================== MAIN ====================
 
 async def cmd_distribuir_rota(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -3180,6 +3332,11 @@ def run_bot():
             app.add_handler(CommandHandler("saldo_banco", cmd_saldo_banco))
             app.add_handler(CommandHandler("projecoes", cmd_projecoes))
             app.add_handler(CommandHandler("dashboard", cmd_dashboard))
+            
+            # ========== SEPARAÇÃO POR COR ==========
+            app.add_handler(CommandHandler("modo_separacao", cmd_modo_separacao))
+            app.add_handler(CommandHandler("fim_separacao", cmd_fim_separacao))
+            app.add_handler(CommandHandler("status_separacao", cmd_status_separacao))
             
             app.add_handler(MessageHandler(filters.Document.ALL, handle_document_message))
             app.add_handler(MessageHandler(filters.LOCATION, handle_location_message))

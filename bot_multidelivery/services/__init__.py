@@ -14,6 +14,7 @@ from .export_service import export_service
 from .bank_inter_service import bank_inter_service
 from .projection_service import projection_service
 from .dashboard_web import start_dashboard_thread
+from .barcode_separator import barcode_separator
 
 __all__ = [
     'deliverer_service',
@@ -27,5 +28,6 @@ __all__ = [
     'export_service',
     'bank_inter_service',
     'projection_service',
-    'start_dashboard_thread'
+    'start_dashboard_thread',
+    'barcode_separator'
 ]
