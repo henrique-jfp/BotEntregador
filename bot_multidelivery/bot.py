@@ -107,6 +107,11 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 • Shopee, ML, Loggi (CSV/PDF/TXT)
 • Parsing automático
 
+<code>/sessoes</code> — Gerenciar sessões 🆕
+• Ver todas (ativas + finalizadas)
+• Trocar entre sessões
+• Histórico completo
+
 <code>/otimizar</code> — Dividir rotas
 • K-Means + Algoritmo Genético
 • Modo Scooter (79% menos distância)
@@ -638,7 +643,7 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
     if text == "📦 Nova Sessão do Dia":
         # Inicia nova sessão
         today = datetime.now().strftime("%Y-%m-%d")
-        session_manager.start_new_session(today)
+        session_manager.create_new_session(today)
         session_manager.set_admin_state(user_id, "awaiting_base_address")
         
         await update.message.reply_text(
@@ -828,12 +833,12 @@ async def handle_document_message(update: Update, context: ContextTypes.DEFAULT_
         return
     
     # Cria sessão automaticamente se não existe
-    session = session_manager.get_active_session()
+    session = session_manager.get_current_session()
     state = session_manager.get_admin_state(user_id)
     
     if not session:
         today = datetime.now().strftime("%Y-%m-%d")
-        session_manager.start_new_session(today)
+        session_manager.create_new_session(today)
         session_manager.set_admin_state(user_id, "awaiting_base_address")
         
         await update.message.reply_text(
@@ -1047,7 +1052,7 @@ async def create_romaneio_from_addresses(update: Update, context: ContextTypes.D
     )
     
     session_manager.add_romaneio(romaneio)
-    session = session_manager.get_active_session()
+    session = session_manager.get_current_session()
     
     await update.message.reply_text(
         f"✅ Romaneio <b>#{romaneio.id}</b> adicionado!\n"
@@ -1066,7 +1071,7 @@ async def cmd_fechar_rota(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Apenas o admin pode fechar rotas.")
         return
     
-    session = session_manager.get_active_session()
+    session = session_manager.get_current_session()
     if not session or not session.romaneios:
         await update.message.reply_text("❌ Nenhuma sessão ativa ou romaneios carregados.")
         return
@@ -1080,13 +1085,19 @@ async def cmd_fechar_rota(update: Update, context: ContextTypes.DEFAULT_TYPE):
     divider = TerritoryDivider(session.base_lat, session.base_lng)
     clusters = divider.divide_into_clusters(all_points, k=BotConfig.CLUSTER_COUNT)
     
+    # Importa cores
+    from .colors import get_color_for_index, get_color_name
+    
     # Otimiza rotas
     routes = []
-    for cluster in clusters:
+    for idx, cluster in enumerate(clusters):
         optimized = divider.optimize_cluster_route(cluster)
+        color = get_color_for_index(idx)  # Atribui cor baseada no índice
+        
         route = Route(
             id=f"ROTA_{cluster.id + 1}",
             cluster=cluster,
+            color=color,  # Cor única do entregador
             optimized_order=optimized
         )
         # Gera mapa para preview/admin
@@ -1424,12 +1435,111 @@ async def cmd_analisar_rota(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+async def cmd_sessoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    📂 Lista todas as sessões (ativas e finalizadas)
+    Permite trocar entre sessões e ver histórico
+    """
+    user_id = update.effective_user.id
+    
+    if user_id != BotConfig.ADMIN_TELEGRAM_ID:
+        await update.message.reply_text("❌ Apenas o admin pode gerenciar sessões.")
+        return
+    
+    sessions = session_manager.list_sessions()
+    current_session = session_manager.get_current_session()
+    
+    if not sessions:
+        await update.message.reply_text(
+            "📂 <b>NENHUMA SESSÃO ENCONTRADA</b>\n\n"
+            "Use o botão <b>📦 Nova Sessão do Dia</b> para começar!",
+            parse_mode='HTML'
+        )
+        return
+    
+    # Monta lista de sessões
+    msg = "📂 <b>TODAS AS SESSÕES</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+    
+    keyboard = []
+    
+    for session in sessions[:15]:  # Limita a 15 mais recentes
+        # Indicador visual
+        if current_session and session.session_id == current_session.session_id:
+            indicator = "🔵 ATIVA"
+        elif session.is_finalized:
+            indicator = "✅ Finalizada"
+        else:
+            indicator = "⚪ Em andamento"
+        
+        # Timestamp formatado
+        created = session.created_at.strftime("%d/%m %H:%M")
+        
+        # Info resumida
+        msg += f"{indicator}\n"
+        msg += f"<b>{session.session_id}</b>\n"
+        msg += f"📅 {session.date} ({created})\n"
+        msg += f"📦 {session.total_packages} pacotes · {len(session.routes)} rotas\n"
+        
+        if session.base_address:
+            msg += f"📍 {session.base_address[:40]}...\n"
+        
+        msg += "\n"
+        
+        # Botão para trocar sessão (se não for a atual)
+        if not current_session or session.session_id != current_session.session_id:
+            keyboard.append([
+                InlineKeyboardButton(
+                    f"📂 Trocar para {session.session_id}",
+                    callback_data=f"switch_session_{session.session_id}"
+                )
+            ])
+    
+    msg += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+    msg += "💡 <b>Clique para trocar de sessão</b>"
+    
+    reply_markup = InlineKeyboardMarkup(keyboard) if keyboard else None
+    await update.message.reply_text(msg, parse_mode='HTML', reply_markup=reply_markup)
+
+
 async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handler de botões inline"""
     query = update.callback_query
     await query.answer()
     
     data = query.data
+    
+    # ═══════════════════════════════════════════
+    # SWITCH DE SESSÃO
+    # ═══════════════════════════════════════════
+    if data.startswith("switch_session_"):
+        session_id = data.replace("switch_session_", "")
+        session = session_manager.get_session(session_id)
+        
+        if not session:
+            await query.edit_message_text(
+                f"❌ Sessão {session_id} não encontrada!",
+                parse_mode='HTML'
+            )
+            return
+        
+        # Troca sessão ativa
+        session_manager.set_current_session(session_id)
+        
+        # Confirma
+        finalized_text = "✅ Finalizada" if session.is_finalized else "⚪ Em andamento"
+        await query.edit_message_text(
+            f"🔵 <b>SESSÃO TROCADA!</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"<b>{session.session_id}</b>\n"
+            f"📅 {session.date}\n"
+            f"📦 {session.total_packages} pacotes · {len(session.routes)} rotas\n"
+            f"📍 {session.base_address[:50] if session.base_address else 'Sem base definida'}\n"
+            f"Status: {finalized_text}\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"✅ Agora você está trabalhando nesta sessão!",
+            parse_mode='HTML'
+        )
+        return
     
     # ═══════════════════════════════════════════
     # SELEÇÃO DE CORES PARA ROTAS
@@ -1548,7 +1658,7 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
         route_id = session_manager.get_temp_data(query.from_user.id, "assigning_route")
         
         # Atribui rota
-        session = session_manager.get_active_session()
+        session = session_manager.get_current_session()
         route = next((r for r in session.routes if r.id == route_id), None)
         
         if route:
@@ -2344,7 +2454,7 @@ async def handle_deliverer_message(update: Update, context: ContextTypes.DEFAULT
             await update.message.reply_text("❌ Você não tem rota atribuída hoje.")
             return
         
-        session = session_manager.get_active_session()
+        session = session_manager.get_current_session()
         await send_route_to_deliverer(context, user_id, route, session)
     
     elif text == "✅ Marcar Entrega":
@@ -2377,7 +2487,7 @@ async def handle_deliverer_message(update: Update, context: ContextTypes.DEFAULT
 
 async def show_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Mostra status atual da sessão"""
-    session = session_manager.get_active_session()
+    session = session_manager.get_current_session()
     
     if not session:
         await update.message.reply_text(
@@ -2424,7 +2534,7 @@ async def show_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def show_financial_report(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Relatório financeiro"""
-    session = session_manager.get_active_session()
+    session = session_manager.get_current_session()
     
     if not session:
         await update.message.reply_text(
@@ -2687,7 +2797,7 @@ async def cmd_fechar_dia(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     # Pega sessão ativa para calcular custos
-    session = session_manager.get_active_session()
+    session = session_manager.get_current_session()
     
     if not session or not session.routes:
         await update.message.reply_text(
@@ -3384,7 +3494,7 @@ async def cmd_modo_separacao(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await update.message.reply_text("⛔ Apenas admin pode usar este modo")
         return
     
-    session = session_manager.get_active_session()
+    session = session_manager.get_current_session()
     
     if not session or not session.routes:
         await update.message.reply_text(
@@ -3398,38 +3508,37 @@ async def cmd_modo_separacao(update: Update, context: ContextTypes.DEFAULT_TYPE)
         )
         return
     
-    # Mapeia rotas para cores (máximo 4 cores)
-    cores_disponiveis = [RouteColor.RED, RouteColor.GREEN, RouteColor.BLUE, RouteColor.YELLOW]
-    
-    if len(session.routes) > len(cores_disponiveis):
+    # Verifica se todas as rotas têm entregadores atribuídos
+    rotas_sem_entregador = [r for r in session.routes if not r.assigned_to_name]
+    if rotas_sem_entregador:
         await update.message.reply_text(
-            f"❌ <b>MUITAS ROTAS!</b>\n\n"
-            f"🎨 Etiquetadora: {len(cores_disponiveis)} cores\n"
-            f"📦 Rotas divididas: {len(session.routes)}\n\n"
-            f"⚠️ <i>Reduza o número de rotas ou use mais etiquetadoras</i>",
+            f"⚠️ <b>ROTAS SEM ENTREGADOR!</b>\n\n"
+            f"❌ {len(rotas_sem_entregador)} rotas não atribuídas:\n"
+            + "\n".join([f"• {r.id}" for r in rotas_sem_entregador]) +
+            "\n\n💡 Atribua todos os entregadores antes de separar!",
             parse_mode='HTML'
         )
         return
     
-    # Prepara dados das rotas
-    routes_data = {}
+    # Importa função de cores
+    from .colors import get_color_name
+    
+    # Prepara mensagem visual com as cores
     mensagem_cores = "🎨 <b>CORES DAS ROTAS:</b>\n\n"
     
-    for i, route in enumerate(session.routes):
-        cor = cores_disponiveis[i]
-        entregador = route.assigned_to_name or f"Rota {i+1}"
+    for route in session.routes:
+        color_name = get_color_name(route.color)
+        emoji = color_name.split()[0]
+        entregador = route.assigned_to_name
         
-        routes_data[route.id] = {
-            "deliverer": entregador,
-            "color": cor,
-            "packages": [{"id": p.package_id, "address": p.address} for p in route.optimized_order]
-        }
-        
-        mensagem_cores += f"{cor.emoji()} <b>{cor.value}</b> → {entregador}\n"
+        mensagem_cores += f"{emoji} <b>{color_name}</b> → {entregador}\n"
         mensagem_cores += f"   📦 {len(route.optimized_order)} pacotes\n\n"
     
     # Ativa modo separação
     result = barcode_separator.start_separation_mode(session.id, routes_data)
+    
+    # Ativa modo separação com sessão
+    result = barcode_separator.start_separation_mode(session)
     
     mensagem = f"""🎨 <b>MODO SEPARAÇÃO ATIVADO!</b>
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -3872,6 +3981,7 @@ def run_bot():
             app.add_handler(CommandHandler("distribuir", cmd_distribuir_rota))  # Mantido por compatibilidade
             app.add_handler(CommandHandler("fechar_rota", cmd_fechar_rota))
             app.add_handler(CommandHandler("analisar_rota", cmd_analisar_rota))  # ⚡ NOVO!
+            app.add_handler(CommandHandler("sessoes", cmd_sessoes))  # 📂 NOVO!
             app.add_handler(CommandHandler("add_entregador", cmd_add_deliverer))
             app.add_handler(CommandHandler("entregadores", cmd_list_deliverers))
             app.add_handler(CommandHandler("ranking", cmd_ranking))
