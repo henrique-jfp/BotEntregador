@@ -4,7 +4,9 @@ Controla fluxo de importação de romaneios, divisão de rotas e tracking
 """
 from dataclasses import dataclass, field
 from typing import List, Dict, Optional
-from datetime import datetimeimport uuidfrom .clustering import DeliveryPoint, Cluster
+from datetime import datetime
+import uuid
+from .clustering import DeliveryPoint, Cluster
 
 
 @dataclass
