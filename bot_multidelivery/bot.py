@@ -1324,20 +1324,15 @@ async def process_route_analysis(update: Update, context: ContextTypes.DEFAULT_T
             
             for d in deliveries:
                 if not d.latitude or not d.longitude:
-                    # Monta endereço completo com contexto
-                    address_parts = [d.address, d.bairro]
+                    # Monta endereço SEMPRE com Rio de Janeiro
+                    # Normaliza bairro (remove duplicatas)
+                    bairro = d.bairro.strip() if d.bairro else ""
                     
-                    # Adiciona cidade se tiver
-                    if d.city and d.city.lower() not in ['', 'nan', 'none']:
-                        address_parts.append(d.city)
-                    else:
-                        # Fallback: Rio de Janeiro (maioria dos romaneios)
-                        address_parts.append("Rio de Janeiro")
+                    # Remove "Rio de Janeiro" do bairro se já estiver lá
+                    bairro = bairro.replace(", Rio de Janeiro", "").replace(",Rio de Janeiro", "")
                     
-                    # Sempre adiciona Brasil pro OSM não confundir
-                    address_parts.append("Brasil")
-                    
-                    full_address = ", ".join(address_parts)
+                    # Endereço completo forçando RJ
+                    full_address = f"{d.address}, {bairro}, Rio de Janeiro, RJ, Brasil"
                     
                     # Log do geocoding
                     logger.info(f"🌍 Geocodificando: {full_address[:80]}")
@@ -1364,14 +1359,17 @@ async def process_route_analysis(update: Update, context: ContextTypes.DEFAULT_T
         # Converte para dicts
         deliveries_data = []
         for d in deliveries:
-            if d.latitude and d.longitude:  # Só adiciona se tiver coordenadas
+            if d.latitude is not None and d.longitude is not None:  # Aceita 0.0
                 deliveries_data.append({
                     'id': d.tracking,
-                    'address': f"{d.address}, {d.bairro}, {d.city}",
+                    'address': f"{d.address}, {d.bairro}",
+                    'bairro': d.bairro,
                     'lat': d.latitude,
                     'lon': d.longitude,
                     'stop': d.stop
                 })
+        
+        logger.info(f"📦 {len(deliveries_data)} entregas com coordenadas válidas de {len(deliveries)} totais")
         
         if not deliveries_data:
             await update.message.reply_text(
@@ -1438,16 +1436,26 @@ async def process_route_analysis(update: Update, context: ContextTypes.DEFAULT_T
         # Score visual
         score_bar = "█" * int(analysis.overall_score) + "░" * (10 - int(analysis.overall_score))
         
+        # Bairros formatados
+        if analysis.unique_neighborhoods == 1:
+            bairros_info = f"<b>{analysis.neighborhood_list[0]}</b>"
+        elif analysis.unique_neighborhoods <= 3:
+            bairros_info = f"<b>{', '.join(analysis.neighborhood_list)}</b>"
+        else:
+            bairros_info = f"<b>{analysis.unique_neighborhoods} bairros</b> ({', '.join(analysis.neighborhood_list[:3])}...)"
+        
         message = (
             f"🔍 <b>ANÁLISE DE ROTA COMPLETA</b>\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
             f"📊 <b>SCORE GERAL: {analysis.overall_score}/10</b>\n"
             f"<code>{score_bar}</code> {analysis.recommendation}\n\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"📦 <b>MÉTRICAS:</b>\n"
-            f"• Pacotes: <b>{analysis.total_packages}</b>\n"
-            f"• Paradas: <b>{analysis.total_stops}</b>\n"
-            f"• Distância: <b>{analysis.total_distance_km:.1f} km</b>\n"
+            f"📦 <b>RESUMO:</b>\n"
+            f"• <b>{analysis.total_packages} pacotes</b>\n"
+            f"• <b>{analysis.unique_addresses} paradas</b> (endereços únicos)\n"
+            f"• <b>{analysis.total_distance_km:.1f} km</b> de distância\n"
+            f"• Bairros: {bairros_info}\n\n"
+            f"📈 <b>MÉTRICAS TÉCNICAS:</b>\n"
             f"• Área: <b>{analysis.area_coverage_km2:.1f} km²</b>\n"
             f"• Densidade: <b>{analysis.density_score:.1f} pacotes/km²</b>\n"
             f"• Concentração: <b>{analysis.concentration_score:.1f}/10</b>\n"

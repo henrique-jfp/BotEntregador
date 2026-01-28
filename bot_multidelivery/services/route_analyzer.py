@@ -11,7 +11,10 @@ from dataclasses import dataclass
 class RouteAnalysis:
     """Resultado da análise de uma rota"""
     total_packages: int
-    total_stops: int
+    total_stops: int  # Endereços únicos (paradas reais)
+    unique_addresses: int  # Endereços únicos
+    unique_neighborhoods: int  # Bairros únicos
+    neighborhood_list: List[str]  # Lista de bairros
     total_distance_km: float
     area_coverage_km2: float
     density_score: float  # Pacotes por km²
@@ -62,7 +65,24 @@ class RouteAnalyzer:
         
         # Métricas básicas
         total_packages = len(deliveries)
-        total_stops = len(coords)
+        
+        # Conta endereços e bairros únicos
+        unique_addresses_set = set()
+        neighborhoods_set = set()
+        
+        for d in deliveries:
+            addr = d.get('address', '').strip().lower()
+            if addr:
+                unique_addresses_set.add(addr)
+            
+            bairro = d.get('bairro', '').strip()
+            if bairro:
+                neighborhoods_set.add(bairro)
+        
+        unique_addresses = len(unique_addresses_set)
+        unique_neighborhoods = len(neighborhoods_set)
+        neighborhood_list = sorted(list(neighborhoods_set))
+        total_stops = unique_addresses  # Paradas = endereços únicos
         
         # Calcula distância total (rota não otimizada, worst-case)
         total_distance = self._calculate_total_distance(coords)
@@ -103,6 +123,9 @@ class RouteAnalyzer:
         return RouteAnalysis(
             total_packages=total_packages,
             total_stops=total_stops,
+            unique_addresses=unique_addresses,
+            unique_neighborhoods=unique_neighborhoods,
+            neighborhood_list=neighborhood_list,
             total_distance_km=total_distance,
             area_coverage_km2=area_km2,
             density_score=density,
@@ -343,6 +366,9 @@ class RouteAnalyzer:
         return RouteAnalysis(
             total_packages=0,
             total_stops=0,
+            unique_addresses=0,
+            unique_neighborhoods=0,
+            neighborhood_list=[],
             total_distance_km=0,
             area_coverage_km2=0,
             density_score=0,
