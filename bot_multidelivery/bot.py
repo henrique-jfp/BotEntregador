@@ -97,30 +97,40 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if user_id == BotConfig.ADMIN_TELEGRAM_ID:
         # Mensagem 1 - Visão Geral + Importação
-        msg1 = """<b>🚀 BOT MULTI-ENTREGADOR v4.0</b>
-<i>Sistema Completo: Otimização + IA + Separação</i>
+        msg1 = """<b>🚀 BOT MULTI-ENTREGADOR v5.0</b>
+<i>Sistema Completo: Sessões + IA + Cores Automáticas</i>
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-<b>📦 IMPORTAÇÃO</b>
+<b>📂 SESSÕES PERSISTENTES 🆕</b>
+<code>/sessoes</code> — Gerenciar sessões
+• 💾 Auto-save em JSON (nunca perde dados)
+• 📋 Ver todas (ativas + finalizadas)
+• 🔵 Trocar entre sessões a qualquer momento
+• 📊 Histórico completo com timestamps
+• 🎨 Cores automáticas por entregador
+
+<i>💡 Sistema "save game" - reinicia o bot sem medo!</i>
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+<b>📦 IMPORTAÇÃO & ANÁLISE</b>
 <code>/importar</code> — Enviar romaneios
 • Shopee, ML, Loggi (CSV/PDF/TXT)
-• Parsing automático
+• Parsing automático + validação
 
-<code>/sessoes</code> — Gerenciar sessões 🆕
-• Ver todas (ativas + finalizadas)
-• Trocar entre sessões
-• Histórico completo
+<code>/analisar_rota</code> — IA avalia rota 🆕
+• 🌍 Geocoding automático (sem lat/lon? sem problema!)
+• 🤖 Score 0-10 + prós/contras
+• 📊 Densidade, concentração, tempo estimado
+• 🗺️ Mapa interativo + análise completa
+• ✅ Decide se vale pegar ANTES de aceitar!
 
-<code>/otimizar</code> — Dividir rotas
+<code>/fechar_rota</code> — Dividir rotas
 • K-Means + Algoritmo Genético
+• 🎨 Atribui COR única por entregador
 • Modo Scooter (79% menos distância)
-• Mapa HTML interativo
-
-<code>/analisar_rota</code> — Avaliar rota 🆕
-• Envia Excel → IA analisa
-• Score 0-10 + prós/contras
-• Decide se vale pegar!
+• Mapa HTML com rotas reais (OSRM)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -134,24 +144,28 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-<b>📍 SEPARAÇÃO FÍSICA</b>
+<b>🎨 SEPARAÇÃO FÍSICA COM CORES</b>
 <code>/modo_separacao</code> — Ativar
-• Escaneia barcode → retorna COR
-• Etiquetadora MX550 (número 8 dígitos)
-• Adesivos coloridos automáticos
+• 📦 Escaneia barcode → retorna COR DO ENTREGADOR
+• 🔴🟢🔵 Usa cores atribuídas na divisão
+• 🎯 Mostra sequência: "Entrega #5 de 23"
+• 🔢 Etiquetadora MX550 (8 dígitos)
+• ⚡ ~3s por pacote (20 pacotes/min)
 
 <code>/status_separacao</code> — Progresso
 <code>/fim_separacao</code> — Relatório final
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-<b>🗺️ ROTEIRIZAÇÃO</b>
-🏍️ Scooter — Contrafluxo atalhos
+<b>🗺️ ROTEIRIZAÇÃO INTELIGENTE</b>
+🏍️ Scooter — Contrafluxo + atalhos
 🚗 Padrão — Google Maps oficial
-🧬 Genético — TSP global
+🧬 Genético — TSP otimizado
+🛣️ OSRM — Rotas reais pelas ruas
 
 • STOPS: múltiplos no mesmo pin
-• HTML offline + turn-by-turn"""
+• HTML offline + turn-by-turn
+• Leaflet Routing Machine integrado"""
 
         msg2 = """<b>💰 FINANCEIRO COMPLETO</b>
 
