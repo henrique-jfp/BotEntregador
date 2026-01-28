@@ -13,7 +13,7 @@ from .clustering import DeliveryPoint, TerritoryDivider
 from .parsers import parse_csv_romaneio, parse_pdf_romaneio, parse_text_romaneio
 from .services import deliverer_service, geocoding_service, genetic_optimizer, gamification_service, predictor, dashboard_ws, scooter_optimizer, financial_service
 from .services.map_generator import MapGenerator
-from .services.barcode_separator import barcode_separator, RouteColor
+from .services.barcode_separator import barcode_separator
 from .services.route_analyzer import route_analyzer
 import uuid
 
