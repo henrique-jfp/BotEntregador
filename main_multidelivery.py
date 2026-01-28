@@ -1,36 +1,44 @@
 """
 🚀 MAIN RUNNER
-Ponto de entrada do bot multi-entregador
+Ponto de entrada do bot multi-entregador + Web Scanner
 """
 import sys
 import os
 import threading
-from http.server import HTTPServer, BaseHTTPRequestHandler
+import uvicorn
+from pathlib import Path
 
 # Adiciona diretório raiz ao path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from bot_multidelivery.bot import run_bot
+from bot_multidelivery.services.web_scanner import scanner_app
 
-# --- HACK PARA O RENDER (Fake Port Binding) ---
-class HealthCheckHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.end_headers()
-        self.wfile.write(b"Bot is running!")
-
-def start_dummy_server():
+# --- WEB SERVER PARA SCANNER + HEALTH CHECK ---
+def start_web_server():
+    """Inicia servidor FastAPI com scanner em /scanner"""
     port = int(os.environ.get("PORT", 8080))
+    
+    print(f"🌐 Web server iniciando na porta {port}")
+    print(f"📱 Acesse o scanner em: http://localhost:{port}/scanner")
+    
     try:
-        server = HTTPServer(("0.0.0.0", port), HealthCheckHandler)
-        print(f"🌍 Dummy server rodando na porta {port} (pra enganar o Render)")
-        server.serve_forever()
+        # Configura uvicorn
+        config = uvicorn.Config(
+            scanner_app,
+            host="0.0.0.0",
+            port=port,
+            log_level="info",
+            access_log=False
+        )
+        server = uvicorn.Server(config)
+        server.run()
     except Exception as e:
-        print(f"⚠️ Nao foi possivel iniciar o dummy server: {e}")
+        print(f"⚠️ Erro ao iniciar web server: {e}")
 
 if __name__ == "__main__":
-    # Inicia o servidor fake em uma thread separada
-    threading.Thread(target=start_dummy_server, daemon=True).start()
+    # Inicia web server em thread separada
+    threading.Thread(target=start_web_server, daemon=True).start()
 
     print("🔥 Iniciando Bot Multi-Entregador...")
     print("🎯 Pressione CTRL+C para parar\n")

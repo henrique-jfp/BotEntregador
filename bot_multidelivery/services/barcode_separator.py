@@ -35,8 +35,8 @@ class BarcodeSeparator:
     
     def __init__(self):
         self.active = False
-        self.package_map: Dict[str, PackageAssignment] = {}
-        self.scanned_count = 0
+        self.assignments: Dict[str, PackageAssignment] = {}  # package_id -> assignment
+        self.scanned = set()  # IDs já escaneados
         self.session_id: Optional[str] = None
     
     def start_separation_mode(self, session_id: str, routes: dict) -> str:
@@ -56,8 +56,8 @@ class BarcodeSeparator:
         """
         self.active = True
         self.session_id = session_id
-        self.package_map.clear()
-        self.scanned_count = 0
+        self.assignments.clear()
+        self.scanned.clear()
         
         # Mapeia todos os pacotes
         for route_id, route_data in routes.items():
@@ -70,7 +70,7 @@ class BarcodeSeparator:
                 # Extrai ID do pacote (código de barras Shopee/ML)
                 pkg_id = self._extract_package_id(pkg)
                 
-                self.package_map[pkg_id] = PackageAssignment(
+                self.assignments[pkg_id] = PackageAssignment(
                     package_id=pkg_id,
                     route_id=route_id,
                     deliverer_name=deliverer,
@@ -80,7 +80,7 @@ class BarcodeSeparator:
                     total_in_route=total
                 )
         
-        return f"✅ Modo separação ativado!\n\n📦 {len(self.package_map)} pacotes mapeados\n🎨 Bipe os códigos de barras para identificar"
+        return f"✅ Modo separação ativado!\n\n📦 {len(self.assignments)} pacotes mapeados\n🎨 Bipe os códigos de barras para identificar"
     
     def scan_package(self, barcode: str) -> Optional[str]:
         """
@@ -96,12 +96,13 @@ class BarcodeSeparator:
         barcode = barcode.strip().upper()
         
         # Busca no mapa
-        assignment = self.package_map.get(barcode)
+        assignment = self.assignments.get(barcode)
         
         if not assignment:
             return f"❌ Pacote não encontrado: {barcode}\n\n💡 Verifique se o código está correto"
         
-        self.scanned_count += 1
+        # Marca como escaneado
+        self.scanned.add(barcode)
         
         # Formata resposta VISUAL
         emoji = assignment.color.emoji()
@@ -119,7 +120,7 @@ class BarcodeSeparator:
             f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
             f"🔢 <b>Configure pistola: {numero_pistola}</b>\n\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-            f"✅ {self.scanned_count}/{len(self.package_map)} separados"
+            f"✅ {len(self.scanned)}/{len(self.assignments)} separados"
         )
         
         return response
@@ -131,7 +132,7 @@ class BarcodeSeparator:
         
         # Conta por cor
         color_counts = {}
-        for assignment in self.package_map.values():
+        for assignment in self.assignments.values():
             color = assignment.color.value
             color_counts[color] = color_counts.get(color, 0) + 1
         
@@ -141,12 +142,12 @@ class BarcodeSeparator:
             emoji = color.split()[0]
             report += f"{emoji} <b>{color}</b>: {count} pacotes\n"
         
-        report += f"\n✅ Total separado: {self.scanned_count}/{len(self.package_map)}"
+        report += f"\n✅ Total separado: {len(self.scanned)}/{len(self.assignments)}"
         
         # Reseta
         self.active = False
-        self.package_map.clear()
-        self.scanned_count = 0
+        self.assignments.clear()
+        self.scanned.clear()
         self.session_id = None
         
         return report
@@ -158,9 +159,9 @@ class BarcodeSeparator:
         
         return (
             f"🎨 <b>MODO SEPARAÇÃO ATIVO</b>\n\n"
-            f"📦 Total: {len(self.package_map)} pacotes\n"
-            f"✅ Separados: {self.scanned_count}\n"
-            f"⏳ Faltam: {len(self.package_map) - self.scanned_count}"
+            f"📦 Total: {len(self.assignments)} pacotes\n"
+            f"✅ Separados: {len(self.scanned)}\n"
+            f"⏳ Faltam: {len(self.assignments) - len(self.scanned)}"
         )
     
     def _extract_package_id(self, package: dict) -> str:

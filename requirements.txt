@@ -2,6 +2,10 @@
 flask==3.0.0
 gunicorn==21.2.0
 
+# FastAPI + ASGI Server (Web Scanner)
+fastapi==0.115.0
+uvicorn[standard]==0.30.0
+
 # Google Cloud APIs (mantido para OCR)
 google-cloud-vision==3.4.5
 google-auth==2.29.0
