@@ -854,6 +854,16 @@ async def handle_document_message(update: Update, context: ContextTypes.DEFAULT_
         return
     
     document = update.message.document
+    
+    # ⚡ VALIDAÇÃO: Impede crash se document vier None
+    if not document or not document.file_name:
+        await update.message.reply_text(
+            "❌ <b>Nenhum arquivo detectado!</b>\n\n"
+            "📎 Anexe o arquivo e envie direto (sem comandos).",
+            parse_mode='HTML'
+        )
+        return
+    
     file_name = document.file_name.lower()
     
     # Download arquivo
