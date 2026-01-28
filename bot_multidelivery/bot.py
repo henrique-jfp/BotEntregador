@@ -1326,14 +1326,19 @@ async def process_route_analysis(update: Update, context: ContextTypes.DEFAULT_T
                     # Monta endereço completo
                     full_address = f"{d.address}, {d.bairro}, {d.city}"
                     
+                    # Log do geocoding
+                    logger.info(f"🌍 Geocodificando: {full_address[:80]}")
+                    
                     # Tenta geocodificar
                     coords = geocoding_service.geocode(full_address)
                     
                     if coords:
                         d.latitude, d.longitude = coords
                         geocoded += 1
+                        logger.info(f"✅ Geocoded: {coords}")
                     else:
                         failed += 1
+                        logger.warning(f"❌ Falhou: {full_address[:80]}")
             
             if failed > 0:
                 await update.message.reply_text(
@@ -1444,14 +1449,15 @@ async def process_route_analysis(update: Update, context: ContextTypes.DEFAULT_T
         
         await update.message.reply_text(message, parse_mode='HTML')
         
-        # Envia mapa
+        # Envia mapa HTML
         try:
             with open(map_file, 'rb') as f:
                 await context.bot.send_document(
                     chat_id=user_id,
                     document=f,
-                    filename=f"analise_rota_{file_name}",
-                    caption="🗺️ Abra no navegador para visualizar!"
+                    filename=f"rota_analise_{datetime.now().strftime('%H%M')}.html",
+                    caption="🗺️ Abra no navegador para visualizar!",
+                    parse_mode='HTML'
                 )
         except Exception as e:
             logger.error(f"Erro ao enviar mapa: {e}")
