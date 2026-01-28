@@ -10,7 +10,7 @@ from pathlib import Path
 
 # Fix imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-from bot.services.shopee_parser import ShopeeDelivery, ShopeeRomaneioParser
+from bot_multidelivery.parsers.shopee_parser import ShopeeDelivery, ShopeeRomaneioParser
 from bot_multidelivery.services.scooter_optimizer import ScooterRouteOptimizer
 
 

@@ -888,7 +888,7 @@ async def handle_document_message(update: Update, context: ContextTypes.DEFAULT_
                 tmp_path = tmp.name
             
             try:
-                from bot.services.shopee_parser import ShopeeRomaneioParser
+                from bot_multidelivery.parsers.shopee_parser import ShopeeRomaneioParser
                 deliveries = ShopeeRomaneioParser.parse(tmp_path)
                 addresses = [{
                     'id': d.tracking,
@@ -3320,7 +3320,7 @@ async def _execute_route_distribution(update: Update, context: ContextTypes.DEFA
     
     try:
         # Import aqui para evitar circular import
-        from bot.services.shopee_parser import ShopeeRomaneioParser
+        from bot_multidelivery.parsers.shopee_parser import ShopeeRomaneioParser
         from bot_multidelivery.services.roteo_divider import RoteoDivider
         from bot_multidelivery.services.map_generator import MapGenerator
         
