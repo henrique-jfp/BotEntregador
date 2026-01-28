@@ -113,13 +113,21 @@ class SessionManager:
             sessions = session_store.list_sessions(limit=100)
             
             for s_info in sessions:
-                session = session_store.load_session(s_info['session_id'])
-                if session:
-                    self.active_sessions[session.session_id] = session
+                try:
+                    session = session_store.load_session(s_info['session_id'])
+                    if session:
+                        self.active_sessions[session.session_id] = session
+                except Exception as load_err:
+                    print(f"⚠️ Erro ao carregar sessão {s_info.get('session_id', '?')}: {load_err}")
+                    continue
                     
             print(f"✅ {len(self.active_sessions)} sessões carregadas do disco")
+        except ImportError as e:
+            print(f"⚠️ session_persistence não disponível: {e}")
         except Exception as e:
-            print(f"⚠️ Erro ao carregar sessões: {e}")
+            print(f"⚠️ Erro ao carregar sessões (continuando sem histórico): {e}")
+            import traceback
+            traceback.print_exc()
     
     def _auto_save(self, session: DailySession):
         """Auto-save da sessão"""
