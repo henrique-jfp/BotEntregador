@@ -47,42 +47,80 @@ def parse_shopee_excel(file_path: str) -> List[Dict[str, any]]:
                 if cell_value and isinstance(cell_value, str):
                     cell_lower = cell_value.lower().strip()
                     
-                    if 'tracking' in cell_lower or 'código' in cell_lower:
+                    # Tracking: SPX TN, tracking, código, AT ID
+                    if any(x in cell_lower for x in ['spx tn', 'spx_tn', 'tracking', 'código', 'at id', 'atid']):
                         headers['tracking'] = col
                         header_row = row
-                    elif 'endereço' in cell_lower or 'address' in cell_lower:
+                    # Endereço: Destination, address, endereço
+                    elif any(x in cell_lower for x in ['destination', 'endereço', 'endereco', 'address']):
                         headers['address'] = col
-                    elif 'bairro' in cell_lower or 'distrito' in cell_lower:
+                    # Bairro
+                    elif 'bairro' in cell_lower or 'distrito' in cell_lower or 'district' in cell_lower:
                         headers['bairro'] = col
-                    elif 'cidade' in cell_lower or 'city' in cell_lower:
+                    # Cidade
+                    elif 'city' in cell_lower or 'cidade' in cell_lower:
                         headers['city'] = col
-                    elif 'latitude' in cell_lower or 'lat' in cell_lower:
+                    # Latitude
+                    elif 'latitude' in cell_lower or (cell_lower == 'lat'):
                         headers['lat'] = col
-                    elif 'longitude' in cell_lower or 'lng' in cell_lower or 'long' in cell_lower:
+                    # Longitude
+                    elif 'longitude' in cell_lower or (cell_lower in ['lng', 'lon', 'long']):
                         headers['lon'] = col
-                    elif 'stop' in cell_lower or 'parada' in cell_lower:
+                    # Stop (Sequence ou Stop)
+                    elif any(x in cell_lower for x in ['stop', 'parada', 'sequence']):
                         headers['stop'] = col
-                    elif 'nome' in cell_lower or 'cliente' in cell_lower or 'customer' in cell_lower:
+                    # Cliente
+                    elif any(x in cell_lower for x in ['nome', 'cliente', 'customer', 'name']):
                         headers['customer'] = col
-                    elif 'telefone' in cell_lower or 'phone' in cell_lower:
+                    # Telefone
+                    elif any(x in cell_lower for x in ['telefone', 'phone', 'tel']):
                         headers['phone'] = col
         
-        if not header_row or 'tracking' not in headers:
+        # Validação flexível: precisa de pelo menos tracking OU address
+        if not header_row:
             raise ValueError("Cabeçalhos não encontrados. Formato inválido.")
+        
+        if 'tracking' not in headers and 'address' not in headers:
+            raise ValueError("Não encontrei coluna de Tracking (SPX TN) nem Endereço (Destination).")
         
         # Extrai dados
         addresses = []
         stop_counter = 1
         
         for row in range(header_row + 1, ws.max_row + 1):
-            tracking_cell = ws.cell(row, headers.get('tracking'))
-            if not tracking_cell.value:
+            # Pega tracking (pode ser SPX TN ou outra coluna)
+            tracking = None
+            if 'tracking' in headers:
+                tracking_cell = ws.cell(row, headers['tracking'])
+                if tracking_cell.value:
+                    tracking = str(tracking_cell.value).strip()
+            
+            # Pega endereço (pode ser Destination)
+            address = ""
+            if 'address' in headers:
+                addr_cell = ws.cell(row, headers['address'])
+                if addr_cell.value:
+                    address = str(addr_cell.value).strip()
+            
+            # Se não tem tracking nem endereço, pula linha
+            if not tracking and not address:
                 continue
             
-            tracking = str(tracking_cell.value).strip()
-            address = str(ws.cell(row, headers.get('address')).value or '').strip()
-            bairro = str(ws.cell(row, headers.get('bairro')).value or '').strip()
-            city = str(ws.cell(row, headers.get('city')).value or '').strip()
+            # Se não tem tracking, gera um ID
+            if not tracking:
+                tracking = f"PKG{row:04d}"
+            
+            bairro = ""
+            if 'bairro' in headers:
+                bairro_cell = ws.cell(row, headers['bairro'])
+                if bairro_cell.value:
+                    bairro = str(bairro_cell.value).strip()
+            
+            city = ""
+            if 'city' in headers:
+                city_cell = ws.cell(row, headers['city'])
+                if city_cell.value:
+                    city = str(city_cell.value).strip()
             
             # Lat/Lon (podem estar embutidos ou precisar geocoding)
             lat = None
