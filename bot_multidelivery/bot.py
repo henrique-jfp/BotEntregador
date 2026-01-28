@@ -1562,14 +1562,16 @@ async def cmd_sessoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         msg += "\n"
         
-        # Botão para trocar sessão (se não for a atual)
-        if not current_session or session.session_id != current_session.session_id:
-            keyboard.append([
-                InlineKeyboardButton(
-                    f"📂 Trocar para {session.session_id}",
-                    callback_data=f"switch_session_{session.session_id}"
-                )
-            ])
+        # Botão para trocar sessão OU ver detalhes da atual
+        is_current = current_session and session.session_id == current_session.session_id
+        button_text = f"🔵 Ver detalhes ({session.session_id})" if is_current else f"📂 Trocar para {session.session_id}"
+        
+        keyboard.append([
+            InlineKeyboardButton(
+                button_text,
+                callback_data=f"switch_session_{session.session_id}"
+            )
+        ])
     
     msg += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
     msg += "💡 <b>Clique para trocar de sessão</b>"
@@ -1599,21 +1601,39 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
             )
             return
         
-        # Troca sessão ativa
-        session_manager.set_current_session(session_id)
+        # Troca sessão ativa (ou mostra detalhes se já for a atual)
+        current = session_manager.get_current_session()
+        is_already_active = current and current.session_id == session_id
         
-        # Confirma
+        if not is_already_active:
+            session_manager.set_current_session(session_id)
+        
+        # Monta resumo detalhado
         finalized_text = "✅ Finalizada" if session.is_finalized else "⚪ Em andamento"
+        
+        # Detalhe das rotas
+        routes_info = ""
+        if session.routes:
+            routes_info += "\n\n<b>🛣️ ROTAS:</b>\n"
+            for i, route in enumerate(session.routes[:5], 1):  # Max 5 rotas
+                color_name = get_color_name(route.color)
+                routes_info += f"{color_name}: {route.deliverer_name} ({len(route.romaneios)} pacotes)\n"
+            if len(session.routes) > 5:
+                routes_info += f"...e mais {len(session.routes) - 5} rotas\n"
+        
+        title = "🔵 <b>SESSÃO ATIVA</b>" if is_already_active else "🔵 <b>SESSÃO TROCADA!</b>"
+        
         await query.edit_message_text(
-            f"🔵 <b>SESSÃO TROCADA!</b>\n"
+            f"{title}\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
             f"<b>{session.session_id}</b>\n"
             f"📅 {session.date}\n"
             f"📦 {session.total_packages} pacotes · {len(session.routes)} rotas\n"
             f"📍 {session.base_address[:50] if session.base_address else 'Sem base definida'}\n"
-            f"Status: {finalized_text}\n\n"
+            f"Status: {finalized_text}"
+            f"{routes_info}\n\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"✅ Agora você está trabalhando nesta sessão!",
+            f"{'📍 Você já está nesta sessão!' if is_already_active else '✅ Agora você está trabalhando nesta sessão!'}",
             parse_mode='HTML'
         )
         return
