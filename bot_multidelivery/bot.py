@@ -8,6 +8,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQu
 from datetime import datetime, timedelta
 from .config import BotConfig, DeliveryPartner
 from .session import session_manager, Romaneio, Route
+from .models import Deliverer
 from .clustering import DeliveryPoint, TerritoryDivider
 from .parsers import parse_csv_romaneio, parse_pdf_romaneio, parse_text_romaneio
 from .services import deliverer_service, geocoding_service, genetic_optimizer, gamification_service, predictor, dashboard_ws, scooter_optimizer, financial_service
@@ -1326,19 +1327,25 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
             session_manager.clear_admin_state(query.from_user.id)
             return
 
-        deliverer = deliverer_service.add_deliverer(
+        # Define custo antes de criar
+        cost_per_package = temp.get("cost", 0.0) if not temp.get("is_partner", False) else 0.0
+        
+        deliverer = Deliverer(
             telegram_id=temp["telegram_id"],
             name=temp["name"],
             is_partner=temp.get("is_partner", False),
-            max_capacity=temp.get("capacity", 9999)
+            max_capacity=temp.get("capacity", 9999),
+            cost_per_package=cost_per_package,
+            is_active=True,
+            joined_date=datetime.now()
         )
-
-        # Atualiza custo customizado se colaborador
-        if not deliverer.is_partner and "cost" in temp:
-            deliverer_service.update_deliverer(temp["telegram_id"], cost_per_package=temp["cost"])
+        
+        # Salva via data_store diretamente
+        from .persistence import data_store
+        data_store.add_deliverer(deliverer)
 
         tipo_emoji = "🤝" if deliverer.is_partner else "💼"
-        custo = 0.0 if deliverer.is_partner else temp.get("cost", deliverer.cost_per_package)
+        custo = deliverer.cost_per_package
 
         await query.edit_message_text(
             f"✅ <b>Entregador cadastrado!</b>\n"
@@ -1346,7 +1353,8 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
             f"{tipo_emoji} <b>{deliverer.name}</b>\n"
             f"🆔 ID: <code>{deliverer.telegram_id}</code>\n"
             f"📦 Capacidade: {deliverer.max_capacity} pacotes/dia\n"
-            f"💰 Custo: R$ {custo:.2f}/pacote",
+            f"💰 Custo: R$ {custo:.2f}/pacote\n\n"
+            f"<i>Dados salvos com sucesso em deliverers.json</i>",
             parse_mode='HTML'
         )
 
