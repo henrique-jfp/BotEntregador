@@ -95,197 +95,139 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     
     if user_id == BotConfig.ADMIN_TELEGRAM_ID:
-        # ════════════════════════════════════════
-        # HELP ADMIN - Lista Completa Atualizada
-        # ════════════════════════════════════════
-        
-        help_text = """<b>🚀 BOT MULTI-ENTREGADOR v4.0</b>
-<i>Sistema Completo: Otimização + IA + Separação Física</i>
+        # Mensagem 1 - Visão Geral + Importação
+        msg1 = """<b>🚀 BOT MULTI-ENTREGADOR v4.0</b>
+<i>Sistema Completo: Otimização + IA + Separação</i>
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-<b>📦 IMPORTAÇÃO & PROCESSAMENTO</b>
-<code>/importar</code> — Enviar romaneios (CSV/PDF/TXT)
-   • Shopee, Mercado Livre, Loggi
-   • Múltiplos arquivos simultâneos
-   • Parsing automático inteligente
+<b>📦 IMPORTAÇÃO</b>
+<code>/importar</code> — Enviar romaneios
+• Shopee, ML, Loggi (CSV/PDF/TXT)
+• Parsing automático
 
-<code>/otimizar</code> — Dividir + Roteirizar + Distribuir
-   • K-Means clustering geográfico
-   • Algoritmo Genético (TSP)
-   • Modo Scooter (contrafluxo inteligente)
-   • Envia mapa HTML interativo
+<code>/otimizar</code> — Dividir rotas
+• K-Means + Algoritmo Genético
+• Modo Scooter (79% menos distância)
+• Mapa HTML interativo
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 <b>👥 GESTÃO DE EQUIPE</b>
-<code>/add_entregador</code> — Cadastrar novo entregador
-   • Sócio (R$ 0,00/pacote) ou Colaborador
-   • Define capacidade máxima/dia
-   • Configuração de custo por pacote
+<code>/add_entregador</code> — Cadastrar
+• Sócio ou Colaborador
+• Capacidade + custo/pacote
 
-<code>/entregadores</code> — Listar time completo
-   • Status de cada entregador
-   • Capacidade e tipo (sócio/colaborador)
-   • Estatísticas individuais
-
-<code>/ranking</code> — Ranking gamificado
-   • Pontos, badges, nível de cada entregador
-   • XP por entregas concluídas
-   • Sistema de conquistas
+<code>/entregadores</code> — Listar time
+<code>/ranking</code> — Gamificação + XP
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-<b>📍 SEPARAÇÃO FÍSICA POR COR</b>
-<code>/modo_separacao</code> — Ativar separação por barcode
-   • Escaneia código de barras do pacote
-   • Bot retorna: COR + Número de 8 dígitos
-   • Configure etiquetadora MX550 com o número
-   • Aplique adesivo colorido correspondente
-   • Sistema registra progresso em tempo real
+<b>📍 SEPARAÇÃO FÍSICA</b>
+<code>/modo_separacao</code> — Ativar
+• Escaneia barcode → retorna COR
+• Etiquetadora MX550 (número 8 dígitos)
+• Adesivos coloridos automáticos
 
-<code>/status_separacao</code> — Ver progresso atual
-   • Quantos pacotes separados por cor
-   • Porcentagem concluída
-   • Tempo estimado restante
-
-<code>/fim_separacao</code> — Finalizar separação
-   • Gera relatório completo por cor
-   • Lista de pacotes de cada entregador
-   • Pronto para distribuição física
-
-<i>🏷️ Hardware sugerido: Etiquetadora MX550 + Leitor USB</i>
+<code>/status_separacao</code> — Progresso
+<code>/fim_separacao</code> — Relatório final
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-<b>💰 FINANCEIRO COMPLETO</b>
-<code>/fechar_dia</code> — Fechamento manual
-   • Calcula custos de todos os colaboradores
-   • Gera relatório detalhado com valores
-   • Salva histórico em JSON
+<b>🗺️ ROTEIRIZAÇÃO</b>
+🏍️ Scooter — Contrafluxo atalhos
+🚗 Padrão — Google Maps oficial
+🧬 Genético — TSP global
 
-<code>/financeiro</code> — Relatórios avançados
-   • Filtro por período (dia/semana/mês)
-   • Receitas, custos, lucro líquido
-   • Gráficos de tendência
-   • Comparativo com períodos anteriores
+• STOPS: múltiplos no mesmo pin
+• HTML offline + turn-by-turn"""
 
-<code>/fechar_semana</code> — Divisão entre sócios
-   • Lucro líquido após descontar colaboradores
-   • Percentual de cada sócio configurável
-   • Relatório detalhado semanal
+        msg2 = """<b>💰 FINANCEIRO COMPLETO</b>
 
-<code>/config_socios</code> — Configurar % dos sócios
-   • Define participação de cada sócio
-   • Validação automática (soma = 100%)
+<code>/fechar_dia</code> — Manual
+• Calcula custos colaboradores
+• Relatório + histórico JSON
 
-<code>/fechar_dia_auto</code> — Fechamento com Banco Inter
-   • Busca saldo real da conta via API
-   • Calcula receita automaticamente
-   • Dispensa lançamento manual de valores
+<code>/financeiro</code> — Relatórios
+• Filtro: dia/semana/mês
+• Receitas, custos, lucro
+• Gráficos + tendências
 
-<code>/config_banco_inter</code> — Configurar API Inter
-   • Certifica (.crt) e chave (.key)
-   • Teste de conexão automático
-   • Validação de saldo em tempo real
+<code>/fechar_semana</code> — Sócios
+• Lucro após descontar custos
+• % configurável por sócio
 
-<code>/saldo_banco</code> — Consultar saldo Inter
-   • Saldo atual da conta
-   • Últimas movimentações
-   • Integração em tempo real
+<code>/config_socios</code> — Define %
+• Validação soma = 100%
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-<b>📊 EXPORTAÇÃO & RELATÓRIOS</b>
-<code>/exportar</code> — Gerar arquivos profissionais
-   • Excel (.xlsx) com múltiplas abas
-   • PDF formatado com gráficos
-   • CSV para análise externa
-   • Filtros personalizados de data
+<b>🏦 BANCO INTER (Opcional)</b>
+<code>/config_banco_inter</code> — Config
+• Upload .crt + .key
+• Teste de conexão
+
+<code>/fechar_dia_auto</code> — Auto
+• Busca saldo real via API
+• Calcula receita automaticamente
+
+<code>/saldo_banco</code> — Consulta
+• Saldo + últimas movimentações
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-<b>🔮 INTELIGÊNCIA ARTIFICIAL</b>
-<code>/projecoes</code> — Previsões de ML
-   • Prevê volume de entregas
-   • Estima receita futura
-   • Análise de tendências
-   • Sugere dimensionamento de equipe
+<b>📊 EXPORTAÇÃO</b>
+<code>/exportar</code> — Arquivos
+• Excel (.xlsx) multi-abas
+• PDF formatado + gráficos
+• CSV análise externa"""
 
-<code>/dashboard</code> — Dashboard web interativo
-   • Interface gráfica no navegador
-   • Monitoramento em tempo real
-   • Mapa de calor das entregas
-   • KPIs automáticos
+        msg3 = """<b>🔮 INTELIGÊNCIA ARTIFICIAL</b>
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+<code>/projecoes</code> — Machine Learning
+• Prevê volume de entregas
+• Estima receita futura
+• Sugere dimensionamento equipe
 
-<b>🗺️ ROTEIRIZAÇÃO INTELIGENTE</b>
-<b>Modos disponíveis:</b>
-   • 🏍️ <b>Scooter Mode</b> — Contrafluxo otimizado
-     Reduz até 79% da distância original
-     Considera atalhos, vielas, calçadas
-   
-   • 🚗 <b>Modo Padrão</b> — Google Maps oficial
-     Respeita todas as vias
-     
-   • 🧬 <b>Algoritmo Genético</b> — TSP avançado
-     Otimização global da rota
-     Minimiza distância total
-
-<b>Features da rota:</b>
-   ✓ Agrupamento de entregas (STOPS)
-   ✓ Múltiplos pacotes no mesmo pin
-   ✓ Navegação turn-by-turn integrada
-   ✓ Mapa HTML offline completo
+<code>/dashboard</code> — Web UI
+• Interface navegador
+• Monitoramento real-time
+• Mapa de calor + KPIs
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-<b>📱 OUTROS COMANDOS</b>
+<b>📱 OUTROS</b>
 <code>/start</code> — Menu principal
-<code>/help</code> — Este guia completo
-<code>/status</code> — Status da sessão atual
-<code>/fechar_rota</code> — Encerrar rota manualmente
+<code>/help</code> — Este guia
+<code>/status</code> — Status sessão
+<code>/fechar_rota</code> — Encerrar rota
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-<b>🧠 TECNOLOGIAS UTILIZADAS</b>
-• <b>Algoritmos locais</b> (zero APIs externas):
-  - K-Means Clustering
-  - Algoritmo Genético (TSP)
-  - Greedy Nearest Neighbor
-  
-• <b>APIs opcionais</b>:
-  - Google Geocoding (cache local)
-  - Banco Inter (automação financeira)
-
-• <b>Framework</b>:
-  - Python 3.12+ assíncrono
-  - python-telegram-bot 20.7
-  - Pandas, NumPy, Scikit-learn
+<b>💡 FLUXO DIÁRIO</b>
+1️⃣ /add_entregador → Cadastra
+2️⃣ /config_socios → Define %
+3️⃣ /importar → Romaneios
+4️⃣ /otimizar → Rotas IA
+5️⃣ /modo_separacao → Físico
+6️⃣ Entregadores executam
+7️⃣ /fechar_dia → Financeiro
+8️⃣ /fechar_semana → Divisão
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-<b>💡 FLUXO COMPLETO RECOMENDADO</b>
+<b>🧠 TECNOLOGIA</b>
+• K-Means + Algoritmo Genético
+• Google Geocoding (cache local)
+• Python 3.12 async
+• Zero dependência APIs pagas
 
-1️⃣ <code>/add_entregador</code> — Cadastra equipe
-2️⃣ <code>/config_socios</code> — Define % de cada sócio
-3️⃣ <code>/importar</code> — Envia romaneios do dia
-4️⃣ <code>/otimizar</code> — Distribui rotas otimizadas
-5️⃣ <code>/modo_separacao</code> — Separação física
-6️⃣ Entregadores recebem mapas + executam
-7️⃣ <code>/fechar_dia</code> — Fechamento financeiro
-8️⃣ <code>/fechar_semana</code> — Divisão entre sócios
+<b>🔥 Deploy: Railway.app | v4.0</b>"""
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-<b>🔥 SISTEMA COMPLETO PARA DOMINAR ENTREGAS!</b>
-<i>v4.0 | Janeiro 2026 | Deploy: Railway.app</i>"""
-
-        await update.message.reply_text(
-            help_text, 
-            parse_mode='HTML'
-        )
+        # Envia as 3 mensagens sequencialmente
+        await update.message.reply_text(msg1, parse_mode='HTML')
+        await update.message.reply_text(msg2, parse_mode='HTML')
+        await update.message.reply_text(msg3, parse_mode='HTML')
         
     else:
         # ════════════════════════════════════════
