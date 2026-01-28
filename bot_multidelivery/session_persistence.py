@@ -42,12 +42,12 @@ class SessionStore:
                         'uploaded_at': r.uploaded_at.isoformat(),
                         'points': [
                             {
-                                'id': p.id,
+                                'package_id': p.package_id,
+                                'romaneio_id': p.romaneio_id,
                                 'address': p.address,
                                 'lat': p.lat,
                                 'lng': p.lng,
-                                'weight': p.weight,
-                                'notes': p.notes
+                                'priority': p.priority
                             } for p in r.points
                         ]
                     } for r in session.romaneios
@@ -60,12 +60,12 @@ class SessionStore:
                         'color': r.color,
                         'optimized_order': [
                             {
-                                'id': p.id,
+                                'package_id': p.package_id,
+                                'romaneio_id': p.romaneio_id,
                                 'address': p.address,
                                 'lat': p.lat,
                                 'lng': p.lng,
-                                'weight': p.weight,
-                                'notes': p.notes
+                                'priority': p.priority
                             } for p in r.optimized_order
                         ],
                         'delivered_packages': r.delivered_packages,
@@ -97,12 +97,12 @@ class SessionStore:
         for r_data in data.get('romaneios', []):
             points = [
                 DeliveryPoint(
-                    id=p['id'],
+                    package_id=p['package_id'],
+                    romaneio_id=p['romaneio_id'],
                     address=p['address'],
                     lat=p['lat'],
                     lng=p['lng'],
-                    weight=p.get('weight', 1.0),
-                    notes=p.get('notes', '')
+                    priority=p.get('priority', 'normal')
                 ) for p in r_data['points']
             ]
             romaneios.append(Romaneio(
@@ -115,12 +115,12 @@ class SessionStore:
         for r_data in data.get('routes', []):
             optimized = [
                 DeliveryPoint(
-                    id=p['id'],
+                    package_id=p['package_id'],
+                    romaneio_id=p['romaneio_id'],
                     address=p['address'],
                     lat=p['lat'],
                     lng=p['lng'],
-                    weight=p.get('weight', 1.0),
-                    notes=p.get('notes', '')
+                    priority=p.get('priority', 'normal')
                 ) for p in r_data['optimized_order']
             ]
             

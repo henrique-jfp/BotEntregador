@@ -15,6 +15,7 @@ from .services import deliverer_service, geocoding_service, genetic_optimizer, g
 from .services.map_generator import MapGenerator
 from .services.barcode_separator import barcode_separator
 from .services.route_analyzer import route_analyzer
+from .colors import get_color_name, get_color_for_index
 import uuid
 
 logging.basicConfig(level=logging.INFO)
@@ -1643,7 +1644,9 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
             routes_info += "\n\n<b>🛣️ ROTAS:</b>\n"
             for i, route in enumerate(session.routes[:5], 1):  # Max 5 rotas
                 color_name = get_color_name(route.color)
-                routes_info += f"{color_name}: {route.deliverer_name} ({len(route.romaneios)} pacotes)\n"
+                deliverer = route.assigned_to_name or "Não atribuído"
+                packages = len(route.optimized_order)
+                routes_info += f"{color_name}: {deliverer} ({packages} pacotes)\n"
             if len(session.routes) > 5:
                 routes_info += f"...e mais {len(session.routes) - 5} rotas\n"
         
