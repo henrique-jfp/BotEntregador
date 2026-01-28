@@ -1285,16 +1285,70 @@ async def process_route_analysis(update: Update, context: ContextTypes.DEFAULT_T
             session_manager.clear_admin_state(user_id)
             return
         
+        # ═══════════════════════════════════════════
+        # GEOCODING AUTOMÁTICO (se precisar)
+        # ═══════════════════════════════════════════
+        from .services.geocoding_service import geocoding_service
+        
+        missing_coords = sum(1 for d in deliveries if not d.latitude or not d.longitude)
+        
+        if missing_coords > 0:
+            await update.message.reply_text(
+                f"🌍 <b>GEOCODIFICANDO ENDEREÇOS...</b>\n\n"
+                f"📍 {missing_coords} endereços sem coordenadas\n"
+                f"⏳ Buscando no OpenStreetMap...\n\n"
+                f"<i>Pode levar ~{missing_coords * 2}s</i>",
+                parse_mode='HTML'
+            )
+            
+            geocoded = 0
+            failed = 0
+            
+            for d in deliveries:
+                if not d.latitude or not d.longitude:
+                    # Monta endereço completo
+                    full_address = f"{d.address}, {d.bairro}, {d.city}"
+                    
+                    # Tenta geocodificar
+                    coords = geocoding_service.geocode(full_address)
+                    
+                    if coords:
+                        d.latitude, d.longitude = coords
+                        geocoded += 1
+                    else:
+                        failed += 1
+            
+            if failed > 0:
+                await update.message.reply_text(
+                    f"⚠️ <b>AVISO:</b> {failed} endereços não geocodificados\n\n"
+                    f"✅ {geocoded} geocodificados com sucesso\n\n"
+                    f"💡 Análise pode ser imprecisa para endereços sem coordenadas",
+                    parse_mode='HTML'
+                )
+        
         # Converte para dicts
         deliveries_data = []
         for d in deliveries:
-            deliveries_data.append({
-                'id': d.tracking,
-                'address': f"{d.address}, {d.bairro}, {d.city}",
-                'lat': d.latitude,
-                'lon': d.longitude,
-                'stop': d.stop
-            })
+            if d.latitude and d.longitude:  # Só adiciona se tiver coordenadas
+                deliveries_data.append({
+                    'id': d.tracking,
+                    'address': f"{d.address}, {d.bairro}, {d.city}",
+                    'lat': d.latitude,
+                    'lon': d.longitude,
+                    'stop': d.stop
+                })
+        
+        if not deliveries_data:
+            await update.message.reply_text(
+                "❌ <b>NENHUMA COORDENADA VÁLIDA!</b>\n\n"
+                "O arquivo não contém:\n"
+                "• Colunas Latitude/Longitude OU\n"
+                "• Endereços geocodificáveis\n\n"
+                "💡 Verifique o formato do Excel",
+                parse_mode='HTML'
+            )
+            session_manager.clear_admin_state(user_id)
+            return
         
         # ═══════════════════════════════════════════
         # ANÁLISE COM IA

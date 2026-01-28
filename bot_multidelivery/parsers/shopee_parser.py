@@ -54,8 +54,8 @@ def parse_shopee_excel(file_path: str) -> List[Dict[str, any]]:
                     # Endereço: Destination, address, endereço
                     elif any(x in cell_lower for x in ['destination', 'endereço', 'endereco', 'address']):
                         headers['address'] = col
-                    # Bairro
-                    elif 'bairro' in cell_lower or 'distrito' in cell_lower or 'district' in cell_lower:
+                    # Bairro: neighborhood, bairro, distrito, district
+                    elif any(x in cell_lower for x in ['bairro', 'distrito', 'district', 'neighborhood', 'neighbour']):
                         headers['bairro'] = col
                     # Cidade
                     elif 'city' in cell_lower or 'cidade' in cell_lower:
