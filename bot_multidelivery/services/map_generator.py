@@ -117,6 +117,8 @@ class MapGenerator:
     
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Leaflet Routing Machine CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
     
     <style>
         * {{
@@ -128,6 +130,12 @@ class MapGenerator:
         body {{
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             overflow: hidden;
+        }}
+        
+        /* Esconde painel de instruções do routing */
+        .leaflet-routing-container {{
+            display: none !important;
+        }}
         }}
         
         #map {{
@@ -315,6 +323,8 @@ class MapGenerator:
     
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Leaflet Routing Machine JS -->
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
     
     <script>
         // Dados dos markers
@@ -363,14 +373,39 @@ class MapGenerator:
             }}
         }});
         
-        // Desenha polyline conectando pontos
-        const points = markers.map(m => [m.lat, m.lon]);
-        L.polyline(points, {{
-            color: '#667eea',
-            weight: 3,
-            opacity: 0.7,
-            dashArray: '10, 10'
-        }}).addTo(map);
+        // Desenha rota real pelas ruas usando OSRM
+        const waypoints = markers.map(m => L.latLng(m.lat, m.lon));
+        
+        try {{
+            L.Routing.control({{
+                waypoints: waypoints,
+                router: L.Routing.osrmv1({{
+                    serviceUrl: 'https://router.project-osrm.org/route/v1',
+                    profile: 'driving' // ou 'bike' se for modo scooter
+                }}),
+                lineOptions: {{
+                    styles: [{{
+                        color: '#667eea',
+                        weight: 4,
+                        opacity: 0.8
+                    }}]
+                }},
+                show: false, // esconde painel de instrucoes
+                addWaypoints: false,
+                draggableWaypoints: false,
+                fitSelectedRoutes: false,
+                showAlternatives: false
+            }}).addTo(map);
+        }} catch(err) {{
+            // Fallback: linha reta se routing falhar
+            console.warn('Routing falhou, usando polyline:', err);
+            L.polyline(waypoints, {{
+                color: '#667eea',
+                weight: 3,
+                opacity: 0.7,
+                dashArray: '10, 10'
+            }}).addTo(map);
+        }}
         
         // Funcoes
         function openCard(marker) {{
