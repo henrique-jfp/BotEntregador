@@ -1160,7 +1160,6 @@ async def cmd_fechar_rota(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             filename=route.map_file,
                             caption=caption,
                             parse_mode='HTML',
-                            reply_markup=InlineKeyboardMarkup(keyboard),
                             read_timeout=30,
                             write_timeout=30
                         ),
@@ -1168,11 +1167,25 @@ async def cmd_fechar_rota(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     )
                     logger.info(f"✅ Mapa {route.id} enviado com sucesso")
                     
+                    # Envia botão em mensagem separada (melhor UX)
+                    await context.bot.send_message(
+                        chat_id=BotConfig.ADMIN_TELEGRAM_ID,
+                        text=f"👇 <b>Atribua {route.id}:</b>",
+                        parse_mode='HTML',
+                        reply_markup=InlineKeyboardMarkup(keyboard)
+                    )
+                    
             except (asyncio.TimeoutError, NetworkError, TimedOut, ValueError) as e:
                 logger.warning(f"⚠️ Timeout/erro ao enviar mapa {route.id}: {e}. Enviando só texto...")
                 await context.bot.send_message(
                     chat_id=BotConfig.ADMIN_TELEGRAM_ID,
                     text=caption + f"\n\n⚠️ Mapa disponível em: {route.map_file}",
+                    parse_mode='HTML'
+                )
+                # Botão separado
+                await context.bot.send_message(
+                    chat_id=BotConfig.ADMIN_TELEGRAM_ID,
+                    text=f"👇 <b>Atribua {route.id}:</b>",
                     parse_mode='HTML',
                     reply_markup=InlineKeyboardMarkup(keyboard)
                 )
@@ -1181,6 +1194,12 @@ async def cmd_fechar_rota(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await context.bot.send_message(
                     chat_id=BotConfig.ADMIN_TELEGRAM_ID,
                     text=caption + "\n\n❌ Erro ao enviar mapa",
+                    parse_mode='HTML'
+                )
+                # Botão separado
+                await context.bot.send_message(
+                    chat_id=BotConfig.ADMIN_TELEGRAM_ID,
+                    text=f"👇 <b>Atribua {route.id}:</b>",
                     parse_mode='HTML',
                     reply_markup=InlineKeyboardMarkup(keyboard)
                 )
@@ -1499,6 +1518,17 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
         
         # Mostra lista de entregadores
         deliverers = [d for d in deliverer_service.get_all_deliverers() if d.is_active]
+        
+        if not deliverers:
+            await query.edit_message_text(
+                f"❌ <b>NENHUM ENTREGADOR CADASTRADO!</b>\n\n"
+                f"Rota: <b>{route_id}</b>\n\n"
+                f"Use <code>/add_entregador</code> para cadastrar entregadores primeiro.\n\n"
+                f"💡 Você precisa ter pelo menos 1 entregador ativo no sistema.",
+                parse_mode='HTML'
+            )
+            return
+        
         keyboard = []
         for partner in deliverers:
             keyboard.append([InlineKeyboardButton(
