@@ -846,9 +846,19 @@ async def handle_document_message(update: Update, context: ContextTypes.DEFAULT_
         await update.message.reply_text("❌ Apenas o admin pode enviar arquivos.")
         return
     
-    # Cria sessão automaticamente se não existe
-    session = session_manager.get_current_session()
     state = session_manager.get_admin_state(user_id)
+    
+    # ═══════════════════════════════════════════
+    # MODO ANÁLISE DE ROTA (sem sessão necessária)
+    # ═══════════════════════════════════════════
+    if state == "awaiting_analysis_file":
+        await process_route_analysis(update, context)
+        return
+    
+    # ═══════════════════════════════════════════
+    # IMPORTAÇÃO DE ROMANEIO (precisa de sessão)
+    # ═══════════════════════════════════════════
+    session = session_manager.get_current_session()
     
     if not session:
         today = datetime.now().strftime("%Y-%m-%d")
@@ -868,13 +878,6 @@ async def handle_document_message(update: Update, context: ContextTypes.DEFAULT_
             "   <i>Ex: Rua das Flores, 123 - Botafogo, RJ</i>",
             parse_mode='HTML'
         )
-        return
-    
-    # ═══════════════════════════════════════════
-    # MODO ANÁLISE DE ROTA (sem sessão ativa)
-    # ═══════════════════════════════════════════
-    if state == "awaiting_analysis_file":
-        await process_route_analysis(update, context)
         return
     
     if state != "awaiting_romaneios":
