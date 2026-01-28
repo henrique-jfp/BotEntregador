@@ -812,6 +812,59 @@ async def send_deliverer_summary(update: Update, user_id: int, data: dict):
         await target_message.reply_text(msg, parse_mode='HTML', reply_markup=InlineKeyboardMarkup(keyboard))
 
 
+async def cmd_importar(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Comando /importar - Instrui o user a enviar arquivo"""
+    user_id = update.effective_user.id
+    
+    if user_id != BotConfig.ADMIN_TELEGRAM_ID:
+        await update.message.reply_text("❌ Apenas o admin pode importar romaneios.")
+        return
+    
+    # Verifica se tem sessão ativa
+    session = session_manager.get_active_session()
+    if not session:
+        await update.message.reply_text(
+            "⚠️ <b>NENHUMA SESSÃO ATIVA!</b>\n\n"
+            "Use <code>/start</code> para começar uma nova sessão.",
+            parse_mode='HTML'
+        )
+        return
+    
+    # Verifica se base foi configurada
+    if not session.base_lat or not session.base_lng:
+        await update.message.reply_text(
+            "⚠️ <b>CONFIGURE A BASE PRIMEIRO!</b>\n\n"
+            "📍 <b>OPÇÃO 1 (RECOMENDADO):</b>\n"
+            "   Use o 📎 anexo → 📍 Localização do Telegram\n"
+            "   ✅ Otimiza bateria das bikes!\n\n"
+            "📝 <b>OPÇÃO 2:</b>\n"
+            "   Digite o endereço completo\n"
+            "   <i>Ex: Rua das Flores, 123 - Botafogo, RJ</i>",
+            parse_mode='HTML'
+        )
+        return
+    
+    # Instrui a enviar arquivo
+    await update.message.reply_text(
+        "📂 <b>PRONTO PARA IMPORTAR!</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "📎 <b>COMO ENVIAR:</b>\n\n"
+        "1️⃣ Clique no ícone 📎 (anexo)\n"
+        "2️⃣ Escolha <b>Arquivo</b>\n"
+        "3️⃣ Selecione o Excel da Shopee (.xlsx)\n"
+        "4️⃣ <b>NÃO</b> escreva nada, só envie!\n\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "✅ <b>FORMATOS ACEITOS:</b>\n"
+        "• Excel (.xlsx, .xls) — Shopee ⭐\n"
+        "• CSV (.csv) — tracking,endereço,lat,lon\n"
+        "• PDF (.pdf) — OCR automático\n\n"
+        "❗ <b>IMPORTANTE:</b>\n"
+        "Não digite nada, apenas envie o arquivo!\n\n"
+        "<i>🤖 Processamento automático quando receber</i>",
+        parse_mode='HTML'
+    )
+
+
 async def handle_document_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handler de arquivos (CSV, PDF)"""
     user_id = update.effective_user.id
@@ -854,6 +907,21 @@ async def handle_document_message(update: Update, context: ContextTypes.DEFAULT_
         return
     
     document = update.message.document
+    
+    # ⚡ VALIDAÇÃO: verifica se documento existe
+    if not document or not document.file_name:
+        await update.message.reply_text(
+            "⚠️ <b>NENHUM ARQUIVO ANEXADO!</b>\n\n"
+            "📎 <b>Como importar:</b>\n"
+            "1. Clique no 📎 (anexo)\n"
+            "2. Escolha o arquivo Excel (.xlsx)\n"
+            "3. Envie pra mim\n\n"
+            "❌ Não digite <code>/importar</code> sozinho!\n"
+            "✅ Envie o comando COM o arquivo anexado.",
+            parse_mode='HTML'
+        )
+        return
+    
     file_name = document.file_name.lower()
     
     # Download arquivo
@@ -3605,7 +3673,7 @@ def run_bot():
             # Handlers
             app.add_handler(CommandHandler("start", cmd_start))
             app.add_handler(CommandHandler("help", cmd_help))
-            app.add_handler(CommandHandler("importar", handle_document_message))  # Novo comando!
+            app.add_handler(CommandHandler("importar", cmd_importar))  # ⚡ NOVA FUNÇÃO
             app.add_handler(CommandHandler("otimizar", cmd_distribuir_rota))  # Renomeado!
             app.add_handler(CommandHandler("distribuir", cmd_distribuir_rota))  # Mantido por compatibilidade
             app.add_handler(CommandHandler("fechar_rota", cmd_fechar_rota))
