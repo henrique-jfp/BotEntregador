@@ -1180,6 +1180,87 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
     
     data = query.data
     
+    # ═══════════════════════════════════════════
+    # SELEÇÃO DE CORES PARA ROTAS
+    # ═══════════════════════════════════════════
+    if data.startswith("color_"):
+        if data == "color_confirm":
+            # Usuário confirmou as cores → executar otimização
+            await _execute_route_distribution(update, context, query)
+            return
+        
+        # Toggle de cor individual
+        color_name = data.replace("color_", "")
+        
+        if 'temp' not in context.user_data:
+            context.user_data['temp'] = {}
+        
+        colors_selected = context.user_data['temp'].get('colors_selected', [])
+        
+        # Toggle: adiciona ou remove
+        if color_name in colors_selected:
+            colors_selected.remove(color_name)
+        else:
+            colors_selected.append(color_name)
+        
+        context.user_data['temp']['colors_selected'] = colors_selected
+        
+        # Atualiza teclado com checkmarks
+        color_buttons = [
+            [
+                InlineKeyboardButton(
+                    f"{'✅ ' if 'vermelho' in colors_selected else ''}🔴 Vermelho", 
+                    callback_data="color_vermelho"
+                ),
+                InlineKeyboardButton(
+                    f"{'✅ ' if 'azul' in colors_selected else ''}🔵 Azul", 
+                    callback_data="color_azul"
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    f"{'✅ ' if 'verde' in colors_selected else ''}🟢 Verde", 
+                    callback_data="color_verde"
+                ),
+                InlineKeyboardButton(
+                    f"{'✅ ' if 'amarelo' in colors_selected else ''}🟡 Amarelo", 
+                    callback_data="color_amarelo"
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    f"{'✅ ' if 'roxo' in colors_selected else ''}🟣 Roxo", 
+                    callback_data="color_roxo"
+                ),
+                InlineKeyboardButton(
+                    f"{'✅ ' if 'laranja' in colors_selected else ''}🟠 Laranja", 
+                    callback_data="color_laranja"
+                ),
+            ],
+            [
+                InlineKeyboardButton("✅ Confirmar Cores", callback_data="color_confirm")
+            ]
+        ]
+        
+        keyboard = InlineKeyboardMarkup(color_buttons)
+        
+        num_colors = len(colors_selected)
+        color_list = ", ".join(colors_selected) if colors_selected else "nenhuma"
+        
+        await query.edit_message_text(
+            "🎨 <b>ESCOLHA AS CORES DOS ADESIVOS</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"📌 <b>Selecionadas ({num_colors}):</b> {color_list}\n\n"
+            "🏷️ <b>Selecione as cores disponíveis:</b>\n"
+            "• Clique nas cores que você tem como adesivo\n"
+            "• Pode escolher quantas quiser\n"
+            "• Depois clique em ✅ Confirmar\n\n"
+            "<i>💡 As rotas usarão as cores selecionadas</i>",
+            parse_mode='HTML',
+            reply_markup=keyboard
+        )
+        return
+    
     if data.startswith("assign_route_"):
         route_id = data.replace("assign_route_", "")
         session_manager.save_temp_data(query.from_user.id, "assigning_route", route_id)
@@ -3180,6 +3261,224 @@ async def handle_admin_barcode_scan(update: Update, context: ContextTypes.DEFAUL
 
 # ==================== MAIN ====================
 
+async def _execute_route_distribution(update: Update, context: ContextTypes.DEFAULT_TYPE, query=None):
+    """Executa a distribuição de rotas COM cores selecionadas"""
+    
+    # Recupera dados armazenados
+    temp = context.user_data.get('temp', {})
+    excel_path = temp.get('otimizar_excel')
+    num_entregadores = temp.get('otimizar_num')
+    colors_selected = temp.get('colors_selected', [])
+    
+    if not excel_path or not num_entregadores:
+        msg = "❌ Dados perdidos. Refaça o comando /otimizar"
+        if query:
+            await query.edit_message_text(msg)
+        else:
+            await update.message.reply_text(msg)
+        return
+    
+    # Validação de cores
+    if not colors_selected:
+        msg = (
+            "⚠️ <b>NENHUMA COR SELECIONADA!</b>\n\n"
+            "Você precisa escolher pelo menos 1 cor.\n"
+            "Volte e selecione as cores dos adesivos disponíveis."
+        )
+        if query:
+            await query.edit_message_text(msg, parse_mode='HTML')
+        else:
+            await update.message.reply_text(msg, parse_mode='HTML')
+        return
+    
+    # Edita mensagem pra mostrar processamento
+    processing_msg = (
+        "⏳ <b>PROCESSANDO ROMANEIO...</b>\n\n"
+        f"🎨 Cores selecionadas: {', '.join(colors_selected)}\n\n"
+        "• Carregando entregas do arquivo\n"
+        "• Agrupando por STOP\n"
+        "• Dividindo entre entregadores\n"
+        "• Otimizando rotas (Scooter Mode)\n"
+        "• Aplicando cores às rotas\n\n"
+        "🔥 <i>Isso pode levar uns 10-20 segundos...</i>"
+    )
+    
+    if query:
+        await query.edit_message_text(processing_msg, parse_mode='HTML')
+    else:
+        await update.message.reply_text(processing_msg, parse_mode='HTML')
+    
+    try:
+        # Import aqui para evitar circular import
+        from bot.services.shopee_parser import ShopeeRomaneioParser
+        from bot_multidelivery.services.roteo_divider import RoteoDivider
+        from bot_multidelivery.services.map_generator import MapGenerator
+        
+        # Parse Excel
+        deliveries = ShopeeRomaneioParser.parse(excel_path)
+        
+        # Pega entregadores disponiveis
+        all_deliverers = deliverer_service.list_deliverers()
+        if len(all_deliverers) < num_entregadores:
+            msg = (
+                f"❌ <b>ENTREGADORES INSUFICIENTES!</b>\n\n"
+                f"👥 Cadastrados: <b>{len(all_deliverers)}</b>\n"
+                f"✅ Necessários: <b>{num_entregadores}</b>\n\n"
+                f"🚨 <b>Faltam {num_entregadores - len(all_deliverers)} entregadores!</b>\n\n"
+                f"Use <code>/add_entregador</code> pra cadastrar mais."
+            )
+            if query:
+                await query.edit_message_text(msg, parse_mode='HTML')
+            else:
+                await update.message.reply_text(msg, parse_mode='HTML')
+            return
+        
+        # Monta dicionario de entregadores
+        selected = all_deliverers[:num_entregadores]
+        entregadores_info = {d['telegram_id']: d['name'] for d in selected}
+        
+        # Divide romaneio COM CORES
+        divider = RoteoDivider()
+        routes = divider.divide_romaneio(
+            deliveries, 
+            num_entregadores, 
+            entregadores_info,
+            colors=colors_selected  # ⚡ PASSA AS CORES!
+        )
+        
+        # Mapeia cores pra emojis
+        color_emojis = {
+            'vermelho': '🔴',
+            'azul': '🔵',
+            'verde': '🟢',
+            'amarelo': '🟡',
+            'roxo': '🟣',
+            'laranja': '🟠'
+        }
+        
+        # Envia resumo pro admin COM CORES
+        total_distance = sum(r.total_distance_km for r in routes)
+        total_time = sum(r.total_time_minutes for r in routes)
+        
+        summary = f"✅ <b>ROTAS OTIMIZADAS E DISTRIBUÍDAS!</b>\n"
+        summary += f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        summary += f"📦 <b>RESUMO GERAL:</b>\n"
+        summary += f"• Total: {len(deliveries)} pacotes\n"
+        summary += f"• Entregadores: {num_entregadores}\n"
+        summary += f"• Distância Total: {total_distance:.1f} km\n"
+        summary += f"• Tempo Total: {total_time:.0f} min\n\n"
+        
+        summary += f"👥 <b>ROTAS POR ENTREGADOR:</b>\n\n"
+        
+        for i, route in enumerate(routes, 1):
+            # Pega cor da rota (se existe)
+            route_color = getattr(route, 'color', None)
+            color_emoji = color_emojis.get(route_color, '⚪') if route_color else '⚪'
+            
+            summary += f"{color_emoji} <b>{i}. {route.entregador_nome}</b>\n"
+            summary += f"   📦 {route.total_packages} pacotes | 📍 {len(route.stops)} paradas\n"
+            summary += f"   🛣️ {route.total_distance_km:.1f}km | ⏱️ {route.total_time_minutes:.0f}min\n"
+            summary += f"   ⚡ Atalhos: {route.shortcuts}\n\n"
+        
+        summary += f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        summary += f"📲 Mapas HTML enviados para cada entregador!\n"
+        summary += f"👀 Monitore pelo dashboard: http://localhost:8765\n\n"
+        summary += f"🔥 <i>Bora faturar!</i>"
+        
+        # Envia summary
+        chat_id = update.effective_chat.id
+        await context.bot.send_message(chat_id, summary, parse_mode='HTML')
+        
+        # Envia mapa pro chat de cada entregador
+        for route in routes:
+            # Prepara dados dos stops
+            stops_data = []
+            for i, (lat, lon, deliveries_list) in enumerate(route.stops):
+                address = deliveries_list[0].address
+                num_packages = len(deliveries_list)
+                status = 'current' if i == 0 else 'pending'
+                stops_data.append((lat, lon, address, num_packages, status))
+            
+            # Pega cor da rota
+            route_color = getattr(route, 'color', None)
+            color_emoji = color_emojis.get(route_color, '⚪') if route_color else ''
+            
+            # Gera HTML do mapa
+            session = session_manager.get_session()
+            base_loc = (session.base_lat, session.base_lng, session.base_address) if session and session.base_lat and session.base_lng else None
+            html = MapGenerator.generate_interactive_map(
+                stops=stops_data,
+                entregador_nome=route.entregador_nome,
+                current_stop=0,
+                total_packages=route.total_packages,
+                total_distance_km=route.total_distance_km,
+                total_time_min=route.total_time_minutes,
+                base_location=base_loc
+            )
+            
+            # Salva temporariamente
+            map_file = f"rota_{route.entregador_id}.html"
+            MapGenerator.save_map(html, map_file)
+            
+            # Envia pro entregador
+            try:
+                msg = (
+                    f"{color_emoji} <b>SUA ROTA DO DIA ESTÁ PRONTA!</b>\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                    f"🎨 <b>COR DA SUA ROTA: {color_emoji} {route_color.upper() if route_color else 'Sem cor'}</b>\n\n"
+                    f"📦 <b>RESUMO:</b>\n"
+                    f"• Pacotes: <b>{route.total_packages}</b>\n"
+                    f"• Paradas: <b>{len(route.stops)}</b>\n"
+                    f"• Distância: <b>{route.total_distance_km:.1f} km</b>\n"
+                    f"• Tempo: <b>{route.total_time_minutes:.0f} min</b>\n"
+                    f"• Atalhos: <b>{route.shortcuts}</b> ⚡\n\n"
+                    f"🎯 <b>INÍCIO:</b>\n{route.start_point[2][:60]}\n\n"
+                    f"🏁 <b>FIM:</b>\n{route.end_point[2][:60]}\n\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                    f"🗺️ Baixe o <b>mapa HTML</b> abaixo!\n"
+                    f"🔥 Abra no navegador e siga os pins!\n\n"
+                    f"<i>Boa sorte, parceiro! 🚀</i>"
+                )
+                
+                await context.bot.send_message(
+                    chat_id=route.entregador_id,
+                    text=msg,
+                    parse_mode='HTML'
+                )
+                
+                # Envia arquivo HTML
+                with open(map_file, 'rb') as f:
+                    await context.bot.send_document(
+                        chat_id=route.entregador_id,
+                        document=f,
+                        filename=f"rota_{route.entregador_nome.replace(' ', '_')}.html",
+                        caption=f"{color_emoji} Rota {route_color.upper() if route_color else ''} - Abra no navegador!"
+                    )
+                
+            except Exception as e:
+                logger.error(f"Erro enviando rota para {route.entregador_id}: {e}")
+        
+        await context.bot.send_message(
+            chat_id,
+            "✅ Rotas coloridas enviadas para todos os entregadores!",
+            parse_mode='HTML'
+        )
+        
+    except FileNotFoundError:
+        msg = f"❌ Arquivo não encontrado: {excel_path}"
+        if query:
+            await query.edit_message_text(msg)
+        else:
+            await context.bot.send_message(update.effective_chat.id, msg)
+    except Exception as e:
+        logger.error(f"Erro ao distribuir rota: {e}")
+        msg = f"❌ Erro: {str(e)}"
+        if query:
+            await query.edit_message_text(msg)
+        else:
+            await context.bot.send_message(update.effective_chat.id, msg)
+
+
 async def cmd_distribuir_rota(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Comando /distribuir <excel_path> <num_entregadores> - Distribui romaneio entre entregadores"""
     user_id = update.effective_user.id
@@ -3217,144 +3516,51 @@ async def cmd_distribuir_rota(update: Update, context: ContextTypes.DEFAULT_TYPE
         await update.message.reply_text("Numero de entregadores deve ser um inteiro.")
         return
     
-    await update.message.reply_text(
-        "⏳ <b>PROCESSANDO ROMANEIO...</b>\n\n"
-        "• Carregando entregas do arquivo\n"
-        "• Agrupando por STOP\n"
-        "• Dividindo entre entregadores\n"
-        "• Otimizando rotas (Scooter Mode)\n\n"
-        "🔥 <i>Isso pode levar uns 10-20 segundos...</i>",
-        parse_mode='HTML'
-    )
+    # ═══════════════════════════════════════════
+    # SELEÇÃO DE CORES PARA AS ROTAS
+    # ═══════════════════════════════════════════
     
-    try:
-        # Import aqui para evitar circular import
-        from bot.services.shopee_parser import ShopeeRomaneioParser
-        from bot_multidelivery.services.roteo_divider import RoteoDivider
-        from bot_multidelivery.services.map_generator import MapGenerator
-        
-        # Parse Excel
-        deliveries = ShopeeRomaneioParser.parse(excel_path)
-        
-        # Pega entregadores disponiveis
-        all_deliverers = deliverer_service.list_deliverers()
-        if len(all_deliverers) < num_entregadores:
-            await update.message.reply_text(
-                f"❌ <b>ENTREGADORES INSUFICIENTES!</b>\n\n"
-                f"👥 Cadastrados: <b>{len(all_deliverers)}</b>\n"
-                f"✅ Necessários: <b>{num_entregadores}</b>\n\n"
-                f"🚨 <b>Faltam {num_entregadores - len(all_deliverers)} entregadores!</b>\n\n"
-                f"Use <code>/add_entregador</code> pra cadastrar mais.",
-                parse_mode='HTML'
-            )
-            return
-        
-        # Monta dicionario de entregadores
-        selected = all_deliverers[:num_entregadores]
-        entregadores_info = {d['telegram_id']: d['name'] for d in selected}
-        
-        # Divide romaneio
-        divider = RoteoDivider()
-        routes = divider.divide_romaneio(deliveries, num_entregadores, entregadores_info)
-        
-        # Envia resumo pro admin
-        total_distance = sum(r.total_distance_km for r in routes)
-        total_time = sum(r.total_time_minutes for r in routes)
-        
-        summary = f"✅ <b>ROTAS OTIMIZADAS E DISTRIBUÍDAS!</b>\n"
-        summary += f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        summary += f"📦 <b>RESUMO GERAL:</b>\n"
-        summary += f"• Total: {len(deliveries)} pacotes\n"
-        summary += f"• Entregadores: {num_entregadores}\n"
-        summary += f"• Distância Total: {total_distance:.1f} km\n"
-        summary += f"• Tempo Total: {total_time:.0f} min\n\n"
-        
-        summary += f"👥 <b>ROTAS POR ENTREGADOR:</b>\n\n"
-        
-        for i, route in enumerate(routes, 1):
-            summary += f"🔸 <b>{i}. {route.entregador_nome}</b>\n"
-            summary += f"   📦 {route.total_packages} pacotes | 📍 {len(route.stops)} paradas\n"
-            summary += f"   🛣️ {route.total_distance_km:.1f}km | ⏱️ {route.total_time_minutes:.0f}min\n"
-            summary += f"   ⚡ Atalhos: {route.shortcuts}\n\n"
-        
-        summary += f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        summary += f"📲 Mapas HTML enviados para cada entregador!\n"
-        summary += f"👀 Monitore pelo dashboard: http://localhost:8765\n\n"
-        summary += f"🔥 <i>Bora faturar!</i>"
-        
-        await update.message.reply_text(summary, parse_mode='HTML')
-        
-        # Envia mapa pro chat de cada entregador
-        for route in routes:
-            # Prepara dados dos stops
-            stops_data = []
-            for i, (lat, lon, deliveries_list) in enumerate(route.stops):
-                address = deliveries_list[0].address
-                num_packages = len(deliveries_list)
-                status = 'current' if i == 0 else 'pending'
-                stops_data.append((lat, lon, address, num_packages, status))
-            
-            # Gera HTML do mapa
-            session = session_manager.get_session()
-            base_loc = (session.base_lat, session.base_lng, session.base_address) if session and session.base_lat and session.base_lng else None
-            html = MapGenerator.generate_interactive_map(
-                stops=stops_data,
-                entregador_nome=route.entregador_nome,
-                current_stop=0,
-                total_packages=route.total_packages,
-                total_distance_km=route.total_distance_km,
-                total_time_min=route.total_time_minutes,
-                base_location=base_loc
-            )
-            
-            # Salva temporariamente
-            map_file = f"rota_{route.entregador_id}.html"
-            MapGenerator.save_map(html, map_file)
-            
-            # Envia pro entregador
-            try:
-                msg = (
-                    f"🏍️ <b>SUA ROTA DO DIA ESTÁ PRONTA!</b>\n"
-                    f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                    f"📦 <b>RESUMO:</b>\n"
-                    f"• Pacotes: <b>{route.total_packages}</b>\n"
-                    f"• Paradas: <b>{len(route.stops)}</b>\n"
-                    f"• Distância: <b>{route.total_distance_km:.1f} km</b>\n"
-                    f"• Tempo: <b>{route.total_time_minutes:.0f} min</b>\n"
-                    f"• Atalhos: <b>{route.shortcuts}</b> ⚡\n\n"
-                    f"🎯 <b>INÍCIO:</b>\n{route.start_point[2][:60]}\n\n"
-                    f"🏁 <b>FIM:</b>\n{route.end_point[2][:60]}\n\n"
-                    f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                    f"🗺️ Baixe o <b>mapa HTML</b> abaixo!\n"
-                    f"🔥 Abra no navegador e siga os pins!\n\n"
-                    f"<i>Boa sorte, parceiro! 🚀</i>"
-                )
-                
-                await context.bot.send_message(
-                    chat_id=route.entregador_id,
-                    text=msg,
-                    parse_mode='HTML'
-                )
-                
-                # Envia arquivo HTML
-                with open(map_file, 'rb') as f:
-                    await context.bot.send_document(
-                        chat_id=route.entregador_id,
-                        document=f,
-                        filename=f"rota_{route.entregador_nome.replace(' ', '_')}.html",
-                        caption="Abra este arquivo no navegador para ver o mapa interativo!"
-                    )
-                
-            except Exception as e:
-                logger.error(f"Erro enviando rota para {route.entregador_id}: {e}")
-        
-        await update.message.reply_text("Rotas enviadas para todos os entregadores!")
-        
-    except FileNotFoundError:
-        await update.message.reply_text(f"Arquivo nao encontrado: {excel_path}")
-    except Exception as e:
-        logger.error(f"Erro ao distribuir rota: {e}")
-        await update.message.reply_text(f"Erro: {str(e)}")
+    # Armazena dados temporários pra callback
+    if not hasattr(context.user_data, 'temp'):
+        context.user_data['temp'] = {}
+    
+    context.user_data['temp']['otimizar_excel'] = excel_path
+    context.user_data['temp']['otimizar_num'] = num_entregadores
+    context.user_data['temp']['colors_selected'] = []
+    
+    # Cores padrão com emojis
+    color_buttons = [
+        [
+            InlineKeyboardButton("🔴 Vermelho", callback_data="color_vermelho"),
+            InlineKeyboardButton("🔵 Azul", callback_data="color_azul"),
+        ],
+        [
+            InlineKeyboardButton("🟢 Verde", callback_data="color_verde"),
+            InlineKeyboardButton("🟡 Amarelo", callback_data="color_amarelo"),
+        ],
+        [
+            InlineKeyboardButton("🟣 Roxo", callback_data="color_roxo"),
+            InlineKeyboardButton("🟠 Laranja", callback_data="color_laranja"),
+        ],
+        [
+            InlineKeyboardButton("✅ Confirmar Cores", callback_data="color_confirm")
+        ]
+    ]
+    
+    keyboard = InlineKeyboardMarkup(color_buttons)
+    
+    await update.message.reply_text(
+        "🎨 <b>ESCOLHA AS CORES DOS ADESIVOS</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"📦 Serão criadas <b>{num_entregadores} rotas</b>\n\n"
+        "🏷️ <b>Selecione as cores disponíveis:</b>\n"
+        "• Clique nas cores que você tem como adesivo\n"
+        "• Pode escolher quantas quiser\n"
+        "• Depois clique em ✅ Confirmar\n\n"
+        "<i>💡 As rotas usarão as cores selecionadas</i>",
+        parse_mode='HTML',
+        reply_markup=keyboard
+    )
 
 
 def run_bot():

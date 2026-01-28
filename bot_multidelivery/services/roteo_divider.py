@@ -27,6 +27,7 @@ class EntregadorRoute:
     start_point: Tuple[float, float, str]  # lat, lon, address
     end_point: Tuple[float, float, str]
     shortcuts: int
+    color: str = None  # ⚡ COR DA ROTA (vermelho, azul, verde, etc)
 
 
 class RoteoDivider:
@@ -47,7 +48,8 @@ class RoteoDivider:
         self, 
         deliveries: List[ShopeeDelivery],
         num_entregadores: int,
-        entregadores_info: Dict[str, str]  # {id: nome}
+        entregadores_info: Dict[str, str],  # {id: nome}
+        colors: List[str] = None  # ⚡ CORES SELECIONADAS
     ) -> List[EntregadorRoute]:
         """
         Divide romaneio entre N entregadores
@@ -56,6 +58,7 @@ class RoteoDivider:
             deliveries: Lista de entregas parseadas do Excel
             num_entregadores: Quantos entregadores vao trabalhar
             entregadores_info: Dicionario com ID e nome dos entregadores
+            colors: Lista de cores selecionadas (ex: ['vermelho', 'azul'])
             
         Returns:
             Lista de rotas otimizadas (uma por entregador)
@@ -77,10 +80,16 @@ class RoteoDivider:
             entregador_id = entregador_ids[i]
             entregador_nome = entregadores_info[entregador_id]
             
+            # ⚡ Atribui cor do array (cicla se tiver menos cores que entregadores)
+            route_color = None
+            if colors and len(colors) > 0:
+                route_color = colors[i % len(colors)]
+            
             route = self._optimize_cluster(
                 cluster, 
                 entregador_id, 
-                entregador_nome
+                entregador_nome,
+                color=route_color  # ⚡ PASSA A COR
             )
             routes.append(route)
         
@@ -182,7 +191,8 @@ class RoteoDivider:
         self, 
         cluster: List[Tuple[int, List[ShopeeDelivery]]],
         entregador_id: str,
-        entregador_nome: str
+        entregador_nome: str,
+        color: str = None  # ⚡ COR DA ROTA
     ) -> EntregadorRoute:
         """Otimiza rota de um cluster (entregador)"""
         
@@ -223,7 +233,8 @@ class RoteoDivider:
             total_packages=total_packages,
             start_point=(start_lat, start_lon, start_address),
             end_point=(end_lat, end_lon, end_address),
-            shortcuts=route.shortcuts
+            shortcuts=route.shortcuts,
+            color=color  # ⚡ ADICIONA COR NA ROTA
         )
     
     def _haversine(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
