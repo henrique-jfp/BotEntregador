@@ -43,6 +43,12 @@
             color: #10b981;
         }
 
+        #mode-indicator {
+            font-size: 0.8rem;
+            color: #f59e0b;
+            margin-top: 0.3rem;
+        }
+
         #camera-container {
             position: relative;
             flex: 1;
@@ -213,11 +219,20 @@
         <div id="header">
             <h1>📦 Scanner de Pacotes</h1>
             <div id="status">🟢 Câmera ativa - Aponte para o código</div>
+            <div id="mode-indicator">⚡ Bipadora também suportada</div>
         </div>
 
         <div id="camera-container">
             <div id="interactive" class="viewport"></div>
             <div class="scanning-line"></div>
+            
+            <!-- Input invisível para bipadora -->
+            <input 
+                type="text" 
+                id="barcode-input" 
+                autocomplete="off"
+                style="position: absolute; top: -9999px; left: -9999px;"
+            />
             
             <div id="result-overlay">
                 <div id="color-indicator"></div>
@@ -443,7 +458,47 @@
         window.addEventListener('load', () => {
             startScanner();
             loadInitialStatus();
+            setupBarcodeInput();
         });
+
+        // ═══════════════════════════════════════════
+        // BIPADORA INPUT HANDLER
+        // ═══════════════════════════════════════════
+        function setupBarcodeInput() {
+            const input = document.getElementById('barcode-input');
+            
+            // Mantém input sempre focado
+            setInterval(() => {
+                if (document.activeElement !== input) {
+                    input.focus();
+                }
+            }, 500);
+            
+            // Listener para Enter (bipadora envia Enter após código)
+            input.addEventListener('keypress', async (e) => {
+                if (e.key === 'Enter') {
+                    const code = input.value.trim();
+                    
+                    if (code.length > 3) {  // Código válido
+                        console.log("📦 Código da bipadora:", code);
+                        
+                        // Vibração no mobile
+                        if (navigator.vibrate) {
+                            navigator.vibrate(100);
+                        }
+                        
+                        // Processa scan
+                        await processScan(code);
+                        
+                        // Limpa input
+                        input.value = '';
+                    }
+                }
+            });
+            
+            // Força foco inicial
+            input.focus();
+        }
 
         // Previne sleep/lock do celular
         let wakeLock = null;
