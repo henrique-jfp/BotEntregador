@@ -149,14 +149,6 @@ class GeocodingService:
             pass
         
         return None
-                self.cache.set(address, coords[0], coords[1])
-                self._increment_api_call()
-                return coords
-        
-        # 3. Fallback: simulação determinística
-        coords = self._geocode_fallback(address)
-        self.cache.set(address, coords[0], coords[1])
-        return coords
     
     def _geocode_google(self, address: str) -> Optional[Tuple[float, float]]:
         """Geocode via Google Maps API"""
