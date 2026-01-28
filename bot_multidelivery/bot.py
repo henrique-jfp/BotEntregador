@@ -1323,8 +1323,20 @@ async def process_route_analysis(update: Update, context: ContextTypes.DEFAULT_T
             
             for d in deliveries:
                 if not d.latitude or not d.longitude:
-                    # Monta endereço completo
-                    full_address = f"{d.address}, {d.bairro}, {d.city}"
+                    # Monta endereço completo com contexto
+                    address_parts = [d.address, d.bairro]
+                    
+                    # Adiciona cidade se tiver
+                    if d.city and d.city.lower() not in ['', 'nan', 'none']:
+                        address_parts.append(d.city)
+                    else:
+                        # Fallback: Rio de Janeiro (maioria dos romaneios)
+                        address_parts.append("Rio de Janeiro")
+                    
+                    # Sempre adiciona Brasil pro OSM não confundir
+                    address_parts.append("Brasil")
+                    
+                    full_address = ", ".join(address_parts)
                     
                     # Log do geocoding
                     logger.info(f"🌍 Geocodificando: {full_address[:80]}")
@@ -1381,6 +1393,8 @@ async def process_route_analysis(update: Update, context: ContextTypes.DEFAULT_T
         # GERA MAPA HTML
         # ═══════════════════════════════════════════
         stops_data = []
+        failed_geocoding = []
+        
         for d in deliveries_data:
             if d['lat'] and d['lon']:
                 stops_data.append((
@@ -1390,6 +1404,18 @@ async def process_route_analysis(update: Update, context: ContextTypes.DEFAULT_T
                     1,  # 1 pacote por stop
                     'pending'
                 ))
+            else:
+                failed_geocoding.append(d['address'][:50])
+        
+        # DEBUG: Log coordenadas
+        logger.info(f"🗺️ Gerando mapa: {len(stops_data)} pontos com coordenadas")
+        if failed_geocoding:
+            logger.warning(f"⚠️ {len(failed_geocoding)} endereços sem coordenadas:")
+            for addr in failed_geocoding[:5]:  # Max 5
+                logger.warning(f"   - {addr}")
+        
+        if not stops_data:
+            logger.error("❌ NENHUM PONTO COM COORDENADAS! Mapa ficará em branco.")
         
         html = MapGenerator.generate_interactive_map(
             stops=stops_data,

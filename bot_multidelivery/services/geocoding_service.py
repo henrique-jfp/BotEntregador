@@ -86,18 +86,69 @@ class GeocodingService:
         """
         Geocode com estratégia em cascata:
         1. Cache local (GRATUITO)
-        2. Google Maps API (PAGO)
-        3. Simulação baseada em hash (FALLBACK)
+        2. OpenStreetMap Nominatim (GRATUITO)
+        3. Google Maps API (PAGO - se disponível)
+        4. Simulação baseada em hash (ÚLTIMO RECURSO)
         """
         # 1. Tenta cache
         cached = self.cache.get(address)
         if cached:
             return cached
         
-        # 2. Tenta Google Maps API
-        if self.api_key and self.api_calls_today < 100:  # Limite diário
+        # 2. Tenta OpenStreetMap (GRATUITO)
+        coords = self._geocode_osm(address)
+        if coords:
+            self.cache.set(address, coords[0], coords[1])
+            return coords
+        
+        # 3. Tenta Google Maps API (se disponível)
+        if self.api_key and self.api_calls_today < 100:
             coords = self._geocode_google(address)
             if coords:
+                self.cache.set(address, coords[0], coords[1])
+                self._increment_api_call()
+                return coords
+        
+        # 4. Fallback: simulação determinística (ÚLTIMO RECURSO)
+        coords = self._geocode_fallback(address)
+        self.cache.set(address, coords[0], coords[1])
+        return coords
+    
+    def _geocode_osm(self, address: str) -> Optional[Tuple[float, float]]:
+        """
+        Geocode via OpenStreetMap Nominatim (GRATUITO)
+        Respeita rate limit: 1 req/sec
+        """
+        try:
+            import requests
+            import time
+            
+            # Rate limit: espera 1 segundo entre chamadas
+            time.sleep(1)
+            
+            url = "https://nominatim.openstreetmap.org/search"
+            params = {
+                'q': address,
+                'format': 'json',
+                'limit': 1,
+                'addressdetails': 1
+            }
+            headers = {
+                'User-Agent': 'BotEntregador/1.0 (Telegram Bot)'
+            }
+            
+            response = requests.get(url, params=params, headers=headers, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data and len(data) > 0:
+                    result = data[0]
+                    return (float(result['lat']), float(result['lon']))
+        except Exception as e:
+            # Se falhar, continua para próxima estratégia
+            pass
+        
+        return None
                 self.cache.set(address, coords[0], coords[1])
                 self._increment_api_call()
                 return coords
