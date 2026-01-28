@@ -14,6 +14,7 @@ from .parsers import parse_csv_romaneio, parse_pdf_romaneio, parse_text_romaneio
 from .services import deliverer_service, geocoding_service, genetic_optimizer, gamification_service, predictor, dashboard_ws, scooter_optimizer, financial_service
 from .services.map_generator import MapGenerator
 from .services.barcode_separator import barcode_separator, RouteColor
+from .services.route_analyzer import route_analyzer
 import uuid
 
 logging.basicConfig(level=logging.INFO)
@@ -110,6 +111,11 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 • K-Means + Algoritmo Genético
 • Modo Scooter (79% menos distância)
 • Mapa HTML interativo
+
+<code>/analisar_rota</code> — Avaliar rota 🆕
+• Envia Excel → IA analisa
+• Score 0-10 + prós/contras
+• Decide se vale pegar!
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -845,6 +851,13 @@ async def handle_document_message(update: Update, context: ContextTypes.DEFAULT_
         )
         return
     
+    # ═══════════════════════════════════════════
+    # MODO ANÁLISE DE ROTA (sem sessão ativa)
+    # ═══════════════════════════════════════════
+    if state == "awaiting_analysis_file":
+        await process_route_analysis(update, context)
+        return
+    
     if state != "awaiting_romaneios":
         await update.message.reply_text(
             "⚠️ <b>Configure a base primeiro!</b>\n\n"
@@ -1181,6 +1194,215 @@ async def cmd_fechar_rota(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         # Pequeno delay entre envios para evitar rate limit
         await asyncio.sleep(0.5)
+
+
+async def process_route_analysis(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Processa Excel da Shopee e gera análise inteligente com IA
+    """
+    user_id = update.effective_user.id
+    document = update.message.document
+    
+    if not document or not document.file_name:
+        await update.message.reply_text(
+            "❌ Nenhum arquivo detectado. Envie o Excel da Shopee.",
+            parse_mode='HTML'
+        )
+        return
+    
+    file_name = document.file_name.lower()
+    
+    if not (file_name.endswith('.xlsx') or file_name.endswith('.xls')):
+        await update.message.reply_text(
+            "❌ <b>Formato inválido!</b>\n\n"
+            "Envie um arquivo <b>.xlsx</b> da Shopee.",
+            parse_mode='HTML'
+        )
+        return
+    
+    # Download e processa
+    await update.message.reply_text(
+        "⏳ <b>PROCESSANDO ROTA...</b>\n\n"
+        "• Lendo Excel\n"
+        "• Extraindo coordenadas\n"
+        "• Analisando com IA\n"
+        "• Gerando mapa\n\n"
+        "<i>Aguarde uns 10 segundos...</i>",
+        parse_mode='HTML'
+    )
+    
+    try:
+        from bot_multidelivery.parsers.shopee_parser import ShopeeRomaneioParser
+        import tempfile
+        
+        # Download
+        file = await context.bot.get_file(document.file_id)
+        file_content = await file.download_as_bytearray()
+        
+        # Salva temp
+        with tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False) as tmp:
+            tmp.write(bytes(file_content))
+            tmp_path = tmp.name
+        
+        # Parse
+        deliveries = ShopeeRomaneioParser.parse(tmp_path)
+        
+        if not deliveries:
+            await update.message.reply_text(
+                "❌ Nenhuma entrega encontrada no arquivo!",
+                parse_mode='HTML'
+            )
+            session_manager.clear_admin_state(user_id)
+            return
+        
+        # Converte para dicts
+        deliveries_data = []
+        for d in deliveries:
+            deliveries_data.append({
+                'id': d.tracking,
+                'address': f"{d.address}, {d.bairro}, {d.city}",
+                'lat': d.latitude,
+                'lon': d.longitude,
+                'stop': d.stop
+            })
+        
+        # ═══════════════════════════════════════════
+        # ANÁLISE COM IA
+        # ═══════════════════════════════════════════
+        analysis = route_analyzer.analyze_route(deliveries_data)
+        
+        # ═══════════════════════════════════════════
+        # GERA MAPA HTML
+        # ═══════════════════════════════════════════
+        stops_data = []
+        for d in deliveries_data:
+            if d['lat'] and d['lon']:
+                stops_data.append((
+                    d['lat'], 
+                    d['lon'], 
+                    d['address'], 
+                    1,  # 1 pacote por stop
+                    'pending'
+                ))
+        
+        html = MapGenerator.generate_interactive_map(
+            stops=stops_data,
+            entregador_nome="Análise de Rota",
+            current_stop=0,
+            total_packages=analysis.total_packages,
+            total_distance_km=analysis.total_distance_km,
+            total_time_min=analysis.estimated_time_minutes,
+            base_location=None
+        )
+        
+        map_file = f"analysis_{user_id}.html"
+        MapGenerator.save_map(html, map_file)
+        
+        # ═══════════════════════════════════════════
+        # MENSAGEM DE ANÁLISE
+        # ═══════════════════════════════════════════
+        
+        # Score visual
+        score_bar = "█" * int(analysis.overall_score) + "░" * (10 - int(analysis.overall_score))
+        
+        message = (
+            f"🔍 <b>ANÁLISE DE ROTA COMPLETA</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"📊 <b>SCORE GERAL: {analysis.overall_score}/10</b>\n"
+            f"<code>{score_bar}</code> {analysis.recommendation}\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"📦 <b>MÉTRICAS:</b>\n"
+            f"• Pacotes: <b>{analysis.total_packages}</b>\n"
+            f"• Paradas: <b>{analysis.total_stops}</b>\n"
+            f"• Distância: <b>{analysis.total_distance_km:.1f} km</b>\n"
+            f"• Área: <b>{analysis.area_coverage_km2:.1f} km²</b>\n"
+            f"• Densidade: <b>{analysis.density_score:.1f} pacotes/km²</b>\n"
+            f"• Concentração: <b>{analysis.concentration_score:.1f}/10</b>\n"
+            f"• Tempo estimado: <b>{analysis.estimated_time_minutes:.0f} min</b>\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        )
+        
+        # Prós
+        if analysis.pros:
+            message += "✅ <b>PRÓS:</b>\n"
+            for pro in analysis.pros:
+                message += f"  • {pro}\n"
+            message += "\n"
+        
+        # Contras
+        if analysis.cons:
+            message += "❌ <b>CONTRAS:</b>\n"
+            for con in analysis.cons:
+                message += f"  • {con}\n"
+            message += "\n"
+        
+        message += f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        message += f"🤖 <b>ANÁLISE DA IA:</b>\n\n{analysis.ai_comment}\n\n"
+        message += f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        message += f"🗺️ <b>Mapa interativo em anexo!</b>"
+        
+        await update.message.reply_text(message, parse_mode='HTML')
+        
+        # Envia mapa
+        try:
+            with open(map_file, 'rb') as f:
+                await context.bot.send_document(
+                    chat_id=user_id,
+                    document=f,
+                    filename=f"analise_rota_{file_name}",
+                    caption="🗺️ Abra no navegador para visualizar!"
+                )
+        except Exception as e:
+            logger.error(f"Erro ao enviar mapa: {e}")
+            await update.message.reply_text(
+                f"⚠️ Mapa salvo em: {map_file}",
+                parse_mode='HTML'
+            )
+        
+        # Limpa estado
+        session_manager.clear_admin_state(user_id)
+        
+    except Exception as e:
+        logger.error(f"Erro na análise de rota: {e}")
+        await update.message.reply_text(
+            f"❌ <b>ERRO NO PROCESSAMENTO</b>\n\n"
+            f"<code>{str(e)[:200]}</code>\n\n"
+            f"Tente novamente com outro arquivo.",
+            parse_mode='HTML'
+        )
+        session_manager.clear_admin_state(user_id)
+
+
+async def cmd_analisar_rota(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    🔍 Analisa uma rota da Shopee ANTES de aceitar
+    Mostra mapa + IA analysis (score, prós, contras)
+    """
+    user_id = update.effective_user.id
+    
+    if user_id != BotConfig.ADMIN_TELEGRAM_ID:
+        await update.message.reply_text("❌ Apenas o admin pode analisar rotas.")
+        return
+    
+    # Muda estado para aguardar arquivo
+    session_manager.set_admin_state(user_id, "awaiting_analysis_file")
+    
+    await update.message.reply_text(
+        "🔍 <b>ANÁLISE INTELIGENTE DE ROTA</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "📎 <b>ENVIE O EXCEL DA SHOPEE</b>\n\n"
+        "O bot vai:\n"
+        "• 🗺️ Gerar mapa com todos os pontos\n"
+        "• 🤖 Analisar viabilidade com IA\n"
+        "• ⭐ Dar score (0-10)\n"
+        "• ✅❌ Listar prós e contras\n"
+        "• 💬 Comentário: vale a pena?\n\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "💡 <b>Use para avaliar rotas do grupo</b>\n"
+        "antes de aceitar!\n\n"
+        "📎 Anexe o arquivo Excel agora:",
+        parse_mode='HTML'
+    )
 
 
 async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -3619,6 +3841,7 @@ def run_bot():
             app.add_handler(CommandHandler("otimizar", cmd_distribuir_rota))  # Renomeado!
             app.add_handler(CommandHandler("distribuir", cmd_distribuir_rota))  # Mantido por compatibilidade
             app.add_handler(CommandHandler("fechar_rota", cmd_fechar_rota))
+            app.add_handler(CommandHandler("analisar_rota", cmd_analisar_rota))  # ⚡ NOVO!
             app.add_handler(CommandHandler("add_entregador", cmd_add_deliverer))
             app.add_handler(CommandHandler("entregadores", cmd_list_deliverers))
             app.add_handler(CommandHandler("ranking", cmd_ranking))
