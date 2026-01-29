@@ -121,12 +121,13 @@ class TerritoryDivider:
     
     def _balance_clusters(self, clusters_dict: dict, centroids: list, k: int) -> dict:
         """
-        Balanceia clusters para distribuição mais uniforme.
+        Balanceia clusters para distribuição mais uniforme (50/50).
         Move pontos de borda de clusters grandes para pequenos.
+        Tolerância de 10% permite até 60/40 apenas em casos extremos.
         """
         max_iterations = 20
         target_size = sum(len(clusters_dict[i]) for i in range(k)) // k
-        tolerance = int(target_size * 0.2)  # 20% de tolerância
+        tolerance = int(target_size * 0.1)  # 10% de tolerância (força 50/50, aceita até 60/40)
         
         for _ in range(max_iterations):
             sizes = [len(clusters_dict[i]) for i in range(k)]

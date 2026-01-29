@@ -385,39 +385,18 @@ class MapGenerator:
             }}
         }});
         
-        // Desenha rota real pelas ruas usando OSRM
+        // ⚠️ SCOOTER: Usa linha reta (não segue ruas de carro)
+        // Scooters podem: contramão, calçada, atalhos
         const waypoints = markers.map(m => L.latLng(m.lat, m.lon));
         
-        try {{
-            L.Routing.control({{
-                waypoints: waypoints,
-                router: L.Routing.osrmv1({{
-                    serviceUrl: 'https://router.project-osrm.org/route/v1',
-                    profile: 'driving' // ou 'bike' se for modo scooter
-                }}),
-                lineOptions: {{
-                    styles: [{{
-                        color: '#667eea',
-                        weight: 4,
-                        opacity: 0.8
-                    }}]
-                }},
-                show: false, // esconde painel de instrucoes
-                addWaypoints: false,
-                draggableWaypoints: false,
-                fitSelectedRoutes: false,
-                showAlternatives: false
-            }}).addTo(map);
-        }} catch(err) {{
-            // Fallback: linha reta se routing falhar
-            console.warn('Routing falhou, usando polyline:', err);
-            L.polyline(waypoints, {{
-                color: '#667eea',
-                weight: 3,
-                opacity: 0.7,
-                dashArray: '10, 10'
-            }}).addTo(map);
-        }}
+        // Desenha linha reta entre pontos (modo scooter)
+        L.polyline(waypoints, {{
+            color: '#667eea',
+            weight: 4,
+            opacity: 0.8,
+            dashArray: '5, 10',  // Tracejado indica que não segue ruas
+            lineJoin: 'round'
+        }}).addTo(map);
         
         // Funcoes
         function openCard(marker) {{
