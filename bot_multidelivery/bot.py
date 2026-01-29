@@ -3689,9 +3689,6 @@ async def cmd_modo_separacao(update: Update, context: ContextTypes.DEFAULT_TYPE)
         mensagem_cores += f"{emoji} <b>{color_name}</b> → {entregador}\n"
         mensagem_cores += f"   📦 {len(route.optimized_order)} pacotes\n\n"
     
-    # Ativa modo separação
-    result = barcode_separator.start_separation_mode(session.id, routes_data)
-    
     # Ativa modo separação com sessão
     result = barcode_separator.start_separation_mode(session)
     
