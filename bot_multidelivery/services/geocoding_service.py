@@ -78,10 +78,12 @@ class GeocodingCache:
 
 
 class GeocodingService:
-    """Geocoding com fallback inteligente"""
+    """Geocoding com fallback inteligente - Múltiplas APIs GRATUITAS"""
     
-    def __init__(self, google_api_key: Optional[str] = None):
-        self.api_key = google_api_key
+    def __init__(self, google_api_key: Optional[str] = None, locationiq_key: Optional[str] = None, geoapify_key: Optional[str] = None):
+        self.google_api_key = google_api_key
+        self.locationiq_key = locationiq_key  # 5.000 req/dia GRÁTIS, sem cartão
+        self.geoapify_key = geoapify_key      # 3.000 req/dia GRÁTIS, sem cartão
         self.cache = GeocodingCache()
         self.api_calls_today = 0
         self.last_reset = datetime.now().date()
@@ -146,7 +148,7 @@ class GeocodingService:
             return tok
         return None
 
-    def geocode(self, address: str) -> Tuple[float, float]:
+    def geocode(self, address: str, expected_bairro: Optional[str] = None) -> Tuple[float, float]:
         """
         Geocode com estratégia em cascata:
         1. Cache local (GRATUITO)
@@ -165,19 +167,35 @@ class GeocodingService:
         if cached:
             return cached
         
-        # 2. Tenta OpenStreetMap (GRATUITO)
-        coords = self._geocode_osm(query, raw_addr, bairro)
-        if coords:
-            self.cache.set(query, coords[0], coords[1])
-            return coords
-        
-        # 3. Tenta Google Maps API (se disponível)
-        if self.api_key and self.api_calls_today < 100:
-            coords = self._geocode_google(query)
+        # 2. Tenta LocationIQ (5.000/dia GRÁTIS, sem cartão, rápido)
+        if self.locationiq_key and self.api_calls_today < 5000:
+            coords = self._geocode_locationiq(query, expected_bairro)
             if coords:
                 self.cache.set(query, coords[0], coords[1])
                 self._increment_api_call()
                 return coords
+        
+        # 3. Tenta Geoapify (3.000/dia GRÁTIS, sem cartão)
+        if self.geoapify_key and self.api_calls_today < 3000:
+            coords = self._geocode_geoapify(query, expected_bairro)
+            if coords:
+                self.cache.set(query, coords[0], coords[1])
+                self._increment_api_call()
+                return coords
+        
+        # 4. Tenta Google Maps (se configurado - exige cartão)
+        if self.google_api_key and self.api_calls_today < 2500:
+            coords = self._geocode_google(query, expected_bairro)
+            if coords:
+                self.cache.set(query, coords[0], coords[1])
+                self._increment_api_call()
+                return coords
+        
+        # 5. Fallback: OpenStreetMap Nominatim (GRÁTIS mas lento)
+        coords = self._geocode_osm(query, raw_addr, bairro)
+        if coords:
+            self.cache.set(query, coords[0], coords[1])
+            return coords
         
         # 4. Fallback: simulação determinística (ÚLTIMO RECURSO)
         coords = self._geocode_fallback(query)
@@ -243,8 +261,8 @@ class GeocodingService:
         
         return None
     
-    def _geocode_google(self, address: str) -> Optional[Tuple[float, float]]:
-        """Geocode via Google Maps API"""
+    def _geocode_google(self, address: str, expected_bairro: Optional[str] = None) -> Optional[Tuple[float, float]]:
+        """Geocode via Google Maps API com validação de bairro"""
         try:
             import requests
             url = "https://maps.googleapis.com/maps/api/geocode/json"
@@ -253,14 +271,182 @@ class GeocodingService:
                 'key': self.api_key
             }
             
-            response = requests.get(url, params=params, timeout=5)
+            response = requests.get(url, params=params, timeout=10)
             data = response.json()
             
             if data['status'] == 'OK' and data['results']:
-                location = data['results'][0]['geometry']['location']
-                return (location['lat'], location['lng'])
-        except:
+                result = data['results'][0]
+                location = result['geometry']['location']
+                lat, lng = location['lat'], location['lng']
+                
+                # Validação 1: Verifica distância do centro
+                if self._distance_km((lat, lng), self.fallback_center) > self.max_valid_distance_km:
+                    logging.warning(f"Google Maps: resultado muito longe do centro: {address}")
+                    return None
+                
+                # Validação 2: Verifica bairro se fornecido
+                if expected_bairro:
+                    address_components = result.get('address_components', [])
+                    found_bairro = False
+                    expected_lower = expected_bairro.lower().strip()
+                    
+                    for component in address_components:
+                        types = component.get('types', [])
+                        # Procura por bairro nas várias formas que o Google retorna
+                        if any(t in types for t in ['sublocality', 'neighborhood', 'sublocality_level_1', 'political']):
+                            component_name = component.get('long_name', '').lower().strip()
+                            if expected_lower in component_name or component_name in expected_lower:
+                                found_bairro = True
+                                break
+                    
+                    if not found_bairro:
+                        logging.warning(f"Google Maps: bairro não confere. Esperado: {expected_bairro}, Endereço: {address}")
+                        return None
+                
+                return (lat, lng)
+        except Exception as e:
+            logging.error(f"Erro Google Maps API: {e}")
             pass
+        
+        return None
+    
+    def _geocode_locationiq(self, address: str, expected_bairro: Optional[str] = None) -> Optional[Tuple[float, float]]:
+        """
+        Geocode via LocationIQ (baseado em OSM mas MUITO mais rápido)
+        FREE: 5.000 requests/dia SEM cartão de crédito
+        Cadastro: https://locationiq.com/
+        """
+        try:
+            import requests
+            import time
+            
+            # Rate limit gentil
+            time.sleep(0.1)
+            
+            url = "https://us1.locationiq.com/v1/search"
+            params = {
+                'key': self.locationiq_key,
+                'q': address,
+                'format': 'json',
+                'limit': 5,
+                'countrycodes': 'br',
+                'addressdetails': 1
+            }
+            
+            if self.viewbox:
+                params['viewbox'] = ','.join(str(v) for v in self.viewbox)
+                params['bounded'] = 1
+            
+            response = requests.get(url, params=params, timeout=10)
+            
+            if response.status_code != 200:
+                return None
+            
+            data = response.json()
+            
+            if not data:
+                return None
+            
+            # Pega melhor resultado com validação
+            for result in data:
+                lat, lng = float(result['lat']), float(result['lon'])
+                
+                # Validação 1: Distância
+                if self._distance_km((lat, lng), self.fallback_center) > self.max_valid_distance_km:
+                    continue
+                
+                # Validação 2: Bairro (se fornecido)
+                if expected_bairro:
+                    addr = result.get('address', {})
+                    bairro_fields = [
+                        addr.get('neighbourhood', ''),
+                        addr.get('suburb', ''),
+                        addr.get('city_district', ''),
+                        addr.get('quarter', '')
+                    ]
+                    
+                    expected_lower = expected_bairro.lower().strip()
+                    match = any(expected_lower in f.lower() or f.lower() in expected_lower 
+                               for f in bairro_fields if f)
+                    
+                    if not match:
+                        continue
+                
+                return (lat, lng)
+            
+        except Exception as e:
+            logging.error(f"Erro LocationIQ API: {e}")
+        
+        return None
+    
+    def _geocode_geoapify(self, address: str, expected_bairro: Optional[str] = None) -> Optional[Tuple[float, float]]:
+        """
+        Geocode via Geoapify
+        FREE: 3.000 requests/dia SEM cartão de crédito
+        Cadastro: https://www.geoapify.com/
+        """
+        try:
+            import requests
+            import time
+            
+            time.sleep(0.1)
+            
+            url = "https://api.geoapify.com/v1/geocode/search"
+            params = {
+                'apiKey': self.geoapify_key,
+                'text': address,
+                'limit': 5,
+                'filter': f'countrycode:br'
+            }
+            
+            # Adiciona bias para Rio de Janeiro
+            if self.fallback_center:
+                params['bias'] = f"proximity:{self.fallback_center[1]},{self.fallback_center[0]}"
+            
+            response = requests.get(url, params=params, timeout=10)
+            
+            if response.status_code != 200:
+                return None
+            
+            data = response.json()
+            features = data.get('features', [])
+            
+            if not features:
+                return None
+            
+            # Pega melhor resultado
+            for feature in features:
+                props = feature.get('properties', {})
+                lon = props.get('lon')
+                lat = props.get('lat')
+                
+                if not lat or not lon:
+                    continue
+                
+                # Validação 1: Distância
+                if self._distance_km((lat, lon), self.fallback_center) > self.max_valid_distance_km:
+                    continue
+                
+                # Validação 2: Bairro
+                if expected_bairro:
+                    bairro_fields = [
+                        props.get('neighbourhood', ''),
+                        props.get('suburb', ''),
+                        props.get('district', ''),
+                        props.get('quarter', '')
+                    ]
+                    
+                    expected_lower = expected_bairro.lower().strip()
+                    match = any(expected_lower in f.lower() or f.lower() in expected_lower 
+                               for f in bairro_fields if f)
+                    
+                    if not match:
+                        continue
+                
+                return (lat, lon)
+            
+        except Exception as e:
+            logging.error(f"Erro Geoapify API: {e}")
         
         return None
     
@@ -320,15 +506,54 @@ class GeocodingService:
         
         self.api_calls_today += 1
     
-    async def geocode_address(self, address: str) -> Optional[Tuple[float, float]]:
+    async def geocode_address(self, address: str, expected_bairro: Optional[str] = None) -> Optional[Tuple[float, float]]:
         """
         Versão async do geocode para uso com Telegram bot.
         Retorna (lat, lng) ou None se falhar.
         """
         try:
-            return self.geocode(address)
+            return self.geocode(address, expected_bairro)
         except Exception:
             return None
+    
+    async def geocode_batch(self, addresses_data: List[Dict]) -> List[Dict]:
+        """
+        Geocodifica múltiplos endereços em paralelo (async).
+        
+        Args:
+            addresses_data: Lista de dicts com 'address' e 'bairro' (opcional)
+        
+        Returns:
+            Lista de dicts com 'address', 'bairro', 'lat', 'lon'
+        """
+        import asyncio
+        from concurrent.futures import ThreadPoolExecutor
+        
+        def geocode_single(item):
+            """Geocodifica um único endereço"""
+            try:
+                address = item.get('address', '')
+                bairro = item.get('bairro', '')
+                
+                if not address:
+                    return {**item, 'lat': None, 'lon': None}
+                
+                coords = self.geocode(address, bairro)
+                return {**item, 'lat': coords[0], 'lon': coords[1]}
+            except Exception as e:
+                logging.warning(f"Erro ao geocodificar {item.get('address', '')}: {e}")
+                return {**item, 'lat': None, 'lon': None}
+        
+        # Executa geocoding em paralelo com ThreadPoolExecutor
+        # Limita a 10 threads simultâneas para não sobrecarregar APIs
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            loop = asyncio.get_event_loop()
+            results = await loop.run_in_executor(
+                None,
+                lambda: list(executor.map(geocode_single, addresses_data))
+            )
+        
+        return results
     
     async def reverse_geocode(self, lat: float, lng: float) -> Optional[str]:
         """
@@ -363,10 +588,19 @@ class GeocodingService:
         return {
             'cache': cache_stats,
             'api_calls_today': self.api_calls_today,
-            'using_api': bool(self.api_key)
+            'using_api': bool(self.google_api_key or self.locationiq_key or self.geoapify_key),
+            'apis_configured': {
+                'google': bool(self.google_api_key),
+                'locationiq': bool(self.locationiq_key),
+                'geoapify': bool(self.geoapify_key)
+            }
         }
 
 
 # Singleton
 from ..config import BotConfig
-geocoding_service = GeocodingService(BotConfig.GOOGLE_API_KEY)
+geocoding_service = GeocodingService(
+    google_api_key=BotConfig.GOOGLE_API_KEY,
+    locationiq_key=os.getenv("LOCATIONIQ_API_KEY"),
+    geoapify_key=os.getenv("GEOAPIFY_API_KEY")
+)

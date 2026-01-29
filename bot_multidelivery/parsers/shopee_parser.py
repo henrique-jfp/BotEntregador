@@ -4,6 +4,49 @@ Parser Excel da Shopee - Extrai entregas do romaneio oficial
 from typing import List, Dict
 from dataclasses import dataclass
 import openpyxl
+import re
+
+
+def clean_destination_address(raw_address: str) -> str:
+    """
+    Limpa endereço da Shopee extraindo APENAS:
+    - Nome da rua (antes da primeira vírgula)
+    - Número do prédio (após a primeira vírgula, até encontrar espaço/vírgula/parêntese)
+    
+    Exemplos:
+        "Rua Mena Barreto, 151, Portaria" -> "Rua Mena Barreto, 151"
+        "Rua Principado de Mônaco, 37, Apt 501(guarita tb pode deixar" -> "Rua Principado de Mônaco, 37"
+        "Rua Real Grandeza, 278, 601" -> "Rua Real Grandeza, 278"
+    """
+    if not raw_address:
+        return ""
+    
+    # Remove espaços extras
+    address = raw_address.strip()
+    
+    # Divide pela primeira vírgula
+    parts = address.split(',', 2)  # Limita a 3 partes
+    
+    if len(parts) < 2:
+        # Se não tem vírgula, retorna o endereço como está
+        return address
+    
+    # Parte 1: Nome da rua
+    street_name = parts[0].strip()
+    
+    # Parte 2: Número do prédio (extrai apenas dígitos do início)
+    number_part = parts[1].strip()
+    
+    # Extrai apenas o número (remove tudo após espaços, parênteses, vírgulas)
+    number_match = re.match(r'^(\d+[A-Za-z]?)', number_part)
+    if number_match:
+        building_number = number_match.group(1)
+    else:
+        # Se não encontrar número, usa a parte toda
+        building_number = number_part.split()[0] if ' ' in number_part else number_part
+    
+    # Retorna apenas rua + número
+    return f"{street_name}, {building_number}"
 
 
 @dataclass
@@ -166,9 +209,13 @@ def parse_shopee_excel(file_path: str) -> List[Dict[str, any]]:
                 phone = str(ws.cell(row, headers['phone']).value or '').strip()
             
             if address:  # Só adiciona se tem endereço
+                # Limpa o endereço para geocoding (apenas rua + número)
+                cleaned_address = clean_destination_address(address)
+                
                 addresses.append({
                     'id': tracking,
-                    'address': f"{address}, {bairro}, {city}".strip(', '),
+                    'address': cleaned_address,  # Endereço limpo
+                    'raw_address': address,  # Endereço original para referência
                     'lat': lat,
                     'lon': lon,
                     'stop': stop,

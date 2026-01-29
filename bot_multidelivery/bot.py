@@ -1314,39 +1314,45 @@ async def process_route_analysis(update: Update, context: ContextTypes.DEFAULT_T
             await update.message.reply_text(
                 f"🌍 <b>GEOCODIFICANDO ENDEREÇOS...</b>\n\n"
                 f"📍 {missing_coords} endereços sem coordenadas\n"
-                f"⏳ Buscando no OpenStreetMap...\n\n"
-                f"<i>Pode levar ~{missing_coords * 2}s</i>",
+                f"⏳ Processando em paralelo (Google Maps API)...\n\n"
+                f"<i>Aguarde ~{max(10, missing_coords // 5)}s</i>",
                 parse_mode='HTML'
             )
             
-            geocoded = 0
-            failed = 0
-            
+            # Prepara lista de endereços para geocoding em batch
+            to_geocode = []
             for d in deliveries:
                 if not d.latitude or not d.longitude:
-                    # Monta endereço SEMPRE com Rio de Janeiro
-                    # Normaliza bairro (remove duplicatas)
+                    # Normaliza bairro
                     bairro = d.bairro.strip() if d.bairro else ""
-                    
-                    # Remove "Rio de Janeiro" do bairro se já estiver lá
                     bairro = bairro.replace(", Rio de Janeiro", "").replace(",Rio de Janeiro", "")
                     
-                    # Endereço completo forçando RJ
+                    # Endereço completo (já vem limpo do parser)
                     full_address = f"{d.address}, {bairro}, Rio de Janeiro, RJ, Brasil"
                     
-                    # Log do geocoding
-                    logger.info(f"🌍 Geocodificando: {full_address[:80]}")
-                    
-                    # Tenta geocodificar
-                    coords = geocoding_service.geocode(full_address)
-                    
-                    if coords:
-                        d.latitude, d.longitude = coords
-                        geocoded += 1
-                        logger.info(f"✅ Geocoded: {coords}")
-                    else:
-                        failed += 1
-                        logger.warning(f"❌ Falhou: {full_address[:80]}")
+                    to_geocode.append({
+                        'delivery': d,
+                        'address': full_address,
+                        'bairro': bairro
+                    })
+            
+            # Geocodifica em batch (paralelo)
+            logger.info(f"🌍 Geocodificando {len(to_geocode)} endereços em batch...")
+            geocoded_results = await geocoding_service.geocode_batch(to_geocode)
+            
+            # Aplica resultados
+            geocoded = 0
+            failed = 0
+            for result in geocoded_results:
+                delivery = result['delivery']
+                if result['lat'] and result['lon']:
+                    delivery.latitude = result['lat']
+                    delivery.longitude = result['lon']
+                    geocoded += 1
+                    logger.info(f"✅ Geocoded: {result['address'][:60]} -> ({result['lat']}, {result['lon']})")
+                else:
+                    failed += 1
+                    logger.warning(f"❌ Falhou: {result['address'][:60]}")
             
             if failed > 0:
                 await update.message.reply_text(
