@@ -419,6 +419,15 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
     if await handle_admin_barcode_scan(update, context, text):
         return  # Foi processado, não continua pro resto
     
+    # ═══════════════════════════════════════════
+    # MODO ANÁLISE DE ROTA - Aceita texto direto
+    # ═══════════════════════════════════════════
+    if state == "awaiting_analysis_file":
+        # Se não começou com /, é uma lista de endereços
+        if not text.startswith('/'):
+            await process_route_analysis_text(update, context, text)
+            return
+    
     # Wizard: cadastro de entregador
     if state == "adding_deliverer_name":
         data = session_manager.get_temp_data(user_id, "new_deliverer") or {}
@@ -1246,6 +1255,181 @@ async def cmd_fechar_rota(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await asyncio.sleep(0.5)
 
 
+async def process_route_analysis_text(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str):
+    """
+    Processa lista de endereços (texto) e gera análise inteligente com IA
+    """
+    user_id = update.effective_user.id
+    
+    await update.message.reply_text(
+        "⏳ <b>PROCESSANDO ENDEREÇOS...</b>\n\n"
+        "• Parsing lista de endereços\n"
+        "• Geocodificando (Google Maps)\n"
+        "• Analisando com IA\n"
+        "• Gerando mapa\n\n"
+        "<i>Aguarde ~15-30 segundos...</i>",
+        parse_mode='HTML'
+    )
+    
+    try:
+        from bot_multidelivery.parsers.text_parser import parse_text_romaneio
+        from bot_multidelivery.services.geocoding_service import geocoding_service
+        
+        # Parse endereços
+        addresses_raw = parse_text_romaneio(text)
+        
+        if not addresses_raw or len(addresses_raw) == 0:
+            await update.message.reply_text(
+                "❌ <b>NENHUM ENDEREÇO ENCONTRADO</b>\n\n"
+                "Envie uma lista com <b>um endereço por linha</b>:\n\n"
+                "<code>Rua A, 123 - Centro, RJ\n"
+                "Av. B, 456 - Botafogo, RJ\n"
+                "Travessa C, 789 - Copacabana, RJ</code>\n\n"
+                "💡 Pode incluir numeração (1., 2.) ou emojis 📦",
+                parse_mode='HTML'
+            )
+            session_manager.clear_admin_state(user_id)
+            return
+        
+        await update.message.reply_text(
+            f"✅ {len(addresses_raw)} endereços detectados!\n\n"
+            f"🌍 Geocodificando em paralelo...",
+            parse_mode='HTML'
+        )
+        
+        # Geocodifica todos os endereços
+        to_geocode = [{'address': addr, 'delivery': None} for addr in addresses_raw]
+        geocoded_results = await geocoding_service.geocode_batch(to_geocode)
+        
+        # Filtra apenas os que geocodificaram com sucesso
+        deliveries_data = []
+        failed = 0
+        for i, result in enumerate(geocoded_results):
+            if result['lat'] and result['lon']:
+                deliveries_data.append({
+                    'id': f"END_{i+1:03d}",
+                    'address': result['address'],
+                    'bairro': '',  # Não extraímos bairro de texto livre
+                    'lat': result['lat'],
+                    'lon': result['lon'],
+                    'stop': i + 1
+                })
+            else:
+                failed += 1
+                logger.warning(f"❌ Falhou geocoding: {result['address'][:60]}")
+        
+        if failed > 0:
+            await update.message.reply_text(
+                f"⚠️ <b>AVISO:</b> {failed}/{len(addresses_raw)} endereços não geocodificados\n\n"
+                f"✅ {len(deliveries_data)} prontos para análise\n\n"
+                f"💡 Verifique se os endereços estão completos (rua, número, bairro, cidade)",
+                parse_mode='HTML'
+            )
+        
+        if not deliveries_data or len(deliveries_data) < 3:
+            await update.message.reply_text(
+                "❌ <b>ENDEREÇOS INSUFICIENTES</b>\n\n"
+                f"Apenas {len(deliveries_data)} endereços geocodificados.\n"
+                "Mínimo: 3 endereços válidos.\n\n"
+                "💡 Certifique-se de incluir:\n"
+                "• Rua/Avenida + número\n"
+                "• Bairro\n"
+                "• Cidade (Rio de Janeiro, RJ)\n\n"
+                "Exemplo:\n"
+                "<code>Av. Atlântica, 1234 - Copacabana, Rio de Janeiro, RJ</code>",
+                parse_mode='HTML'
+            )
+            session_manager.clear_admin_state(user_id)
+            return
+        
+        # ═══════════════════════════════════════════
+        # ANÁLISE COM IA (mesmo código que Excel)
+        # ═══════════════════════════════════════════
+        from bot_multidelivery.services.route_analyzer import route_analyzer
+        analysis = route_analyzer.analyze_route(deliveries_data)
+        
+        # ═══════════════════════════════════════════
+        # GERA MAPA HTML
+        # ═══════════════════════════════════════════
+        from bot_multidelivery.services.map_generator import generate_analysis_map
+        
+        map_path = generate_analysis_map(
+            deliveries=deliveries_data,
+            analysis=analysis,
+            session_id="ANALISE_TEXTO"
+        )
+        
+        # ═══════════════════════════════════════════
+        # ENVIA ANÁLISE + MAPA
+        # ═══════════════════════════════════════════
+        score = analysis.get('score', 0)
+        score_emoji = "🟢" if score >= 7 else "🟡" if score >= 5 else "🔴"
+        
+        msg = (
+            f"{score_emoji} <b>ANÁLISE DE ROTA - TEXTO</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"⭐ <b>Score Viabilidade: {score}/10</b>\n\n"
+            f"📊 <b>ESTATÍSTICAS</b>\n"
+            f"📦 {analysis.get('total_stops', 0)} pontos de entrega\n"
+            f"📏 {analysis.get('total_distance_km', 0):.1f} km (estimado)\n"
+            f"⏱️ {analysis.get('estimated_time_min', 0)} min (estimado)\n"
+            f"💰 Receita estimada: R$ {analysis.get('estimated_revenue', 0):.2f}\n\n"
+        )
+        
+        # Prós
+        pros = analysis.get('pros', [])
+        if pros:
+            msg += "✅ <b>PONTOS POSITIVOS</b>\n"
+            for pro in pros:
+                msg += f"• {pro}\n"
+            msg += "\n"
+        
+        # Contras
+        cons = analysis.get('cons', [])
+        if cons:
+            msg += "❌ <b>PONTOS NEGATIVOS</b>\n"
+            for con in cons:
+                msg += f"• {con}\n"
+            msg += "\n"
+        
+        # Comentário
+        comment = analysis.get('comment', '')
+        if comment:
+            msg += f"💬 <b>CONCLUSÃO</b>\n{comment}\n\n"
+        
+        msg += "━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        msg += "📍 Veja o mapa abaixo ↓"
+        
+        await update.message.reply_text(msg, parse_mode='HTML')
+        
+        # Envia mapa
+        with open(map_path, 'rb') as map_file:
+            await update.message.reply_document(
+                document=map_file,
+                filename=f"analise_texto_{datetime.now().strftime('%d%m_%H%M')}.html",
+                caption="🗺️ <b>Mapa Interativo</b>\nAbra no navegador para visualizar a rota",
+                parse_mode='HTML'
+            )
+        
+        # Limpa estado
+        session_manager.clear_admin_state(user_id)
+        
+        logger.info(f"✅ Análise de rota (texto) concluída: {len(deliveries_data)} endereços, score {score}/10")
+    
+    except Exception as e:
+        logger.error(f"❌ Erro ao analisar rota (texto): {e}")
+        import traceback
+        traceback.print_exc()
+        
+        await update.message.reply_text(
+            f"❌ <b>ERRO AO PROCESSAR</b>\n\n"
+            f"Detalhes: {str(e)}\n\n"
+            f"💡 Certifique-se de enviar endereços completos (rua, número, bairro, cidade)",
+            parse_mode='HTML'
+        )
+        session_manager.clear_admin_state(user_id)
+
+
 async def process_route_analysis(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Processa Excel da Shopee e gera análise inteligente com IA
@@ -1540,8 +1724,18 @@ async def cmd_analisar_rota(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "🔍 <b>ANÁLISE INTELIGENTE DE ROTA</b>\n"
         "━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        "📎 <b>ENVIE O EXCEL DA SHOPEE</b>\n\n"
-        "O bot vai:\n"
+        "📎 <b>ESCOLHA UMA OPÇÃO:</b>\n\n"
+        "📄 <b>OPÇÃO 1: Arquivo Excel</b>\n"
+        "   Anexe o .xlsx da Shopee\n"
+        "   ✅ Extrai lat/long automaticamente\n\n"
+        "📝 <b>OPÇÃO 2: Lista de Endereços</b>\n"
+        "   Cole os endereços (um por linha)\n"
+        "   Exemplo:\n"
+        "   <code>Rua A, 123 - Centro, RJ\n"
+        "   Av. B, 456 - Botafogo, RJ\n"
+        "   Travessa C, 789 - Copacabana, RJ</code>\n\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "<b>O bot vai:</b>\n"
         "• 🗺️ Gerar mapa com todos os pontos\n"
         "• 🤖 Analisar viabilidade com IA\n"
         "• ⭐ Dar score (0-10)\n"
@@ -1550,7 +1744,7 @@ async def cmd_analisar_rota(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
         "💡 <b>Use para avaliar rotas do grupo</b>\n"
         "antes de aceitar!\n\n"
-        "📎 Anexe o arquivo Excel agora:",
+        "📎 Envie o Excel OU cole os endereços:",
         parse_mode='HTML'
     )
 
