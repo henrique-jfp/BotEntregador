@@ -142,6 +142,8 @@ class RouteAnalyzer:
             unique_neighborhoods=unique_neighborhoods,
             neighborhood_list=neighborhood_list,
             neighborhood_counts=neighborhood_counts,
+            distance_to_first_km=dist_to_first,
+            route_distance_km=route_distance,
             total_distance_km=total_distance,
             area_coverage_km2=area_km2,
             density_score=density,
