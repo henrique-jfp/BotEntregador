@@ -4,6 +4,8 @@ Economiza chamadas de API com cache persistente
 """
 import json
 import hashlib
+import os
+import re
 from pathlib import Path
 from typing import Tuple, Optional
 from datetime import datetime, timedelta
@@ -81,7 +83,43 @@ class GeocodingService:
         self.cache = GeocodingCache()
         self.api_calls_today = 0
         self.last_reset = datetime.now().date()
+        # Contexto padrao para enderecos sem cidade/UF
+        self.default_city = os.getenv("DEFAULT_CITY", "Rio de Janeiro")
+        self.default_state = os.getenv("DEFAULT_STATE", "RJ")
+        self.default_country = os.getenv("DEFAULT_COUNTRY", "Brasil")
+        self.fallback_center = (
+            float(os.getenv("FALLBACK_LAT", "-22.9068")),
+            float(os.getenv("FALLBACK_LNG", "-43.1729")),
+        )
+        self.fallback_radius_km = float(os.getenv("FALLBACK_RADIUS_KM", "12"))
+        self.osm_delay = float(os.getenv("OSM_GEOCODE_DELAY_SEC", "0.15"))
+        viewbox_env = os.getenv("DEFAULT_VIEWBOX")  # "lon_left,lat_top,lon_right,lat_bottom"
+        self.viewbox = None
+        if viewbox_env:
+            try:
+                parts = [float(p) for p in viewbox_env.split(",")]
+                if len(parts) == 4:
+                    self.viewbox = parts
+            except ValueError:
+                self.viewbox = None
     
+    def _prepare_query(self, address: str) -> str:
+        """Enriquece endereco com cidade/UF se faltar contexto."""
+        addr = address.strip()
+        if not addr:
+            return addr
+        has_uf = re.search(r"\b(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MG|MS|MT|PA|PB|PE|PI|PR|RJ|RN|RO|RR|RS|SC|SE|SP|TO)\b", addr, re.IGNORECASE)
+        has_city = self.default_city.lower() in addr.lower()
+        has_country = any(c in addr.lower() for c in ["brasil", "brazil"])
+        parts = [addr]
+        if not has_city:
+            parts.append(self.default_city)
+        if not has_uf:
+            parts.append(self.default_state)
+        if not has_country:
+            parts.append(self.default_country)
+        return ", ".join(parts)
+
     def geocode(self, address: str) -> Tuple[float, float]:
         """
         Geocode com estratégia em cascata:
@@ -90,28 +128,32 @@ class GeocodingService:
         3. Google Maps API (PAGO - se disponível)
         4. Simulação baseada em hash (ÚLTIMO RECURSO)
         """
+        query = self._prepare_query(address)
+        if not query:
+            raise ValueError("Endereco vazio para geocodificacao")
+
         # 1. Tenta cache
-        cached = self.cache.get(address)
+        cached = self.cache.get(query)
         if cached:
             return cached
         
         # 2. Tenta OpenStreetMap (GRATUITO)
-        coords = self._geocode_osm(address)
+        coords = self._geocode_osm(query)
         if coords:
-            self.cache.set(address, coords[0], coords[1])
+            self.cache.set(query, coords[0], coords[1])
             return coords
         
         # 3. Tenta Google Maps API (se disponível)
         if self.api_key and self.api_calls_today < 100:
-            coords = self._geocode_google(address)
+            coords = self._geocode_google(query)
             if coords:
-                self.cache.set(address, coords[0], coords[1])
+                self.cache.set(query, coords[0], coords[1])
                 self._increment_api_call()
                 return coords
         
         # 4. Fallback: simulação determinística (ÚLTIMO RECURSO)
-        coords = self._geocode_fallback(address)
-        self.cache.set(address, coords[0], coords[1])
+        coords = self._geocode_fallback(query)
+        self.cache.set(query, coords[0], coords[1])
         return coords
     
     def _geocode_osm(self, address: str) -> Optional[Tuple[float, float]]:
@@ -123,16 +165,20 @@ class GeocodingService:
             import requests
             import time
             
-            # Rate limit: espera 1 segundo entre chamadas
-            time.sleep(1)
+            # Rate limit (ajustavel). Default 150ms para acelerar sem abusar.
+            time.sleep(self.osm_delay)
             
             url = "https://nominatim.openstreetmap.org/search"
             params = {
                 'q': address,
                 'format': 'json',
                 'limit': 1,
-                'addressdetails': 1
+                'addressdetails': 0,
+                'countrycodes': 'br'
             }
+            if self.viewbox:
+                params['viewbox'] = ','.join(str(v) for v in self.viewbox)
+                params['bounded'] = 1
             headers = {
                 'User-Agent': 'BotEntregador/1.0 (Telegram Bot)'
             }
@@ -173,20 +219,16 @@ class GeocodingService:
     
     def _geocode_fallback(self, address: str) -> Tuple[float, float]:
         """
-        Geocoding simulado baseado em hash do endereço.
-        Distribui pontos em São Paulo de forma determinística.
+        Geocoding simulado baseado em hash do endereço, restrito ao centro padrão.
+        Mantém consistência determinística para o mesmo input.
         """
-        # Hash do endereço para gerar coordenadas consistentes
         hash_int = int(hashlib.md5(address.encode()).hexdigest()[:8], 16)
-        
-        # São Paulo: aprox -23.5 a -23.7 lat, -46.5 a -46.8 lng
-        lat_offset = (hash_int % 2000) / 10000  # 0 a 0.2
-        lng_offset = (hash_int // 2000 % 3000) / 10000  # 0 a 0.3
-        
-        lat = -23.5505 - lat_offset
-        lng = -46.6333 - lng_offset
-        
-        return (lat, lng)
+        lat, lng = self.fallback_center
+        # Converte hash em deslocamentos pequenos dentro do raio configurado
+        delta_deg = self.fallback_radius_km / 111  # km -> graus aproximados
+        lat_offset = ((hash_int % 1000) / 1000 - 0.5) * 2 * delta_deg
+        lng_offset = (((hash_int // 1000) % 1000) / 1000 - 0.5) * 2 * delta_deg
+        return (lat + lat_offset, lng + lng_offset)
     
     def _increment_api_call(self):
         """Incrementa contador de chamadas API"""
