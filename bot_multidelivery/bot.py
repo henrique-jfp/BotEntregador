@@ -1038,6 +1038,7 @@ async def create_romaneio_from_addresses(update: Update, context: ContextTypes.D
         # Suporta tanto List[str] (legado) quanto List[Dict] (novo)
         if isinstance(addr, dict):
             address = addr.get("address", "")
+            # package_id com índice GLOBAL (será renumerado por rota depois)
             package_id = addr.get("id", f"PKG{i:03d}")
             priority = addr.get("priority", "normal")
             # Se veio do Excel Shopee, já tem lat/lon
@@ -2829,9 +2830,11 @@ async def send_route_to_deliverer(context: ContextTypes.DEFAULT_TYPE, telegram_i
     message += f"📦 Total: {route.total_packages} pacotes\n\n"
     message += "📋 <b>Ordem de entrega:</b>\n\n"
     
+    # CORREÇÃO: Renumera para sequência limpa 1, 2, 3... (não mostra PKG IDs globais que pulam)
     for i, point in enumerate(route.optimized_order, 1):
-        message += f"{i}. {point.address}\n"
-        message += f"   🆔 <code>{point.package_id}</code>\n\n"
+        message += f"<b>{i}.</b> {point.address}\n"
+        # Mostra package_id original apenas como referência (entre parênteses)
+        message += f"    <i>Código: {point.package_id}</i>\n\n"
     
     message += "\n✅ Marque entregas usando o botão 'Marcar Entrega'"
     
