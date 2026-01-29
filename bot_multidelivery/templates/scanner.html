@@ -239,6 +239,32 @@
             </div>
         </div>
 
+        <!-- CARD DE RESULTADO EM TEMPO REAL (GRANDE E FIXO) -->
+        <div id="current-result" style="
+            display: none;
+            margin: 1.5rem 0;
+            padding: 2rem;
+            background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+            border-radius: 20px;
+            border: 4px solid #10b981;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        ">
+            <div style="text-align: center;">
+                <div style="font-size: 1.2rem; color: #9ca3af; margin-bottom: 1rem;">PACOTE ATUAL</div>
+                <div id="result-color-block" style="
+                    width: 120px;
+                    height: 120px;
+                    margin: 0 auto 1.5rem;
+                    border-radius: 20px;
+                    box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+                "></div>
+                <div id="result-color-name" style="font-size: 3rem; font-weight: bold; margin-bottom: 0.5rem;"></div>
+                <div id="result-sequence" style="font-size: 4rem; font-weight: bold; margin: 1rem 0;"></div>
+                <div id="result-deliverer" style="font-size: 1.5rem; color: #e5e7eb; margin-bottom: 1rem;"></div>
+                <div id="result-address" style="font-size: 1rem; color: #9ca3af;"></div>
+            </div>
+        </div>
+
         <div class="camera-box">
             <video id="video" autoplay playsinline></video>
             <button id="start-camera">📷 Iniciar Câmera</button>
@@ -360,64 +386,38 @@
             setTimeout(() => { lastBarcode = ''; }, 2000);
         }
 
-        // Mostra resultado na tela EM TEMPO REAL
+        // Mostra resultado na tela EM TEMPO REAL (CARD FIXO GRANDE)
         function showResult(data) {
-            // Remove qualquer resultado anterior
-            resultsDiv.innerHTML = '';
+            console.log('🎨 Mostrando resultado:', data);
             
-            const resultCard = document.createElement('div');
-            resultCard.className = 'result-card success beep-animation';
-            resultCard.style.cssText = `
-                padding: 2rem;
-                margin: 1rem 0;
-                border: 4px solid ${data.color};
-                box-shadow: 0 0 30px ${data.color}80;
-            `;
+            // Atualiza o card fixo grande
+            const currentResult = document.getElementById('current-result');
+            const colorBlock = document.getElementById('result-color-block');
+            const colorName = document.getElementById('result-color-name');
+            const sequence = document.getElementById('result-sequence');
+            const deliverer = document.getElementById('result-deliverer');
+            const address = document.getElementById('result-address');
             
-            resultCard.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 1.5rem; margin-bottom: 1.5rem;">
-                    <div class="color-block" style="
-                        width: 100px;
-                        height: 100px;
-                        background-color: ${data.color};
-                        border-radius: 15px;
-                        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-                    "></div>
-                    <div style="flex: 1;">
-                        <div style="font-size: 2.5rem; font-weight: bold; margin-bottom: 0.5rem; color: ${data.color};">
-                            ${data.color_name}
-                        </div>
-                        <div style="font-size: 1.3rem; color: #e5e7eb;">
-                            ${data.deliverer_name}
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="result-info" style="gap: 1.5rem;">
-                    <div style="text-align: center; padding: 1.5rem; background: rgba(255,255,255,0.05); border-radius: 10px;">
-                        <div class="label" style="font-size: 1rem;">SEQUÊNCIA</div>
-                        <div class="value" style="font-size: 3rem; font-weight: bold; color: ${data.color};">
-                            #${data.position}
-                        </div>
-                        <div style="color: #9ca3af; margin-top: 0.5rem;">de ${data.total} pacotes</div>
-                    </div>
-                    
-                    <div style="padding: 1rem;">
-                        <div class="label">CÓDIGO</div>
-                        <div class="value" style="font-size: 1.1rem;">${data.barcode}</div>
-                    </div>
-                    
-                    <div style="padding: 1rem;">
-                        <div class="label">ENDEREÇO</div>
-                        <div class="value" style="font-size: 1rem;">${data.address}</div>
-                    </div>
-                </div>
-            `;
+            // Mostra o card
+            currentResult.style.display = 'block';
+            currentResult.style.borderColor = data.color;
+            currentResult.style.boxShadow = `0 10px 40px ${data.color}60`;
             
-            resultsDiv.appendChild(resultCard);
+            // Atualiza conteúdo
+            colorBlock.style.backgroundColor = data.color;
+            colorBlock.style.boxShadow = `0 8px 30px ${data.color}80`;
             
-            // Scroll automático para o resultado
-            resultCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            colorName.textContent = data.color_name;
+            colorName.style.color = data.color;
+            
+            sequence.textContent = `#${data.position}`;
+            sequence.style.color = data.color;
+            
+            deliverer.textContent = data.deliverer_name;
+            address.textContent = data.address;
+            
+            // Scroll para o card
+            currentResult.scrollIntoView({ behavior: 'smooth', block: 'center' });
             
             // Atualiza histórico
             updateHistory();
