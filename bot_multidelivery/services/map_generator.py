@@ -282,6 +282,19 @@ class MapGenerator:
             font-size: 14px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.3);
         }}
+        
+        /* Remove pontinho/pin do Leaflet */
+        .marker-icon::before,
+        .marker-icon::after {{
+            display: none !important;
+            content: none !important;
+        }}
+        
+        .leaflet-marker-icon::before,
+        .leaflet-marker-icon::after {{
+            display: none !important;
+            content: none !important;
+        }}
     </style>
 </head>
 <body>
