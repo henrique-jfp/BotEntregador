@@ -345,7 +345,7 @@ class MapGenerator:
             const baseIcon = L.divIcon({{
                 className: 'marker-icon',
                 html: '<div style="border-color: #FF5722; color: #FF5722; background: white; font-weight: bold;">🏠</div>',
-                iconSize: [40, 40]
+                iconSize: [32, 32]
             }});
             
             const baseMarker = L.marker([baseLocation[0], baseLocation[1]], {{ icon: baseIcon }}).addTo(map);
@@ -357,7 +357,7 @@ class MapGenerator:
             const icon = L.divIcon({{
                 className: 'marker-icon',
                 html: `<div style="border-color: ${{m.color}}; color: ${{m.color}}">${{m.number}}</div>`,
-                iconSize: [35, 35]
+                iconSize: [26, 26]
             }});
             
             const marker = L.marker([m.lat, m.lon], {{ icon }}).addTo(map);

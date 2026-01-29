@@ -173,6 +173,7 @@ class GeocodingService:
             if coords:
                 self.cache.set(query, coords[0], coords[1])
                 self._increment_api_call()
+                logging.info(f"✅ Geocoded via LocationIQ: {address[:60]} -> {coords}")
                 return coords
         
         # 3. Tenta Geoapify (3.000/dia GRÁTIS, sem cartão)
@@ -181,6 +182,7 @@ class GeocodingService:
             if coords:
                 self.cache.set(query, coords[0], coords[1])
                 self._increment_api_call()
+                logging.info(f"✅ Geocoded via Geoapify: {address[:60]} -> {coords}")
                 return coords
         
         # 4. Tenta Google Maps (se configurado - exige cartão)
@@ -189,18 +191,20 @@ class GeocodingService:
             if coords:
                 self.cache.set(query, coords[0], coords[1])
                 self._increment_api_call()
+                logging.info(f"✅ Geocoded via Google Maps: {address[:60]} -> {coords}")
                 return coords
         
         # 5. Fallback: OpenStreetMap Nominatim (GRÁTIS mas lento)
         coords = self._geocode_osm(query, raw_addr, bairro)
         if coords:
             self.cache.set(query, coords[0], coords[1])
+            logging.info(f"✅ Geocoded via OSM: {address[:60]} -> {coords}")
             return coords
         
-        # 4. Fallback: simulação determinística (ÚLTIMO RECURSO)
-        coords = self._geocode_fallback(query)
-        self.cache.set(query, coords[0], coords[1])
-        return coords
+        # ERRO: Nenhuma API conseguiu geocodificar
+        logging.error(f"❌ FALHA TOTAL no geocoding: {address[:80]}")
+        logging.error(f"   APIs tentadas: LocationIQ={bool(self.locationiq_key)}, Geoapify={bool(self.geoapify_key)}, Google={bool(self.google_api_key)}, OSM=True")
+        raise ValueError(f"Não foi possível geocodificar o endereço: {address}")
     
     def _geocode_osm(self, address: str, raw_addr: str, bairro: Optional[str]) -> Optional[Tuple[float, float]]:
         """
@@ -211,39 +215,51 @@ class GeocodingService:
             import requests
             import time
             
-            # Rate limit (ajustavel). Default 150ms para acelerar sem abusar.
-            time.sleep(self.osm_delay)
+            # Rate limit OBRIGATÓRIO do OSM: 1 req/segundo
+            time.sleep(1.0)  # Respeita rate limit oficial
             
             url = "https://nominatim.openstreetmap.org/search"
             base = {
                 'format': 'json',
-                'limit': 5,
+                'limit': 10,  # Aumenta limite para ter mais opções
                 'addressdetails': 1,
-                'countrycodes': 'br'
+                'countrycodes': 'br',
+                'dedupe': 0  # Não remove duplicatas, queremos todas as opções
             }
+            
+            # Estratégia: busca estruturada apenas (mais precisa)
             attempts: List[dict] = []
-            structured = {
+            
+            # Tentativa 1: Com bairro
+            if bairro:
+                attempts.append({
+                    'street': raw_addr,
+                    'city_district': bairro,
+                    'city': self.default_city,
+                    'state': self.default_state,
+                    'country': self.default_country
+                })
+            
+            # Tentativa 2: Sem bairro
+            attempts.append({
                 'street': raw_addr,
                 'city': self.default_city,
                 'state': self.default_state,
                 'country': self.default_country
-            }
-            attempts.append(structured)
-            if bairro:
-                attempts.append({**structured, 'city_district': bairro, 'neighbourhood': bairro})
-            attempts.append({'q': address})  # fallback para busca simples
+            })
 
             if self.viewbox:
                 base['viewbox'] = ','.join(str(v) for v in self.viewbox)
                 base['bounded'] = 1
 
             headers = {
-                'User-Agent': 'BotEntregador/1.0 (Telegram Bot)'
+                'User-Agent': 'BotEntregador/1.0 (Telegram Bot; contact@botentregador.com)'
             }
 
-            for attempt in attempts:
+            for idx, attempt in enumerate(attempts, 1):
                 params = {**base, **attempt}
-                response = requests.get(url, params=params, headers=headers, timeout=10)
+                logging.debug(f"OSM tentativa {idx}/{len(attempts)}: {attempt.get('street', '')[:40]}")
+                response = requests.get(url, params=params, headers=headers, timeout=15)
                 if response.status_code != 200:
                     continue
                 data = response.json()
@@ -252,9 +268,11 @@ class GeocodingService:
                 chosen = self._pick_best_osm(data, bairro)
                 if chosen:
                     latlng = (float(chosen['lat']), float(chosen['lon']))
-                    if self._distance_km(latlng, self.fallback_center) <= self.max_valid_distance_km:
+                    dist_km = self._distance_km(latlng, self.fallback_center)
+                    if dist_km <= self.max_valid_distance_km:
+                        logging.info(f"✅ OSM encontrou: {address[:60]} -> {latlng} (dist: {dist_km:.1f}km)")
                         return latlng
-                    logging.warning("OSM geocode descartado: longe do centro (%skm): %s", round(self._distance_km(latlng, self.fallback_center), 1), address)
+                    logging.warning(f"⚠️ OSM descartado (longe {dist_km:.1f}km): {address[:60]}")
         except Exception as e:
             # Se falhar, continua para próxima estratégia
             pass
