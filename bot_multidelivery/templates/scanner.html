@@ -309,12 +309,18 @@
 
         // Processa código escaneado
         async function processBarcode(barcode) {
-            if (barcode === lastBarcode) return; // Evita duplicatas
-            lastBarcode = barcode;
+            console.log('🔍 Código detectado:', barcode);
             
+            if (barcode === lastBarcode) {
+                console.log('⏭️ Código repetido, ignorando');
+                return;
+            }
+            
+            lastBarcode = barcode;
             scanningIndicator.classList.add('active');
             
             try {
+                console.log('📡 Enviando para API...');
                 const response = await fetch('/api/scan', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -322,10 +328,13 @@
                 });
                 
                 const data = await response.json();
+                console.log('📦 Resposta da API:', data);
                 
                 scanningIndicator.classList.remove('active');
                 
                 if (data.success) {
+                    console.log('✅ Pacote encontrado! Cor:', data.color_name, 'Posição:', data.position);
+                    
                     // Som de sucesso (bip)
                     playBeep();
                     
@@ -333,7 +342,7 @@
                     scanHistory.unshift(data);
                     if (scanHistory.length > 10) scanHistory.pop();
                     
-                    // Mostra resultado
+                    // Mostra resultado GRANDE
                     showResult(data);
                     
                     // Atualiza progresso
@@ -351,46 +360,64 @@
             setTimeout(() => { lastBarcode = ''; }, 2000);
         }
 
-        // Mostra resultado na tela
+        // Mostra resultado na tela EM TEMPO REAL
         function showResult(data) {
+            // Remove qualquer resultado anterior
+            resultsDiv.innerHTML = '';
+            
             const resultCard = document.createElement('div');
             resultCard.className = 'result-card success beep-animation';
+            resultCard.style.cssText = `
+                padding: 2rem;
+                margin: 1rem 0;
+                border: 4px solid ${data.color};
+                box-shadow: 0 0 30px ${data.color}80;
+            `;
             
             resultCard.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 1rem;">
-                    <div class="color-block" style="background-color: ${data.color}"></div>
+                <div style="display: flex; align-items: center; gap: 1.5rem; margin-bottom: 1.5rem;">
+                    <div class="color-block" style="
+                        width: 100px;
+                        height: 100px;
+                        background-color: ${data.color};
+                        border-radius: 15px;
+                        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+                    "></div>
                     <div style="flex: 1;">
-                        <div style="font-size: 1.5rem; font-weight: bold; margin-bottom: 0.5rem;">
+                        <div style="font-size: 2.5rem; font-weight: bold; margin-bottom: 0.5rem; color: ${data.color};">
                             ${data.color_name}
                         </div>
-                        <div style="color: #9ca3af;">
+                        <div style="font-size: 1.3rem; color: #e5e7eb;">
                             ${data.deliverer_name}
                         </div>
                     </div>
                 </div>
                 
-                <div class="result-info">
-                    <div>
-                        <div class="label">CÓDIGO DE BARRAS</div>
-                        <div class="value">${data.barcode}</div>
+                <div class="result-info" style="gap: 1.5rem;">
+                    <div style="text-align: center; padding: 1.5rem; background: rgba(255,255,255,0.05); border-radius: 10px;">
+                        <div class="label" style="font-size: 1rem;">SEQUÊNCIA</div>
+                        <div class="value" style="font-size: 3rem; font-weight: bold; color: ${data.color};">
+                            #${data.position}
+                        </div>
+                        <div style="color: #9ca3af; margin-top: 0.5rem;">de ${data.total} pacotes</div>
                     </div>
-                    <div>
+                    
+                    <div style="padding: 1rem;">
+                        <div class="label">CÓDIGO</div>
+                        <div class="value" style="font-size: 1.1rem;">${data.barcode}</div>
+                    </div>
+                    
+                    <div style="padding: 1rem;">
                         <div class="label">ENDEREÇO</div>
-                        <div class="value">${data.address}</div>
-                    </div>
-                    <div>
-                        <div class="label">POSIÇÃO NA ROTA</div>
-                        <div class="value">#${data.position} de ${data.total}</div>
+                        <div class="value" style="font-size: 1rem;">${data.address}</div>
                     </div>
                 </div>
             `;
             
-            // Remove resultado anterior se existir
-            if (resultsDiv.firstChild) {
-                resultsDiv.removeChild(resultsDiv.firstChild);
-            }
+            resultsDiv.appendChild(resultCard);
             
-            resultsDiv.insertBefore(resultCard, resultsDiv.firstChild);
+            // Scroll automático para o resultado
+            resultCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             
             // Atualiza histórico
             updateHistory();
