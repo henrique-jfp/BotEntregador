@@ -2,6 +2,7 @@
 🚀 BOT TELEGRAM - Handler principal
 Fluxo completo de admin + entregadores
 """
+import os
 import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, ContextTypes, filters
@@ -4007,17 +4008,36 @@ async def cmd_modo_separacao(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if len(active_sessions) > 1:
         session_warning = f"\n⚠️ Usando sessão: <b>{session.date}</b> (<code>{session.session_id[:6]}</code>)\n"
     
+    # Gera link do scanner web (Railway)
+    scanner_link = ""
+    railway_domain = os.getenv('RAILWAY_PUBLIC_DOMAIN')  # Ex: projeto.up.railway.app
+    if railway_domain:
+        scanner_url = f"https://{railway_domain}/scanner"
+        scanner_link = f"\n📱 <b>SCANNER WEB (celular):</b>\n<a href='{scanner_url}'>{scanner_url}</a>\n"
+    
     mensagem = f"""🎨 <b>MODO SEPARAÇÃO ATIVADO!</b>
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 {session_warning}
 {mensagem_cores}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
+{scanner_link}
 <b>🔍 COMO USAR:</b>
 
+<b>📱 OPÇÃO 1: Scanner Web (celular)</b>
+• Abra o link acima no celular
+• Aponte a câmera para o código de barras
+• Bot responde automaticamente com a COR
+
+<b>🖥️ OPÇÃO 2: Leitor USB (computador)</b>
+• Conecte o leitor USB
+• Bipe o código
+• Código aparece no chat automaticamente
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 1️⃣ Pegue um pacote da pilha
-2️⃣ Bipe o código de barras (QR/barras)
+2️⃣ Bipe/Scaneie o código de barras
 3️⃣ Bot responde com a COR
 4️⃣ Cole a etiqueta colorida
 5️⃣ Próximo pacote!
@@ -4032,9 +4052,6 @@ Use <code>/status_separacao</code> para ver quantos faltam
 Quando terminar: <code>/fim_separacao</code>
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-💡 <b>DICA:</b> Conecte o leitor USB e bipe direto!
-O código aparece automaticamente no chat.
 
 🔥 <b>BORA SEPARAR!</b>"""
     
