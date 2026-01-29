@@ -130,9 +130,9 @@ class RouteAnalyzer:
         # Comentário da IA
         ai_comment = self._generate_ai_comment(
             total_packages, total_distance, concentration, 
+            density, overall_score, recommendation,
             distance_to_first_km=dist_to_first,
-            route_distance_km=route_distance,
-            density, overall_score, recommendation
+            route_distance_km=route_distance
         )
         
         return RouteAnalysis(
@@ -336,10 +336,17 @@ class RouteAnalyzer:
         concentration: float,
         density: float,
         overall_score: float,
-        recommendation: str
+        recommendation: str,
+        distance_to_first_km: float = 0.0,
+        route_distance_km: float = 0.0
     ) -> str:
         """Gera comentário inteligente da IA"""
         
+        # Aviso de deslocamento longo
+        commute_warning = ""
+        if distance_to_first_km > 15:
+             commute_warning = f"\n\n⚠️ <b>ALERTA DE DESLOCAMENTO:</b> Você vai rodar {distance_to_first_km:.1f}km só pra chegar no primeiro ponto. Bota na ponta do lápis!"
+
         if overall_score >= 8:
             comment = (
                 f"🎯 <b>ROTA EXCELENTE!</b>\n\n"
@@ -375,7 +382,7 @@ class RouteAnalyzer:
                 f"Melhor esperar uma rota mais concentrada aparecer!"
             )
         
-        return comment
+        return comment + commute_warning
     
     def _empty_analysis(self) -> RouteAnalysis:
         """Retorna análise vazia quando não há dados"""
