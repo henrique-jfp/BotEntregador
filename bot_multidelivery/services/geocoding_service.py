@@ -7,7 +7,7 @@ import hashlib
 import os
 import re
 from pathlib import Path
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List
 from datetime import datetime, timedelta
 import math
 import logging
@@ -134,6 +134,18 @@ class GeocodingService:
         addr = re.sub(r"\s+", " ", addr)
         return addr.strip(", ")
 
+    def _extract_neighborhood(self, address: str) -> Optional[str]:
+        tokens = [t.strip() for t in re.split(r"[,;]", address) if t.strip()]
+        ignore = {self.default_city.lower(), self.default_state.lower(), self.default_country.lower(), "br"}
+        for tok in reversed(tokens):
+            if any(ch.isdigit() for ch in tok):
+                continue
+            low = tok.lower()
+            if low in ignore or len(low) < 3:
+                continue
+            return tok
+        return None
+
     def geocode(self, address: str) -> Tuple[float, float]:
         """
         Geocode com estratégia em cascata:
@@ -142,7 +154,9 @@ class GeocodingService:
         3. Google Maps API (PAGO - se disponível)
         4. Simulação baseada em hash (ÚLTIMO RECURSO)
         """
-        query = self._prepare_query(address)
+        raw_addr = self._sanitize_address(address)
+        bairro = self._extract_neighborhood(raw_addr)
+        query = self._prepare_query(raw_addr)
         if not query:
             raise ValueError("Endereco vazio para geocodificacao")
 
@@ -152,7 +166,7 @@ class GeocodingService:
             return cached
         
         # 2. Tenta OpenStreetMap (GRATUITO)
-        coords = self._geocode_osm(query)
+        coords = self._geocode_osm(query, raw_addr, bairro)
         if coords:
             self.cache.set(query, coords[0], coords[1])
             return coords
@@ -170,7 +184,7 @@ class GeocodingService:
         self.cache.set(query, coords[0], coords[1])
         return coords
     
-    def _geocode_osm(self, address: str) -> Optional[Tuple[float, float]]:
+    def _geocode_osm(self, address: str, raw_addr: str, bairro: Optional[str]) -> Optional[Tuple[float, float]]:
         """
         Geocode via OpenStreetMap Nominatim (GRATUITO)
         Respeita rate limit: 1 req/sec
@@ -183,27 +197,43 @@ class GeocodingService:
             time.sleep(self.osm_delay)
             
             url = "https://nominatim.openstreetmap.org/search"
-            params = {
-                'q': address,
+            base = {
                 'format': 'json',
-                'limit': 1,
-                'addressdetails': 0,
+                'limit': 5,
+                'addressdetails': 1,
                 'countrycodes': 'br'
             }
+            attempts: List[dict] = []
+            structured = {
+                'street': raw_addr,
+                'city': self.default_city,
+                'state': self.default_state,
+                'country': self.default_country
+            }
+            attempts.append(structured)
+            if bairro:
+                attempts.append({**structured, 'city_district': bairro, 'neighbourhood': bairro})
+            attempts.append({'q': address})  # fallback para busca simples
+
             if self.viewbox:
-                params['viewbox'] = ','.join(str(v) for v in self.viewbox)
-                params['bounded'] = 1
+                base['viewbox'] = ','.join(str(v) for v in self.viewbox)
+                base['bounded'] = 1
+
             headers = {
                 'User-Agent': 'BotEntregador/1.0 (Telegram Bot)'
             }
-            
-            response = requests.get(url, params=params, headers=headers, timeout=10)
-            
-            if response.status_code == 200:
+
+            for attempt in attempts:
+                params = {**base, **attempt}
+                response = requests.get(url, params=params, headers=headers, timeout=10)
+                if response.status_code != 200:
+                    continue
                 data = response.json()
-                if data and len(data) > 0:
-                    result = data[0]
-                    latlng = (float(result['lat']), float(result['lon']))
+                if not data:
+                    continue
+                chosen = self._pick_best_osm(data, bairro)
+                if chosen:
+                    latlng = (float(chosen['lat']), float(chosen['lon']))
                     if self._distance_km(latlng, self.fallback_center) <= self.max_valid_distance_km:
                         return latlng
                     logging.warning("OSM geocode descartado: longe do centro (%skm): %s", round(self._distance_km(latlng, self.fallback_center), 1), address)
@@ -254,6 +284,32 @@ class GeocodingService:
         p = math.pi / 180
         d = 0.5 - math.cos((lat2 - lat1) * p) / 2 + math.cos(lat1 * p) * math.cos(lat2 * p) * (1 - math.cos((lon2 - lon1) * p)) / 2
         return 12742 * math.asin(math.sqrt(d))
+
+    def _pick_best_osm(self, results: list, bairro: Optional[str]):
+        best = None
+        best_score = -1
+        target_bairro = bairro.lower() if bairro else None
+        for res in results:
+            try:
+                latlng = (float(res['lat']), float(res['lon']))
+            except Exception:
+                continue
+            dist = self._distance_km(latlng, self.fallback_center)
+            bairro_match = False
+            if target_bairro and 'address' in res:
+                addr_obj = res['address'] or {}
+                for key in ['neighbourhood', 'suburb', 'city_district', 'quarter', 'residential']:
+                    if addr_obj.get(key, '').lower() == target_bairro:
+                        bairro_match = True
+                        break
+            score = 0
+            if bairro_match:
+                score += 5
+            score += max(0, self.max_valid_distance_km - dist)
+            if score > best_score:
+                best_score = score
+                best = res
+        return best
     
     def _increment_api_call(self):
         """Incrementa contador de chamadas API"""
