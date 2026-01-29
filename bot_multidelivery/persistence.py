@@ -37,9 +37,15 @@ class DataStore:
         # Indica se está usando database ou JSON
         self.using_database = HAS_DATABASE
         if self.using_database:
+            print("\n" + "="*50)
             print("✅ DataStore usando PostgreSQL")
+            print("💾 Entregadores serão salvos permanentemente")
+            print("="*50 + "\n")
         else:
+            print("\n" + "="*50)
             print("📁 DataStore usando JSON local")
+            print("⚠️ Dados em data/deliverers.json (temporário)")
+            print("="*50 + "\n")
     
     # ==================== ENTREGADORES ====================
     
@@ -48,7 +54,10 @@ class DataStore:
         if self.using_database:
             # Salva no PostgreSQL
             try:
+                print(f"💾 Salvando {len(deliverers)} entregadores no PostgreSQL...")
                 with db_manager.get_session() as session:
+                    saved_count = 0
+                    updated_count = 0
                     for d in deliverers:
                         deliverer_db = session.query(DelivererDB).filter_by(telegram_id=d.telegram_id).first()
                         if deliverer_db:
@@ -62,6 +71,7 @@ class DataStore:
                             deliverer_db.total_earnings = d.total_earnings
                             deliverer_db.success_rate = d.success_rate
                             deliverer_db.average_delivery_time = d.average_delivery_time
+                            updated_count += 1
                         else:
                             # Cria novo
                             deliverer_db = DelivererDB(
@@ -78,9 +88,14 @@ class DataStore:
                                 joined_date=d.joined_date
                             )
                             session.add(deliverer_db)
+                            saved_count += 1
+                    print(f"✅ PostgreSQL: {saved_count} novos, {updated_count} atualizados")
                 return
             except Exception as e:
-                print(f"⚠️ Erro ao salvar no PostgreSQL: {e}, usando fallback JSON")
+                print(f"❌ Erro ao salvar no PostgreSQL: {e}")
+                import traceback
+                traceback.print_exc()
+                print("📁 Usando fallback JSON")
         
         # Fallback: JSON
         data = [{
@@ -105,9 +120,10 @@ class DataStore:
         if self.using_database:
             # Carrega do PostgreSQL
             try:
+                print("📂 Carregando entregadores do PostgreSQL...")
                 with db_manager.get_session() as session:
                     deliverers_db = session.query(DelivererDB).all()
-                    return [Deliverer(
+                    deliverers = [Deliverer(
                         telegram_id=d.telegram_id,
                         name=d.name,
                         is_partner=d.is_partner,
@@ -120,8 +136,13 @@ class DataStore:
                         average_delivery_time=d.average_delivery_time,
                         joined_date=d.joined_date
                     ) for d in deliverers_db]
+                    print(f"✅ {len(deliverers)} entregadores carregados do PostgreSQL")
+                    return deliverers
             except Exception as e:
-                print(f"⚠️ Erro ao carregar do PostgreSQL: {e}, usando fallback JSON")
+                print(f"❌ Erro ao carregar do PostgreSQL: {e}")
+                import traceback
+                traceback.print_exc()
+                print("📁 Usando fallback JSON")
         
         # Fallback: JSON
         if not self.deliverers_file.exists():

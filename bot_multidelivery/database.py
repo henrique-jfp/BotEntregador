@@ -81,12 +81,20 @@ class DatabaseManager:
         self.engine = None
         self.SessionLocal = None
         
+        print("\n" + "="*50)
+        print("🔍 INICIANDO CONEXÃO COM BANCO DE DADOS")
+        print("="*50)
+        
         if self.database_url:
+            print(f"✅ DATABASE_URL encontrada: {self.database_url[:30]}...")
+            
             # Railway/Heroku usam postgres:// mas SQLAlchemy 1.4+ precisa postgresql://
             if self.database_url.startswith('postgres://'):
                 self.database_url = self.database_url.replace('postgres://', 'postgresql://', 1)
+                print("🔄 Convertido postgres:// → postgresql://")
             
             try:
+                print("🔌 Conectando ao PostgreSQL...")
                 self.engine = create_engine(
                     self.database_url,
                     pool_size=5,
@@ -97,15 +105,32 @@ class DatabaseManager:
                 self.SessionLocal = sessionmaker(bind=self.engine)
                 
                 # Cria todas as tabelas
+                print("📊 Criando tabelas se não existirem...")
                 Base.metadata.create_all(self.engine)
+                
+                # Testa conexão
+                with self.get_session() as session:
+                    session.execute('SELECT 1')
+                
                 print("✅ PostgreSQL conectado com sucesso!")
+                print("💾 Dados serão persistidos permanentemente")
             except Exception as e:
-                print(f"⚠️ Erro ao conectar PostgreSQL: {e}")
-                print("📁 Usando fallback para arquivos JSON locais")
+                print(f"❌ ERRO ao conectar PostgreSQL: {e}")
+                print(f"❌ Tipo do erro: {type(e).__name__}")
+                import traceback
+                traceback.print_exc()
+                print("📁 FALLBACK: Usando arquivos JSON locais")
                 self.engine = None
         else:
-            print("⚠️ DATABASE_URL não configurada")
-            print("📁 Usando arquivos JSON locais (dados serão perdidos ao reiniciar)")
+            print("❌ DATABASE_URL NÃO CONFIGURADA!")
+            print("📁 Usando arquivos JSON locais")
+            print("⚠️ DADOS SERÃO PERDIDOS AO REINICIAR!")
+            print("\n💡 Configure DATABASE_URL no Railway:")
+            print("   1. Crie PostgreSQL Database")
+            print("   2. Copie DATABASE_URL")
+            print("   3. Cole nas Variables do bot")
+        
+        print("="*50 + "\n")
     
     @property
     def is_connected(self) -> bool:
