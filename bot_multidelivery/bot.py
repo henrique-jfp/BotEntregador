@@ -1350,15 +1350,49 @@ async def process_route_analysis_text(update: Update, context: ContextTypes.DEFA
         analysis = route_analyzer.analyze_route(deliveries_data)
         
         # ═══════════════════════════════════════════
-        # GERA MAPA HTML
+        # GERA MAPA HTML (AGRUPA ENDEREÇOS DUPLICADOS)
         # ═══════════════════════════════════════════
-        from bot_multidelivery.services.map_generator import generate_analysis_map
+        from collections import defaultdict
         
-        map_path = generate_analysis_map(
-            deliveries=deliveries_data,
-            analysis=analysis,
-            session_id="ANALISE_TEXTO"
+        # Agrupa endereços duplicados
+        address_groups = defaultdict(list)
+        for d in deliveries_data:
+            # Usa coordenadas arredondadas como chave (agrupa pontos muito próximos)
+            key = (d['address'], round(d['lat'], 5), round(d['lon'], 5))
+            address_groups[key].append(d)
+        
+        # Cria stops_data com contagem correta
+        stops_data = []
+        for (address, lat, lon), group in address_groups.items():
+            num_packages = len(group)
+            stops_data.append((
+                lat,
+                lon,
+                address,
+                num_packages,  # Número real de pacotes
+                'pending'
+            ))
+            if num_packages > 1:
+                logger.info(f"📦 {address[:60]} - {num_packages} pacotes agrupados")
+        
+        logger.info(f"🗺️ {len(stops_data)} paradas únicas de {len(deliveries_data)} endereços")
+        
+        # Gera mapa HTML
+        html = MapGenerator.generate_interactive_map(
+            stops=stops_data,
+            entregador_nome="Análise de Rota (Texto)",
+            current_stop=0,
+            total_packages=len(deliveries_data),
+            total_distance_km=analysis.total_distance_km,
+            total_time_min=analysis.estimated_time_minutes,
+            base_location=None
         )
+        
+        # Salva mapa
+        import tempfile
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.html', delete=False, encoding='utf-8') as f:
+            f.write(html)
+            map_path = f.name
         
         # ═══════════════════════════════════════════
         # ENVIA ANÁLISE + MAPA
@@ -1582,22 +1616,35 @@ async def process_route_analysis(update: Update, context: ContextTypes.DEFAULT_T
         analysis = route_analyzer.analyze_route(deliveries_data)
         
         # ═══════════════════════════════════════════
-        # GERA MAPA HTML
+        # GERA MAPA HTML (AGRUPA PACOTES POR ENDEREÇO)
         # ═══════════════════════════════════════════
-        stops_data = []
-        failed_geocoding = []
+        
+        # Agrupa pacotes por endereço único
+        from collections import defaultdict
+        address_groups = defaultdict(list)
         
         for d in deliveries_data:
             if d['lat'] and d['lon']:
-                stops_data.append((
-                    d['lat'], 
-                    d['lon'], 
-                    d['address'], 
-                    1,  # 1 pacote por stop
-                    'pending'
-                ))
-            else:
-                failed_geocoding.append(d['address'][:50])
+                # Usa endereço + coordenadas como chave única
+                key = (d['address'], round(d['lat'], 5), round(d['lon'], 5))
+                address_groups[key].append(d)
+        
+        # Cria stops com contagem correta de pacotes
+        stops_data = []
+        failed_geocoding = []
+        
+        for (address, lat, lon), packages in address_groups.items():
+            num_packages = len(packages)
+            stops_data.append((
+                lat,
+                lon,
+                address,
+                num_packages,  # Número real de pacotes neste endereço
+                'pending'
+            ))
+            logger.info(f"📍 {address[:60]} - {num_packages} pacote(s)")
+        
+        logger.info(f"🗺️ Total de {len(stops_data)} paradas únicas para {len(deliveries_data)} pacotes")
         
         # DEBUG: Log coordenadas
         logger.info(f"🗺️ Gerando mapa: {len(stops_data)} pontos com coordenadas")
