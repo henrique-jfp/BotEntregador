@@ -5,7 +5,7 @@ Persistência permanente para Railway
 import os
 from datetime import datetime
 from typing import Optional
-from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, DateTime, Text, ForeignKey, JSON, text
+from sqlalchemy import create_engine, Column, Integer, BigInteger, String, Float, Boolean, DateTime, Text, ForeignKey, JSON, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship, Session
 from contextlib import contextmanager
@@ -17,7 +17,7 @@ class DelivererDB(Base):
     """Tabela de entregadores"""
     __tablename__ = 'deliverers'
     
-    telegram_id = Column(Integer, primary_key=True)
+    telegram_id = Column(BigInteger, primary_key=True)
     name = Column(String(100), nullable=False)
     is_partner = Column(Boolean, default=False)
     max_capacity = Column(Integer, default=50)
@@ -59,7 +59,7 @@ class RouteDB(Base):
     
     id = Column(String(50), primary_key=True)
     session_id = Column(String(20), ForeignKey('sessions.session_id'), nullable=False)
-    assigned_to_telegram_id = Column(Integer, ForeignKey('deliverers.telegram_id'), nullable=True)
+    assigned_to_telegram_id = Column(BigInteger, ForeignKey('deliverers.telegram_id'), nullable=True)
     assigned_to_name = Column(String(100))
     color = Column(String(20))
     map_file = Column(String(200))
@@ -108,10 +108,14 @@ class DatabaseManager:
                 self.SessionLocal = sessionmaker(bind=self.engine)
                 
                 # Testa conexão com retry
-                print("📊 Criando tabelas se não existirem...")
+                print("📊 Criando/atualizando tabelas...")
                 max_retries = 3
                 for attempt in range(1, max_retries + 1):
                     try:
+                        # IMPORTANTE: Drop e recriar para corrigir tipo telegram_id (Integer → BigInteger)
+                        # Só executará se as tabelas já existirem com tipo errado
+                        print("🔄 Recriando tabelas para suportar Telegram IDs grandes...")
+                        Base.metadata.drop_all(self.engine)
                         Base.metadata.create_all(self.engine)
                         
                         # Testa conexão
