@@ -36,7 +36,7 @@ class ScanResponse(BaseModel):
     message: Optional[str] = None
 
 
-@scanner_app.get("/", response_class=HTMLResponse)
+@scanner_app.get("/scanner", response_class=HTMLResponse)
 async def get_scanner_page():
     """Serve a página HTML do scanner"""
     html_path = Path(__file__).parent.parent / "templates" / "scanner.html"
