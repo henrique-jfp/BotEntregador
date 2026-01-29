@@ -100,20 +100,36 @@ class DatabaseManager:
                     pool_size=5,
                     max_overflow=10,
                     pool_pre_ping=True,  # Verifica conexão antes de usar
-                    echo=False
+                    echo=False,
+                    connect_args={
+                        'connect_timeout': 10,  # Timeout de 10 segundos
+                    }
                 )
                 self.SessionLocal = sessionmaker(bind=self.engine)
                 
-                # Cria todas as tabelas
+                # Testa conexão com retry
                 print("📊 Criando tabelas se não existirem...")
-                Base.metadata.create_all(self.engine)
+                max_retries = 3
+                for attempt in range(1, max_retries + 1):
+                    try:
+                        Base.metadata.create_all(self.engine)
+                        
+                        # Testa conexão
+                        with self.get_session() as session:
+                            session.execute('SELECT 1')
+                        
+                        print(f"✅ PostgreSQL conectado com sucesso! (tentativa {attempt}/{max_retries})")
+                        print("💾 Dados serão persistidos permanentemente")
+                        break
+                    except Exception as retry_error:
+                        if attempt < max_retries:
+                            print(f"⚠️ Tentativa {attempt}/{max_retries} falhou: {retry_error}")
+                            print(f"🔄 Tentando novamente em 2 segundos...")
+                            import time
+                            time.sleep(2)
+                        else:
+                            raise retry_error
                 
-                # Testa conexão
-                with self.get_session() as session:
-                    session.execute('SELECT 1')
-                
-                print("✅ PostgreSQL conectado com sucesso!")
-                print("💾 Dados serão persistidos permanentemente")
             except Exception as e:
                 print(f"❌ ERRO ao conectar PostgreSQL: {e}")
                 print(f"❌ Tipo do erro: {type(e).__name__}")
