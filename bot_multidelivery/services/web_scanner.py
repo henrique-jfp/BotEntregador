@@ -89,25 +89,14 @@ async def scan_barcode(request: ScanRequest):
     progress_percent = int((progress_count / progress_total) * 100) if progress_total > 0 else 0
     
     # Mapa de cores para hex
-    color_map = {
-        "RED": "#ef4444",
-        "GREEN": "#10b981",
-        "BLUE": "#3b82f6",
-        "YELLOW": "#f59e0b"
-    }
-    
-    color_name_map = {
-        "RED": "VERMELHO",
-        "GREEN": "VERDE",
-        "BLUE": "AZUL",
-        "YELLOW": "AMARELO"
-    }
+    # assignment.color já é string hex (ex: '#ef4444')
+    # assignment.color_name já é string amigável (ex: '🔴 VERMELHO')
     
     return ScanResponse(
         success=True,
         barcode=barcode,
-        color=color_map.get(assignment.color.name, "#6b7280"),
-        color_name=color_name_map.get(assignment.color.name, assignment.color.name),
+        color=assignment.color,
+        color_name=assignment.color_name,
         deliverer_name=assignment.deliverer_name,
         address=assignment.address[:60],
         position=assignment.position,
