@@ -1451,9 +1451,9 @@ async def process_route_analysis(update: Update, context: ContextTypes.DEFAULT_T
             f"<code>{score_bar}</code> {analysis.recommendation}\n\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
             f"📦 <b>RESUMO:</b>\n"
-            f"• <b>{analysis.total_packages} pacotes</b>\n"
+            f"• <b>{analysis.total_packages} pacotes</b> ({analysis.total_stops} paradas)\n"
             f"• <b>{analysis.unique_addresses} paradas</b> (endereços únicos)\n"
-            f"• <b>{analysis.total_distance_km:.1f} km</b> de distância\n"
+            f"• <b>{analysis.total_distance_km:.1f} km</b> total ({analysis.distance_to_first_km:.1f}km deslocamento + {analysis.route_distance_km:.1f}km rota)\n"
             f"• Bairros: {bairros_info}\n\n"
             f"📈 <b>MÉTRICAS TÉCNICAS:</b>\n"
             f"• Área: <b>{analysis.area_coverage_km2:.1f} km²</b>\n"
@@ -1796,18 +1796,33 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
         route = next((r for r in session.routes if r.id == route_id), None)
         
         if route:
-            partner = BotConfig.get_partner_by_id(deliverer_id)
+            # Fix: Usa deliverer_service diretamente e evita BotConfig legado que causa crash
+            deliverer = deliverer_service.get_deliverer(deliverer_id)
+            if not deliverer:
+                await query.edit_message_text(
+                    f"❌ Entregador ID {deliverer_id} não encontrado no sistema!",
+                    parse_mode='HTML'
+                )
+                return
+
             route.assigned_to_telegram_id = deliverer_id
-            route.assigned_to_name = partner.name
+            route.assigned_to_name = deliverer.name
             
             # Envia rota pro entregador
-            await send_route_to_deliverer(context, deliverer_id, route, session)
-            
-            await query.edit_message_text(
-                f"✅ <b>{route_id}</b> atribuída a <b>{partner.name}</b>!\n\n"
-                f"📨 Rota enviada no chat privado do entregador.",
-                parse_mode='HTML'
-            )
+            try:
+                await send_route_to_deliverer(context, deliverer_id, route, session)
+                
+                await query.edit_message_text(
+                    f"✅ <b>{route_id}</b> atribuída a <b>{deliverer.name}</b>!\n\n"
+                    f"📨 Rota enviada no chat privado do entregador.",
+                    parse_mode='HTML'
+                )
+            except Exception as e:
+                await query.edit_message_text(
+                    f"✅ <b>{route_id}</b> atribuída a <b>{deliverer.name}</b> (localmente)!\n\n"
+                    f"⚠️ Erro ao enviar DM: {str(e)}",
+                    parse_mode='HTML'
+                )
             
             # Verifica se todas rotas foram atribuídas
             all_assigned = all(r.assigned_to_telegram_id for r in session.routes)
@@ -2503,7 +2518,7 @@ async def send_route_to_deliverer(context: ContextTypes.DEFAULT_TYPE, telegram_i
             stops_data.append((point.lat, point.lng, point.address, 1, status))
 
         eta_minutes = max(10, route.total_distance_km / 25 * 60 + len(route.optimized_order) * 3)
-        session = session_manager.get_session()
+        # session já é passado como argumento, não precisamos buscar novamente
         base_loc = (session.base_lat, session.base_lng, session.base_address) if session and session.base_lat and session.base_lng else None
         html = MapGenerator.generate_interactive_map(
             stops=stops_data,

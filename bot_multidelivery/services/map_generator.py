@@ -136,7 +136,6 @@ class MapGenerator:
         .leaflet-routing-container {{
             display: none !important;
         }}
-        }}
         
         #map {{
             width: 100vw;

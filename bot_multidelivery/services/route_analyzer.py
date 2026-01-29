@@ -15,6 +15,9 @@ class RouteAnalysis:
     unique_addresses: int  # Endereços únicos
     unique_neighborhoods: int  # Bairros únicos
     neighborhood_list: List[str]  # Lista de bairros
+    neighborhood_counts: Dict[str, int]  # Contagem por bairro
+    distance_to_first_km: float  # Distância da base até o primeiro ponto
+    route_distance_km: float  # Distância percorrendo a rota
     total_distance_km: float
     area_coverage_km2: float
     density_score: float  # Pacotes por km²
@@ -66,26 +69,36 @@ class RouteAnalyzer:
         # Métricas básicas
         total_packages = len(deliveries)
         
-        # Conta endereços e bairros únicos
+        # Conta endereços e bairros únicos + contagem de pacotes por bairro
         unique_addresses_set = set()
-        neighborhoods_set = set()
+        neighborhood_counts = {}
         
         for d in deliveries:
             addr = d.get('address', '').strip().lower()
             if addr:
                 unique_addresses_set.add(addr)
             
-            bairro = d.get('bairro', '').strip()
+            bairro = d.get('bairro', '').strip().title()  # Normaliza capitalização
             if bairro:
-                neighborhoods_set.add(bairro)
+                neighborhood_counts[bairro] = neighborhood_counts.get(bairro, 0) + 1
         
         unique_addresses = len(unique_addresses_set)
-        unique_neighborhoods = len(neighborhoods_set)
-        neighborhood_list = sorted(list(neighborhoods_set))
+        neighborhood_list = sorted(list(neighborhood_counts.keys()))
+        unique_neighborhoods = len(neighborhood_list)
         total_stops = unique_addresses  # Paradas = endereços únicos
         
         # Calcula distância total (rota não otimizada, worst-case)
-        total_distance = self._calculate_total_distance(coords)
+        route_distance = self._calculate_total_distance(coords)
+        
+        # Distância até o primeiro ponto (se tiver base)
+        dist_to_first = 0.0
+        if base_location and coords:
+            dist_to_first = self._haversine(
+                base_location[0], base_location[1],
+                coords[0][0], coords[0][1]
+            )
+            
+        total_distance = dist_to_first + route_distance
         
         # Calcula área de cobertura (bounding box)
         area_km2 = self._calculate_coverage_area(coords)
@@ -117,6 +130,8 @@ class RouteAnalyzer:
         # Comentário da IA
         ai_comment = self._generate_ai_comment(
             total_packages, total_distance, concentration, 
+            distance_to_first_km=dist_to_first,
+            route_distance_km=route_distance,
             density, overall_score, recommendation
         )
         
@@ -126,6 +141,7 @@ class RouteAnalyzer:
             unique_addresses=unique_addresses,
             unique_neighborhoods=unique_neighborhoods,
             neighborhood_list=neighborhood_list,
+            neighborhood_counts=neighborhood_counts,
             total_distance_km=total_distance,
             area_coverage_km2=area_km2,
             density_score=density,
