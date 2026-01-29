@@ -108,14 +108,11 @@ class DatabaseManager:
                 self.SessionLocal = sessionmaker(bind=self.engine)
                 
                 # Testa conexão com retry
-                print("📊 Criando/atualizando tabelas...")
+                print("📊 Criando tabelas se não existirem...")
                 max_retries = 3
                 for attempt in range(1, max_retries + 1):
                     try:
-                        # IMPORTANTE: Drop e recriar para corrigir tipo telegram_id (Integer → BigInteger)
-                        # Só executará se as tabelas já existirem com tipo errado
-                        print("🔄 Recriando tabelas para suportar Telegram IDs grandes...")
-                        Base.metadata.drop_all(self.engine)
+                        # Cria tabelas apenas se não existirem (não apaga dados!)
                         Base.metadata.create_all(self.engine)
                         
                         # Testa conexão
