@@ -1,6 +1,6 @@
 """
 💾 PERSISTÊNCIA DE DADOS - Sistema Multi-Entregador
-Armazena dados em arquivos JSON/JSONL
+Armazena dados em PostgreSQL (quando disponível) ou arquivos JSON/JSONL
 """
 
 import json
@@ -9,6 +9,13 @@ from datetime import datetime, timedelta
 from typing import List, Optional, Dict
 from pathlib import Path
 from .models import Package, Deliverer, FinancialReport, PerformanceMetrics, PaymentRecord
+
+try:
+    from .database import db_manager, DelivererDB
+    HAS_DATABASE = db_manager.is_connected
+except Exception as e:
+    print(f"⚠️ Database import failed: {e}")
+    HAS_DATABASE = False
 
 
 class DataStore:
@@ -26,11 +33,56 @@ class DataStore:
         
         self.reports_dir.mkdir(exist_ok=True)
         self.payments_dir.mkdir(exist_ok=True)
+        
+        # Indica se está usando database ou JSON
+        self.using_database = HAS_DATABASE
+        if self.using_database:
+            print("✅ DataStore usando PostgreSQL")
+        else:
+            print("📁 DataStore usando JSON local")
     
     # ==================== ENTREGADORES ====================
     
     def save_deliverers(self, deliverers: List[Deliverer]):
         """Salva lista de entregadores"""
+        if self.using_database:
+            # Salva no PostgreSQL
+            try:
+                with db_manager.get_session() as session:
+                    for d in deliverers:
+                        deliverer_db = session.query(DelivererDB).filter_by(telegram_id=d.telegram_id).first()
+                        if deliverer_db:
+                            # Atualiza existente
+                            deliverer_db.name = d.name
+                            deliverer_db.is_partner = d.is_partner
+                            deliverer_db.max_capacity = d.max_capacity
+                            deliverer_db.cost_per_package = d.cost_per_package
+                            deliverer_db.is_active = d.is_active
+                            deliverer_db.total_deliveries = d.total_deliveries
+                            deliverer_db.total_earnings = d.total_earnings
+                            deliverer_db.success_rate = d.success_rate
+                            deliverer_db.average_delivery_time = d.average_delivery_time
+                        else:
+                            # Cria novo
+                            deliverer_db = DelivererDB(
+                                telegram_id=d.telegram_id,
+                                name=d.name,
+                                is_partner=d.is_partner,
+                                max_capacity=d.max_capacity,
+                                cost_per_package=d.cost_per_package,
+                                is_active=d.is_active,
+                                total_deliveries=d.total_deliveries,
+                                total_earnings=d.total_earnings,
+                                success_rate=d.success_rate,
+                                average_delivery_time=d.average_delivery_time,
+                                joined_date=d.joined_date
+                            )
+                            session.add(deliverer_db)
+                return
+            except Exception as e:
+                print(f"⚠️ Erro ao salvar no PostgreSQL: {e}, usando fallback JSON")
+        
+        # Fallback: JSON
         data = [{
             'telegram_id': d.telegram_id,
             'name': d.name,
@@ -50,6 +102,28 @@ class DataStore:
     
     def load_deliverers(self) -> List[Deliverer]:
         """Carrega lista de entregadores"""
+        if self.using_database:
+            # Carrega do PostgreSQL
+            try:
+                with db_manager.get_session() as session:
+                    deliverers_db = session.query(DelivererDB).all()
+                    return [Deliverer(
+                        telegram_id=d.telegram_id,
+                        name=d.name,
+                        is_partner=d.is_partner,
+                        max_capacity=d.max_capacity,
+                        cost_per_package=d.cost_per_package,
+                        is_active=d.is_active,
+                        total_deliveries=d.total_deliveries,
+                        total_earnings=d.total_earnings,
+                        success_rate=d.success_rate,
+                        average_delivery_time=d.average_delivery_time,
+                        joined_date=d.joined_date
+                    ) for d in deliverers_db]
+            except Exception as e:
+                print(f"⚠️ Erro ao carregar do PostgreSQL: {e}, usando fallback JSON")
+        
+        # Fallback: JSON
         if not self.deliverers_file.exists():
             return []
         

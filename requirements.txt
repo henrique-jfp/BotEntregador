@@ -37,3 +37,8 @@ pdf2image==1.17.0  # Converte PDF em imagem para OCR
 # Exportação e Dashboard
 reportlab==4.0.7  # Geração de PDF
 requests==2.31.0  # HTTP client para API Banco Inter
+
+# Banco de Dados (PostgreSQL para persistência no Railway)
+sqlalchemy==2.0.23
+psycopg2-binary==2.9.9  # PostgreSQL adapter
+alembic==1.13.1  # Database migrations

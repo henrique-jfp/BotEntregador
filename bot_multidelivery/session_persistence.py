@@ -1,5 +1,5 @@
 """
-💾 PERSISTÊNCIA DE SESSÕES - Auto-save em JSON
+💾 PERSISTÊNCIA DE SESSÕES - Auto-save em PostgreSQL ou JSON
 Salva sessões automaticamente com histórico completo
 """
 import json
@@ -9,20 +9,113 @@ from typing import List, Optional, Dict
 from datetime import datetime
 from .session import DailySession, Route, Romaneio, DeliveryPoint
 
+try:
+    from .database import db_manager, SessionDB, RouteDB
+    HAS_DATABASE = db_manager.is_connected
+except Exception as e:
+    print(f"⚠️ Database import failed: {e}")
+    HAS_DATABASE = False
+
 
 class SessionStore:
-    """Gerencia persistência de sessões em disco"""
+    """Gerencia persistência de sessões em disco ou PostgreSQL"""
     
     def __init__(self, data_dir: str = "data"):
         self.sessions_dir = Path(data_dir) / "sessions"
         self.sessions_dir.mkdir(parents=True, exist_ok=True)
+        
+        self.using_database = HAS_DATABASE
+        if self.using_database:
+            print("✅ SessionStore usando PostgreSQL")
+        else:
+            print("📁 SessionStore usando JSON local")
     
     def _session_file(self, session_id: str) -> Path:
         """Path do arquivo da sessão"""
         return self.sessions_dir / f"{session_id}.json"
     
     def save_session(self, session: DailySession):
-        """Salva sessão em disco (auto-save)"""
+        """Salva sessão em disco ou PostgreSQL (auto-save)"""
+        if self.using_database:
+            # Salva no PostgreSQL
+            try:
+                with db_manager.get_session() as db_session:
+                    # Serializa romaneios para JSON
+                    romaneios_data = [
+                        {
+                            'id': r.id,
+                            'uploaded_at': r.uploaded_at.isoformat(),
+                            'points': [
+                                {
+                                    'package_id': p.package_id,
+                                    'romaneio_id': p.romaneio_id,
+                                    'address': p.address,
+                                    'lat': p.lat,
+                                    'lng': p.lng,
+                                    'priority': p.priority
+                                } for p in r.points
+                            ]
+                        } for r in session.romaneios
+                    ]
+                    
+                    # Verifica se sessão já existe
+                    session_db = db_session.query(SessionDB).filter_by(session_id=session.session_id).first()
+                    
+                    if session_db:
+                        # Atualiza existente
+                        session_db.date = session.date
+                        session_db.base_address = session.base_address
+                        session_db.base_lat = session.base_lat
+                        session_db.base_lng = session.base_lng
+                        session_db.is_finalized = session.is_finalized
+                        session_db.finalized_at = session.finalized_at
+                        session_db.romaneios_data = romaneios_data
+                        
+                        # Remove rotas antigas
+                        db_session.query(RouteDB).filter_by(session_id=session.session_id).delete()
+                    else:
+                        # Cria nova
+                        session_db = SessionDB(
+                            session_id=session.session_id,
+                            date=session.date,
+                            created_at=session.created_at,
+                            base_address=session.base_address,
+                            base_lat=session.base_lat,
+                            base_lng=session.base_lng,
+                            is_finalized=session.is_finalized,
+                            finalized_at=session.finalized_at,
+                            romaneios_data=romaneios_data
+                        )
+                        db_session.add(session_db)
+                    
+                    # Salva rotas
+                    for route in session.routes:
+                        route_db = RouteDB(
+                            id=route.id,
+                            session_id=session.session_id,
+                            assigned_to_telegram_id=route.assigned_to_telegram_id,
+                            assigned_to_name=route.assigned_to_name,
+                            color=route.color,
+                            map_file=route.map_file,
+                            optimized_order=[
+                                {
+                                    'package_id': p.package_id,
+                                    'romaneio_id': p.romaneio_id,
+                                    'address': p.address,
+                                    'lat': p.lat,
+                                    'lng': p.lng,
+                                    'priority': p.priority
+                                } for p in route.optimized_order
+                            ],
+                            delivered_packages=route.delivered_packages
+                        )
+                        db_session.add(route_db)
+                    
+                return
+            except Exception as e:
+                print(f"⚠️ Erro ao salvar sessão no PostgreSQL: {e}, usando fallback JSON")
+        
+        # Fallback: JSON
         try:
             # Garante que diretório existe
             self.sessions_dir.mkdir(parents=True, exist_ok=True)
@@ -83,7 +176,77 @@ class SessionStore:
             traceback.print_exc()
     
     def load_session(self, session_id: str) -> Optional[DailySession]:
-        """Carrega sessão do disco"""
+        """Carrega sessão do PostgreSQL ou disco"""
+        if self.using_database:
+            # Carrega do PostgreSQL
+            try:
+                with db_manager.get_session() as db_session:
+                    session_db = db_session.query(SessionDB).filter_by(session_id=session_id).first()
+                    
+                    if not session_db:
+                        return None
+                    
+                    # Reconstrói romaneios
+                    romaneios = []
+                    for r_data in (session_db.romaneios_data or []):
+                        points = [
+                            DeliveryPoint(
+                                package_id=p['package_id'],
+                                romaneio_id=p['romaneio_id'],
+                                address=p['address'],
+                                lat=p['lat'],
+                                lng=p['lng'],
+                                priority=p.get('priority', 'normal')
+                            ) for p in r_data['points']
+                        ]
+                        romaneios.append(Romaneio(
+                            id=r_data['id'],
+                            uploaded_at=datetime.fromisoformat(r_data['uploaded_at']),
+                            points=points
+                        ))
+                    
+                    # Reconstrói rotas
+                    routes = []
+                    for route_db in session_db.routes:
+                        optimized = [
+                            DeliveryPoint(
+                                package_id=p['package_id'],
+                                romaneio_id=p['romaneio_id'],
+                                address=p['address'],
+                                lat=p['lat'],
+                                lng=p['lng'],
+                                priority=p.get('priority', 'normal')
+                            ) for p in (route_db.optimized_order or [])
+                        ]
+                        
+                        route = Route(
+                            id=route_db.id,
+                            cluster=None,
+                            assigned_to_telegram_id=route_db.assigned_to_telegram_id,
+                            assigned_to_name=route_db.assigned_to_name,
+                            color=route_db.color,
+                            optimized_order=optimized,
+                            delivered_packages=route_db.delivered_packages or [],
+                            map_file=route_db.map_file
+                        )
+                        routes.append(route)
+                    
+                    return DailySession(
+                        session_id=session_db.session_id,
+                        date=session_db.date,
+                        created_at=session_db.created_at,
+                        base_address=session_db.base_address,
+                        base_lat=session_db.base_lat,
+                        base_lng=session_db.base_lng,
+                        romaneios=romaneios,
+                        routes=routes,
+                        is_finalized=session_db.is_finalized,
+                        finalized_at=session_db.finalized_at
+                    )
+            except Exception as e:
+                print(f"⚠️ Erro ao carregar sessão do PostgreSQL: {e}, tentando JSON")
+        
+        # Fallback: JSON
         file_path = self._session_file(session_id)
         
         if not file_path.exists():
