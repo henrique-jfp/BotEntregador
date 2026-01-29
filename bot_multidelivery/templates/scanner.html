@@ -452,8 +452,21 @@
                 
                 video.srcObject = stream;
                 
-                // Inicializa ZXing
-                codeReader = new ZXing.BrowserBarcodeReader();
+                // Inicializa ZXing com configurações otimizadas
+                const hints = new Map();
+                const formats = [
+                    ZXing.BarcodeFormat.CODE_128,
+                    ZXing.BarcodeFormat.CODE_39,
+                    ZXing.BarcodeFormat.EAN_13,
+                    ZXing.BarcodeFormat.EAN_8,
+                    ZXing.BarcodeFormat.QR_CODE,
+                    ZXing.BarcodeFormat.DATA_MATRIX,
+                    ZXing.BarcodeFormat.ITF
+                ];
+                hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
+                hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+                
+                codeReader = new ZXing.BrowserMultiFormatReader(hints);
                 
                 scanning = true;
                 startButton.disabled = false;
@@ -461,26 +474,16 @@
                 statusText.textContent = 'Scanner ATIVO - Aponte para o código';
                 statusText.style.color = '#10b981';
                 
-                // Loop de scanning
-                const scanLoop = async () => {
-                    if (!scanning) return;
-                    
-                    try {
-                        const result = await codeReader.decodeOnceFromVideoDevice(undefined, 'video');
-                        if (result && result.text) {
-                            await processBarcode(result.text);
-                        }
-                    } catch (error) {
-                        // Ignora erros de decode (normal quando não há código)
+                // Scanning contínuo
+                codeReader.decodeFromVideoDevice(null, 'video', async (result, error) => {
+                    if (result) {
+                        console.log('✅ Código detectado:', result.text);
+                        await processBarcode(result.text);
                     }
-                    
-                    // Continua escaneando
-                    if (scanning) {
-                        setTimeout(scanLoop, 500); // Scan a cada 500ms
+                    if (error && !(error instanceof ZXing.NotFoundException)) {
+                        console.error('Erro no scanner:', error);
                     }
-                };
-                
-                scanLoop();
+                });
                 
             } catch (error) {
                 console.error('Erro ao acessar câmera:', error);
