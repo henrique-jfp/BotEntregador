@@ -62,8 +62,9 @@ No Railway:
 2. **Copiar URL:**
    - Clique no serviço **PostgreSQL**
    - Aba **Variables**
-   - Copie o valor de `DATABASE_URL`
-   - Será algo como: `postgresql://postgres:senha@servidor.railway.app:5432/railway`
+   - **⚠️ IMPORTANTE:** Copie `DATABASE_PUBLIC_URL` (NÃO use `DATABASE_URL`)
+   - Será algo como: `postgresql://postgres:senha@monorail.proxy.rlwy.net:12345/railway`
+   - **NÃO** use URLs com `postgres.railway.internal` (só funciona em redes privadas)
 
 3. **Adicionar no Bot:**
    - Clique no serviço do **Bot**
@@ -115,18 +116,29 @@ Se vir **FALLBACK**, o problema está na URL. Continue para Passo 4.
 
 #### Passo 4: Corrigir Problemas de Conexão
 
-**Problema Comum 1: URL Incorreta**
+**Problema Comum 1: Hostname Interno do Railway**
+- Sintoma: `could not translate host name "postgres.railway.internal"`
+- **Causa:** Usando `DATABASE_URL` em vez de `DATABASE_PUBLIC_URL`
+- **Solução:**
+  1. No Railway → PostgreSQL → Variables
+  2. Copie `DATABASE_PUBLIC_URL` (não `DATABASE_URL`)
+  3. No Bot → Variables → Edite `DATABASE_URL`
+  4. Cole o valor de `DATABASE_PUBLIC_URL`
+  5. A URL deve ter formato: `postgresql://user:pass@monorail.proxy.rlwy.net:porta/railway`
+  6. **NÃO** deve ter `postgres.railway.internal`
+
+**Problema Comum 2: URL Incorreta**
 - Sintoma: `OperationalError: could not connect`
 - Solução: Copie a URL novamente do PostgreSQL
   - Deve começar com `postgres://` ou `postgresql://`
-  - Formato: `postgresql://user:password@host:port/database`
+  - Formato público: `postgresql://user:password@monorail.proxy.rlwy.net:porta/database`
 
-**Problema Comum 2: PostgreSQL não está rodando**
+**Problema Comum 3: PostgreSQL não está rodando**
 - No Railway → Serviço PostgreSQL
 - Status deve estar **Running** (verde)
 - Se estiver **Stopped**, clique em **Restart**
 
-**Problema Comum 3: URL com espaços ou quebras**
+**Problema Comum 4: URL com espaços ou quebras**
 - Ao copiar, certifique que não tem espaços no início/fim
 - Cole direto, sem quebras de linha
 
