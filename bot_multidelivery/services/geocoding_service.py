@@ -7,7 +7,7 @@ import hashlib
 import os
 import re
 from pathlib import Path
-from typing import Tuple, Optional, List
+from typing import Tuple, Optional, List, Dict
 from datetime import datetime, timedelta
 import math
 import logging
