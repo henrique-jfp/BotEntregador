@@ -5,7 +5,7 @@ Persistência permanente para Railway
 import os
 from datetime import datetime
 from typing import Optional
-from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, DateTime, Text, ForeignKey, JSON
+from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, DateTime, Text, ForeignKey, JSON, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship, Session
 from contextlib import contextmanager
@@ -116,7 +116,7 @@ class DatabaseManager:
                         
                         # Testa conexão
                         with self.get_session() as session:
-                            session.execute('SELECT 1')
+                            session.execute(text('SELECT 1'))
                         
                         print(f"✅ PostgreSQL conectado com sucesso! (tentativa {attempt}/{max_retries})")
                         print("💾 Dados serão persistidos permanentemente")
