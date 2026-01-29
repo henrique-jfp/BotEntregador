@@ -9,6 +9,8 @@ import re
 from pathlib import Path
 from typing import Tuple, Optional
 from datetime import datetime, timedelta
+import math
+import logging
 
 
 class GeocodingCache:
@@ -91,7 +93,7 @@ class GeocodingService:
             float(os.getenv("FALLBACK_LAT", "-22.9068")),
             float(os.getenv("FALLBACK_LNG", "-43.1729")),
         )
-        self.fallback_radius_km = float(os.getenv("FALLBACK_RADIUS_KM", "12"))
+        self.fallback_radius_km = float(os.getenv("FALLBACK_RADIUS_KM", "8"))
         self.osm_delay = float(os.getenv("OSM_GEOCODE_DELAY_SEC", "0.15"))
         viewbox_env = os.getenv("DEFAULT_VIEWBOX")  # "lon_left,lat_top,lon_right,lat_bottom"
         self.viewbox = None
@@ -102,10 +104,14 @@ class GeocodingService:
                     self.viewbox = parts
             except ValueError:
                 self.viewbox = None
+        else:
+            # Rio de Janeiro metro bounding box (lon_left, lat_top, lon_right, lat_bottom)
+            self.viewbox = [-43.8, -22.7, -43.0, -23.1]
+        self.max_valid_distance_km = float(os.getenv("MAX_GEOCODE_DISTANCE_KM", "25"))
     
     def _prepare_query(self, address: str) -> str:
         """Enriquece endereco com cidade/UF se faltar contexto."""
-        addr = address.strip()
+        addr = self._sanitize_address(address)
         if not addr:
             return addr
         has_uf = re.search(r"\b(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MG|MS|MT|PA|PB|PE|PI|PR|RJ|RN|RO|RR|RS|SC|SE|SP|TO)\b", addr, re.IGNORECASE)
@@ -119,6 +125,14 @@ class GeocodingService:
         if not has_country:
             parts.append(self.default_country)
         return ", ".join(parts)
+
+    def _sanitize_address(self, address: str) -> str:
+        """Limpa observacoes excessivas para melhorar match no OSM."""
+        addr = address or ""
+        addr = re.sub(r"\(.*?\)", "", addr)  # remove parenteses
+        addr = re.sub(r"\b(portaria|recepcao|entrada|bloco [a-z0-9]+|bl\.?\s?[a-z0-9]+)\b", "", addr, flags=re.IGNORECASE)
+        addr = re.sub(r"\s+", " ", addr)
+        return addr.strip(", ")
 
     def geocode(self, address: str) -> Tuple[float, float]:
         """
@@ -189,7 +203,10 @@ class GeocodingService:
                 data = response.json()
                 if data and len(data) > 0:
                     result = data[0]
-                    return (float(result['lat']), float(result['lon']))
+                    latlng = (float(result['lat']), float(result['lon']))
+                    if self._distance_km(latlng, self.fallback_center) <= self.max_valid_distance_km:
+                        return latlng
+                    logging.warning("OSM geocode descartado: longe do centro (%skm): %s", round(self._distance_km(latlng, self.fallback_center), 1), address)
         except Exception as e:
             # Se falhar, continua para próxima estratégia
             pass
@@ -229,6 +246,14 @@ class GeocodingService:
         lat_offset = ((hash_int % 1000) / 1000 - 0.5) * 2 * delta_deg
         lng_offset = (((hash_int // 1000) % 1000) / 1000 - 0.5) * 2 * delta_deg
         return (lat + lat_offset, lng + lng_offset)
+
+    def _distance_km(self, a: Tuple[float, float], b: Tuple[float, float]) -> float:
+        """Haversine rapida; suficiente para filtro local."""
+        lat1, lon1 = a
+        lat2, lon2 = b
+        p = math.pi / 180
+        d = 0.5 - math.cos((lat2 - lat1) * p) / 2 + math.cos(lat1 * p) * math.cos(lat2 * p) * (1 - math.cos((lon2 - lon1) * p)) / 2
+        return 12742 * math.asin(math.sqrt(d))
     
     def _increment_api_call(self):
         """Incrementa contador de chamadas API"""
