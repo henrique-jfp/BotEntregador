@@ -1,17 +1,19 @@
 """
 💾 DATABASE - PostgreSQL com SQLAlchemy
-Persistência permanente para Railway
+Persistência permanente para Railway - SCHEMA COMPLETO v2.0
 """
 import os
 from datetime import datetime
 from typing import Optional
-from sqlalchemy import create_engine, Column, Integer, BigInteger, String, Float, Boolean, DateTime, Text, ForeignKey, JSON, text
+from sqlalchemy import create_engine, Column, Integer, BigInteger, String, Float, Boolean, DateTime, Text, ForeignKey, JSON, text, CheckConstraint, Index
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship, Session
 from contextlib import contextmanager
 
 Base = declarative_base()
 
+
+# ==================== TABELAS PRINCIPAIS ====================
 
 class DelivererDB(Base):
     """Tabela de entregadores"""
@@ -29,16 +31,21 @@ class DelivererDB(Base):
     average_delivery_time = Column(Float, default=0.0)
     joined_date = Column(DateTime, default=datetime.now)
     
-    # Relacionamento com sessões
+    # Relacionamentos
     routes = relationship("RouteDB", back_populates="deliverer")
+    packages = relationship("PackageDB", back_populates="deliverer")
+    payments = relationship("PaymentRecordDB", back_populates="deliverer")
+    performance_metrics = relationship("PerformanceMetricDB", back_populates="deliverer")
 
 
 class SessionDB(Base):
-    """Tabela de sessões diárias"""
+    """Tabela de sessões diárias com nomenclatura automática"""
     __tablename__ = 'sessions'
     
     session_id = Column(String(20), primary_key=True)
+    session_name = Column(String(50), nullable=False, index=True)  # 🆕 "Segunda Manhã", "Terça Tarde"
     date = Column(String(10), nullable=False, index=True)
+    period = Column(String(10))  # 🆕 "manhã" ou "tarde"
     created_at = Column(DateTime, default=datetime.now)
     base_address = Column(String(300))
     base_lat = Column(Float)
@@ -49,8 +56,9 @@ class SessionDB(Base):
     # JSON fields para dados complexos
     romaneios_data = Column(JSON, nullable=True)  # Lista de romaneios serializados
     
-    # Relacionamento com rotas
+    # Relacionamentos
     routes = relationship("RouteDB", back_populates="session", cascade="all, delete-orphan")
+    packages = relationship("PackageDB", back_populates="session", cascade="all, delete-orphan")
 
 
 class RouteDB(Base):
@@ -58,7 +66,7 @@ class RouteDB(Base):
     __tablename__ = 'routes'
     
     id = Column(String(50), primary_key=True)
-    session_id = Column(String(20), ForeignKey('sessions.session_id'), nullable=False)
+    session_id = Column(String(20), ForeignKey('sessions.session_id', ondelete='CASCADE'), nullable=False)
     assigned_to_telegram_id = Column(BigInteger, ForeignKey('deliverers.telegram_id'), nullable=True)
     assigned_to_name = Column(String(100))
     color = Column(String(20))
@@ -71,7 +79,195 @@ class RouteDB(Base):
     # Relacionamentos
     session = relationship("SessionDB", back_populates="routes")
     deliverer = relationship("DelivererDB", back_populates="routes")
+    packages = relationship("PackageDB", back_populates="route")
 
+
+# ==================== TABELAS DE PACOTES ====================
+
+class PackageDB(Base):
+    """Tabela de pacotes individuais"""
+    __tablename__ = 'packages'
+    
+    id = Column(String(50), primary_key=True)
+    session_id = Column(String(20), ForeignKey('sessions.session_id', ondelete='CASCADE'))
+    romaneio_id = Column(String(50))
+    route_id = Column(String(50), ForeignKey('routes.id', ondelete='SET NULL'), nullable=True)
+    address = Column(Text, nullable=False)
+    lat = Column(Float, nullable=False)
+    lng = Column(Float, nullable=False)
+    priority = Column(String(20), default='normal')  # low, normal, high, urgent
+    status = Column(String(20), default='pending')  # pending, in_transit, delivered, failed
+    assigned_to_telegram_id = Column(BigInteger, ForeignKey('deliverers.telegram_id'), nullable=True)
+    delivered_at = Column(DateTime, nullable=True)
+    delivery_time_minutes = Column(Integer, nullable=True)
+    notes = Column(Text)
+    created_at = Column(DateTime, default=datetime.now)
+    
+    # Relacionamentos
+    session = relationship("SessionDB", back_populates="packages")
+    route = relationship("RouteDB", back_populates="packages")
+    deliverer = relationship("DelivererDB", back_populates="packages")
+
+
+# ==================== TABELAS FINANCEIRAS ====================
+
+class DailyFinancialReportDB(Base):
+    """Tabela de relatórios financeiros diários"""
+    __tablename__ = 'daily_financial_reports'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    date = Column(String(10), nullable=False, unique=True, index=True)
+    revenue = Column(Float, nullable=False)
+    delivery_costs = Column(Float, nullable=False)
+    other_costs = Column(Float, default=0.0)
+    net_profit = Column(Float, nullable=False)
+    total_packages = Column(Integer, nullable=False)
+    total_deliveries = Column(Integer, nullable=False)
+    deliverer_breakdown = Column(JSON)  # {nome: custo}
+    created_at = Column(DateTime, default=datetime.now)
+
+
+class WeeklyFinancialReportDB(Base):
+    """Tabela de relatórios financeiros semanais"""
+    __tablename__ = 'weekly_financial_reports'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    week_start = Column(String(10), nullable=False, index=True)
+    week_end = Column(String(10), nullable=False)
+    total_revenue = Column(Float, nullable=False)
+    total_delivery_costs = Column(Float, nullable=False)
+    total_operational_costs = Column(Float, nullable=False)
+    gross_profit = Column(Float, nullable=False)
+    reserve_amount = Column(Float, nullable=False)  # 10% reserva
+    distributable_profit = Column(Float, nullable=False)  # 90% para distribuir
+    partner_1_share = Column(Float, nullable=False)  # 70% do distribuível
+    partner_2_share = Column(Float, nullable=False)  # 30% do distribuível
+    daily_reports = Column(JSON)  # Lista de datas
+    created_at = Column(DateTime, default=datetime.now)
+
+
+class PartnerConfigDB(Base):
+    """Tabela de configuração dos sócios (singleton)"""
+    __tablename__ = 'partner_config'
+    
+    id = Column(Integer, primary_key=True, default=1)
+    partner_1_name = Column(String(100), nullable=False)
+    partner_1_share = Column(Float, nullable=False)  # 0.70 = 70%
+    partner_2_name = Column(String(100), nullable=False)
+    partner_2_share = Column(Float, nullable=False)  # 0.30 = 30%
+    reserve_percentage = Column(Float, nullable=False)  # 0.10 = 10%
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+
+class PaymentRecordDB(Base):
+    """Tabela de registros de pagamento"""
+    __tablename__ = 'payment_records'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    deliverer_id = Column(BigInteger, ForeignKey('deliverers.telegram_id'), nullable=False)
+    deliverer_name = Column(String(100))
+    period_start = Column(String(10), nullable=False)
+    period_end = Column(String(10), nullable=False)
+    packages_delivered = Column(Integer, nullable=False)
+    amount_due = Column(Float, nullable=False)
+    paid = Column(Boolean, default=False)
+    paid_at = Column(DateTime, nullable=True)
+    payment_method = Column(String(50))
+    created_at = Column(DateTime, default=datetime.now)
+    
+    # Relacionamento
+    deliverer = relationship("DelivererDB", back_populates="payments")
+
+
+# ==================== TABELAS DE CACHE E CONFIG ====================
+
+class GeocodingCacheDB(Base):
+    """Tabela de cache de geocodificação"""
+    __tablename__ = 'geocoding_cache'
+    
+    address = Column(String(500), primary_key=True)
+    lat = Column(Float, nullable=False)
+    lng = Column(Float, nullable=False)
+    formatted_address = Column(Text)
+    cached_at = Column(DateTime, default=datetime.now)
+
+
+class BotConfigDB(Base):
+    """Tabela de configurações do bot"""
+    __tablename__ = 'bot_config'
+    
+    key = Column(String(100), primary_key=True)
+    value = Column(Text)
+    value_type = Column(String(20))  # string, int, float, bool, json
+    description = Column(Text)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+
+class PerformanceMetricDB(Base):
+    """Tabela de métricas de performance"""
+    __tablename__ = 'performance_metrics'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    deliverer_id = Column(BigInteger, ForeignKey('deliverers.telegram_id'), nullable=False)
+    deliverer_name = Column(String(100))
+    period_start = Column(DateTime, nullable=False)
+    period_end = Column(DateTime, nullable=False)
+    total_assigned = Column(Integer, nullable=False)
+    total_delivered = Column(Integer, nullable=False)
+    total_failed = Column(Integer, nullable=False)
+    success_rate = Column(Float, nullable=False)
+    average_time_minutes = Column(Float, nullable=False)
+    fastest_delivery_minutes = Column(Integer)
+    slowest_delivery_minutes = Column(Integer)
+    total_distance_km = Column(Float, nullable=False)
+    complaints = Column(Integer, default=0)
+    rating = Column(Float, default=5.0)
+    created_at = Column(DateTime, default=datetime.now)
+    
+    # Relacionamento
+    deliverer = relationship("DelivererDB", back_populates="performance_metrics")
+
+
+class BankCredentialDB(Base):
+    """Tabela de credenciais bancárias (singleton, encrypted)"""
+    __tablename__ = 'bank_credentials'
+    
+    id = Column(Integer, primary_key=True, default=1)
+    bank_name = Column(String(50), nullable=False)
+    account_number = Column(String(50))
+    certificate_data = Column(Text)  # Base64 encoded
+    key_data = Column(Text)  # Base64 encoded (encrypted)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+
+# ==================== HELPER FUNCTIONS ====================
+
+def generate_session_name(date: datetime, period: str) -> str:
+    """
+    Gera nome automático da sessão no formato "Dia Período"
+    
+    Args:
+        date: Data da sessão
+        period: 'manhã' ou 'tarde'
+    
+    Returns:
+        Nome formatado: "Segunda Manhã", "Terça Tarde", etc.
+    """
+    days = {
+        0: "Segunda",
+        1: "Terça",
+        2: "Quarta",
+        3: "Quinta",
+        4: "Sexta",
+        5: "Sábado",
+        6: "Domingo"
+    }
+    
+    day_name = days[date.weekday()]
+    return f"{day_name} {period.capitalize()}"
+
+
+# ==================== DATABASE MANAGER ====================
 
 class DatabaseManager:
     """Gerenciador de conexão com PostgreSQL"""
@@ -121,6 +317,8 @@ class DatabaseManager:
                         
                         print(f"✅ PostgreSQL conectado com sucesso! (tentativa {attempt}/{max_retries})")
                         print("💾 Dados serão persistidos permanentemente")
+                        print(f"📋 Total de tabelas no schema: {len(Base.metadata.tables)}")
+                        print(f"🗂️  Tabelas: {', '.join(Base.metadata.tables.keys())}")
                         break
                     except Exception as retry_error:
                         if attempt < max_retries:
@@ -144,7 +342,7 @@ class DatabaseManager:
             print("⚠️ DADOS SERÃO PERDIDOS AO REINICIAR!")
             print("\n💡 Configure DATABASE_URL no Railway:")
             print("   1. Crie PostgreSQL Database")
-            print("   2. Copie DATABASE_URL")
+            print("   2. Copie DATABASE_PUBLIC_URL")
             print("   3. Cole nas Variables do bot")
         
         print("="*50 + "\n")

@@ -63,7 +63,9 @@ class SessionStore:
                     
                     if session_db:
                         # Atualiza existente
+                        session_db.session_name = session.session_name
                         session_db.date = session.date
+                        session_db.period = session.period
                         session_db.base_address = session.base_address
                         session_db.base_lat = session.base_lat
                         session_db.base_lng = session.base_lng
@@ -77,7 +79,9 @@ class SessionStore:
                         # Cria nova
                         session_db = SessionDB(
                             session_id=session.session_id,
+                            session_name=session.session_name,
                             date=session.date,
+                            period=session.period,
                             created_at=session.created_at,
                             base_address=session.base_address,
                             base_lat=session.base_lat,
@@ -122,7 +126,9 @@ class SessionStore:
             
             data = {
                 'session_id': session.session_id,
+                'session_name': session.session_name,
                 'date': session.date,
+                'period': session.period,
                 'created_at': session.created_at.isoformat(),
                 'base_address': session.base_address,
                 'base_lat': session.base_lat,
@@ -233,7 +239,9 @@ class SessionStore:
                     
                     return DailySession(
                         session_id=session_db.session_id,
+                        session_name=session_db.session_name or '',
                         date=session_db.date,
+                        period=session_db.period or '',
                         created_at=session_db.created_at,
                         base_address=session_db.base_address,
                         base_lat=session_db.base_lat,
@@ -301,7 +309,9 @@ class SessionStore:
         
         session = DailySession(
             session_id=data['session_id'],
+            session_name=data.get('session_name', ''),
             date=data['date'],
+            period=data.get('period', ''),
             created_at=datetime.fromisoformat(data['created_at']),
             base_address=data['base_address'],
             base_lat=data['base_lat'],

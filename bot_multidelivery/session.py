@@ -75,7 +75,9 @@ class Route:
 class DailySession:
     """Sessão do dia (uma por dia de trabalho)"""
     session_id: str = field(default_factory=lambda: str(uuid.uuid4())[:8])  # ID único
+    session_name: str = ''  # 🆕 "Segunda Manhã", "Terça Tarde"
     date: str = ''  # YYYY-MM-DD
+    period: str = ''  # 🆕 "manhã" ou "tarde"
     created_at: datetime = field(default_factory=datetime.now)
     base_address: str = ''
     base_lat: float = 0.0
@@ -139,12 +141,37 @@ class SessionManager:
         except Exception as e:
             print(f"⚠️ Erro ao salvar sessão: {e}")
     
-    def create_new_session(self, date: str) -> DailySession:
-        """Cria nova sessão (permite múltiplas sessões simultâneas)"""
-        session = DailySession(date=date)
+    def create_new_session(self, date: str, period: str = 'manhã') -> DailySession:
+        """
+        Cria nova sessão com nome automático
+        
+        Args:
+            date: Data no formato YYYY-MM-DD
+            period: 'manhã' ou 'tarde'
+        
+        Returns:
+            DailySession criada
+        """
+        from datetime import datetime as dt
+        from .database import generate_session_name
+        
+        # Converte string para datetime
+        date_obj = dt.strptime(date, '%Y-%m-%d')
+        
+        # Gera nome automático
+        session_name = generate_session_name(date_obj, period)
+        
+        session = DailySession(
+            date=date,
+            session_name=session_name,
+            period=period
+        )
         self.active_sessions[session.session_id] = session
         self.current_session_id = session.session_id
         self._auto_save(session)
+        
+        print(f"✅ Sessão criada: {session_name} ({session.session_id})")
+        
         return session
     
     def get_session(self, session_id: str) -> Optional[DailySession]:
