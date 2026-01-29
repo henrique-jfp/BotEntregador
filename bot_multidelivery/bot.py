@@ -105,11 +105,13 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 <b>📂 SESSÕES PERSISTENTES 🆕</b>
 <code>/sessoes</code> — Gerenciar sessões
+<code>/selecionar_sessao</code> — Escolher sessão ativa
 • 💾 Auto-save em JSON (nunca perde dados)
 • 📋 Ver todas (ativas + finalizadas)
 • 🔵 Trocar entre sessões a qualquer momento
 • 📊 Histórico completo com timestamps
 • 🎨 Cores automáticas por entregador
+• ⚠️ Múltiplas sessões simultâneas suportadas
 
 <i>💡 Sistema "save game" - reinicia o bot sem medo!</i>
 
@@ -1627,6 +1629,41 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
     await query.answer()
     
     data = query.data
+    
+    # ═══════════════════════════════════════════
+    # SELECIONAR SESSÃO (NOVO)
+    # ═══════════════════════════════════════════
+    if data.startswith("select_session_"):
+        session_id = data.replace("select_session_", "")
+        session = session_manager.get_session(session_id)
+        
+        if not session:
+            await query.edit_message_text(
+                f"❌ Sessão {session_id} não encontrada!",
+                parse_mode='HTML'
+            )
+            return
+        
+        # Define como sessão atual
+        session_manager.set_current_session(session_id)
+        
+        status = "🔒 Finalizada" if session.is_finalized else "🟢 Ativa"
+        
+        await query.edit_message_text(
+            f"✅ <b>SESSÃO SELECIONADA!</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"📅 Data: <b>{session.date}</b>\n"
+            f"🆔 ID: <code>{session.session_id}</code>\n"
+            f"📊 Status: {status}\n"
+            f"📦 Romaneios: {len(session.romaneios)}\n"
+            f"🛣️ Rotas: {len(session.routes)}\n\n"
+            f"Agora você pode usar:\n"
+            f"• <code>/modo_separacao</code>\n"
+            f"• <code>/analisar_rota</code>\n"
+            f"• Outros comandos nesta sessão",
+            parse_mode='HTML'
+        )
+        return
     
     # ═══════════════════════════════════════════
     # SWITCH DE SESSÃO
@@ -3641,6 +3678,60 @@ Para acesso externo, use o IP público do servidor:
 
 # ==================== MODO SEPARAÇÃO POR COR ====================
 
+async def cmd_selecionar_sessao(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """📂 Seleciona qual sessão usar (quando há múltiplas ativas)"""
+    user_id = update.effective_user.id
+    
+    if user_id != BotConfig.ADMIN_TELEGRAM_ID:
+        await update.message.reply_text("⛔ Apenas admin pode usar este comando")
+        return
+    
+    sessions = session_manager.list_sessions(finalized_only=False)
+    
+    if not sessions:
+        await update.message.reply_text(
+            "❌ <b>NENHUMA SESSÃO ATIVA</b>\n\n"
+            "Use <code>/importar</code> para criar uma nova sessão.",
+            parse_mode='HTML'
+        )
+        return
+    
+    current = session_manager.get_current_session()
+    current_id = current.session_id if current else None
+    
+    # Cria botões para cada sessão
+    keyboard = []
+    for session in sessions:
+        is_current = "✅ " if session.session_id == current_id else ""
+        status = "🔒 Finalizada" if session.is_finalized else "🟢 Ativa"
+        
+        label = (
+            f"{is_current}{session.date} ({session.session_id[:6]})\n"
+            f"{status} • {len(session.romaneios)} romaneios • {len(session.routes)} rotas"
+        )
+        
+        keyboard.append([
+            InlineKeyboardButton(
+                label,
+                callback_data=f"select_session_{session.session_id}"
+            )
+        ])
+    
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await update.message.reply_text(
+        "📂 <b>SELECIONAR SESSÃO</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "Escolha qual sessão usar para:\n"
+        "• <code>/modo_separacao</code>\n"
+        "• <code>/analisar_rota</code>\n"
+        "• Outros comandos\n\n"
+        "✅ = Sessão atual em uso",
+        parse_mode='HTML',
+        reply_markup=reply_markup
+    )
+
+
 async def cmd_modo_separacao(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """🎨 Inicia modo separação - bipar códigos de barras"""
     user_id = update.effective_user.id
@@ -3649,18 +3740,36 @@ async def cmd_modo_separacao(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await update.message.reply_text("⛔ Apenas admin pode usar este modo")
         return
     
+    # Verifica se há múltiplas sessões ativas
+    all_sessions = session_manager.list_sessions(finalized_only=False)
+    active_sessions = [s for s in all_sessions if not s.is_finalized]
+    
     session = session_manager.get_current_session()
     
+    # Se há múltiplas sessões ativas, avisa o usuário
+    if len(active_sessions) > 1:
+        session_info = f"📅 Usando sessão: <b>{session.date}</b> (<code>{session.session_id[:6]}</code>)\n\n"
+        session_info += f"⚠️ Você tem <b>{len(active_sessions)} sessões ativas</b>!\n"
+        session_info += f"Use <code>/selecionar_sessao</code> se quiser trocar.\n\n"
+    else:
+        session_info = ""
+    
     if not session or not session.routes:
-        await update.message.reply_text(
+        msg = (
             "❌ <b>NENHUMA ROTA DIVIDIDA!</b>\n\n"
+            f"{session_info}"
             "Fluxo correto:\n"
             "1️⃣ <code>/fechar_rota</code> - Divide rotas\n"
             "2️⃣ Atribui entregadores\n"
             "3️⃣ <code>/modo_separacao</code> - Ativa separação\n\n"
-            "💡 <i>Divida as rotas primeiro!</i>",
-            parse_mode='HTML'
         )
+        
+        if len(active_sessions) > 1:
+            msg += "💡 <i>Ou use /selecionar_sessao para escolher outra sessão</i>"
+        else:
+            msg += "💡 <i>Divida as rotas primeiro!</i>"
+        
+        await update.message.reply_text(msg, parse_mode='HTML')
         return
     
     # Verifica se todas as rotas têm entregadores atribuídos
@@ -3692,9 +3801,14 @@ async def cmd_modo_separacao(update: Update, context: ContextTypes.DEFAULT_TYPE)
     # Ativa modo separação com sessão
     result = barcode_separator.start_separation_mode(session)
     
+    # Info sobre múltiplas sessões
+    session_warning = ""
+    if len(active_sessions) > 1:
+        session_warning = f"\n⚠️ Usando sessão: <b>{session.date}</b> (<code>{session.session_id[:6]}</code>)\n"
+    
     mensagem = f"""🎨 <b>MODO SEPARAÇÃO ATIVADO!</b>
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
+{session_warning}
 {mensagem_cores}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -4134,6 +4248,7 @@ def run_bot():
             app.add_handler(CommandHandler("fechar_rota", cmd_fechar_rota))
             app.add_handler(CommandHandler("analisar_rota", cmd_analisar_rota))  # ⚡ NOVO!
             app.add_handler(CommandHandler("sessoes", cmd_sessoes))  # 📂 NOVO!
+            app.add_handler(CommandHandler("selecionar_sessao", cmd_selecionar_sessao))  # 📂 Escolher sessão ativa
             app.add_handler(CommandHandler("add_entregador", cmd_add_deliverer))
             app.add_handler(CommandHandler("entregadores", cmd_list_deliverers))
             app.add_handler(CommandHandler("ranking", cmd_ranking))
