@@ -61,8 +61,8 @@ class BarcodeSeparator:
             total = len(packages)
             
             for idx, pkg in enumerate(packages, 1):
-                # Usa ID do DeliveryPoint
-                pkg_id = pkg.id.strip().upper()
+                # Usa package_id do DeliveryPoint
+                pkg_id = pkg.package_id.strip().upper()
                 
                 self.assignments[pkg_id] = PackageAssignment(
                     package_id=pkg_id,
