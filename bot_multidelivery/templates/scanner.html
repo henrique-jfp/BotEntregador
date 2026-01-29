@@ -388,7 +388,10 @@
 
         // Mostra resultado na tela EM TEMPO REAL (CARD FIXO GRANDE)
         function showResult(data) {
-            console.log('🎨 Mostrando resultado:', data);
+            console.log('🎨 MOSTRANDO RESULTADO:', data);
+            
+            // Força mostrar com alert primeiro para debug
+            alert(`COR: ${data.color_name}\nSEQUÊNCIA: #${data.position}`);
             
             // Atualiza o card fixo grande
             const currentResult = document.getElementById('current-result');
@@ -397,6 +400,13 @@
             const sequence = document.getElementById('result-sequence');
             const deliverer = document.getElementById('result-deliverer');
             const address = document.getElementById('result-address');
+            
+            if (!currentResult) {
+                console.error('❌ Elemento current-result NÃO ENCONTRADO!');
+                return;
+            }
+            
+            console.log('✅ Elementos encontrados, atualizando...');
             
             // Mostra o card
             currentResult.style.display = 'block';
@@ -415,6 +425,8 @@
             
             deliverer.textContent = data.deliverer_name;
             address.textContent = data.address;
+            
+            console.log('✅ Card atualizado com sucesso!');
             
             // Scroll para o card
             currentResult.scrollIntoView({ behavior: 'smooth', block: 'center' });
