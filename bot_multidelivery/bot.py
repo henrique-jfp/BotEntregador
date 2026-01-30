@@ -3721,7 +3721,7 @@ async def cmd_fechar_dia(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def cmd_financeiro(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Mostra relatório financeiro (diário, semanal ou mensal)"""
+    # Mostra relatorio financeiro (diario, semanal ou mensal)
     user_id = update.effective_user.id
     
     if user_id != BotConfig.ADMIN_TELEGRAM_ID:
@@ -3816,7 +3816,7 @@ Lucro: R$ {total_profit/len(reports):,.2f}
 
 
 async def cmd_fechar_semana(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Fecha a semana e divide lucros entre sócios"""
+    # Fecha a semana e divide lucros entre socios
     user_id = update.effective_user.id
     
     if user_id != BotConfig.ADMIN_TELEGRAM_ID:
