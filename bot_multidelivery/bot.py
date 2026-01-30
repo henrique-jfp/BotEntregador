@@ -39,7 +39,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
         await update.message.reply_text(
             "🚀 <b>BOT MULTI-ENTREGADOR v20/10</b>\n"
-            "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            "---\n\n"
             "👋 E aí, <b>CHEFE</b>! Pronto pra dominar as entregas?\n\n"
             "<b>⚡ FLUXO RÁPIDO:</b>\n"
             "1️⃣ <code>/importar</code> - Sobe romaneios da Shopee\n"
@@ -50,7 +50,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "• <code>/entregadores</code> - Lista do time\n"
             "• <code>/ranking</code> - Quem tá mandando bem\n\n"
             "💡 <code>/help</code> pra ver TUDO que esse bot faz\n\n"
-            "━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "---\n"
             "🔥 <i>Bora fazer grana!</i>",
             parse_mode='HTML',
             reply_markup=reply_markup
@@ -69,7 +69,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             await update.message.reply_text(
                 f"🏍️ <b>E AÍ, {partner.name.upper()}!</b>\n"
-                f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"---\n\n"
                 f"📛 Status: {tipo}\n"
                 f"📦 Capacidade: {partner.max_capacity} pacotes/dia\n"
                 f"💰 Ganho: R$ {partner.cost_per_package:.2f}/pacote\n\n"
@@ -80,7 +80,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"4️⃣ Marca cada entrega (✅/❌)\n\n"
                 f"🔔 <i>Aguardando distribuição de rotas...</i>\n\n"
                 f"💡 <code>/help</code> - Ver todos os comandos\n\n"
-                f"━━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"---\n"
                 f"🚀 <i>Bora faturar!</i>",
                 parse_mode='HTML',
                 reply_markup=reply_markup
@@ -103,7 +103,7 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
         msg1 = """<b>🚀 BOT MULTI-ENTREGADOR v5.0</b>
 <i>Sistema Completo: Sessões + IA + Cores Automáticas</i>
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>📂 SESSÕES PERSISTENTES 🆕</b>
 <code>/sessoes</code> — Gerenciar sessões
@@ -117,7 +117,7 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 <i>💡 Sistema "save game" - reinicia o bot sem medo!</i>
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>📦 IMPORTAÇÃO & ANÁLISE</b>
 <code>/importar</code> — Enviar romaneios
@@ -137,7 +137,7 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 • Modo Scooter (79% menos distância)
 • Mapa HTML com rotas reais (OSRM)
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>👥 GESTÃO DE EQUIPE</b>
 <code>/add_entregador</code> — Cadastrar
@@ -147,7 +147,7 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 <code>/entregadores</code> — Listar time
 <code>/ranking</code> — Gamificação + XP
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>🎨 SEPARAÇÃO FÍSICA COM CORES</b>
 <code>/modo_separacao</code> — Ativar
@@ -160,7 +160,7 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 <code>/status_separacao</code> — Progresso
 <code>/fim_separacao</code> — Relatório final
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>🗺️ ROTEIRIZAÇÃO INTELIGENTE</b>
 🏍️ Scooter — Contrafluxo + atalhos
@@ -190,7 +190,7 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 <code>/config_socios</code> — Define %
 • Validação soma = 100%
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>🏦 BANCO INTER (Opcional)</b>
 <code>/config_banco_inter</code> — Config
@@ -204,7 +204,7 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 <code>/saldo_banco</code> — Consulta
 • Saldo + últimas movimentações
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>📊 EXPORTAÇÃO</b>
 <code>/exportar</code> — Arquivos
@@ -224,7 +224,7 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 • Monitoramento real-time
 • Mapa de calor + KPIs
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>📱 OUTROS</b>
 <code>/start</code> — Menu principal
@@ -232,7 +232,7 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 <code>/status</code> — Status sessão
 <code>/fechar_rota</code> — Encerrar rota
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>💡 FLUXO DIÁRIO</b>
 1️⃣ /add_entregador → Cadastra
@@ -244,7 +244,7 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 7️⃣ /fechar_dia → Financeiro
 8️⃣ /fechar_semana → Divisão
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>🧠 TECNOLOGIA</b>
 • K-Means + Algoritmo Genético
@@ -295,36 +295,36 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 👋 Olá, <b>{partner.name}</b>!
 
 <b>📋 SEU PERFIL</b>
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
  {tipo_emoji} Tipo: <b>{tipo_texto}</b>
  📦 Capacidade: <b>{partner.max_capacity} pacotes/dia</b>
  💰 {pagamento_info}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>🚀 FLUXO DE TRABALHO</b>
 
-<b>┏━━ 1. RECEBER ROTA</b>
+<b>┏--- 1. RECEBER ROTA</b>
 ┃  ▸ Admin envia sua rota otimizada
 ┃  ▸ Arquivo HTML interativo com mapa
-┃  ┗━▸ Baixe e abra no navegador
+┃  ┗---▸ Baixe e abra no navegador
 ┃
-<b>┣━━ 2. VISUALIZAR MAPA</b>
+<b>┣--- 2. VISUALIZAR MAPA</b>
 ┃  ▸ Pins numerados por ordem
 ┃  ▸ Linha conecta toda a rota
-┃  ┗━▸ Clique para ver detalhes
+┃  ┗---▸ Clique para ver detalhes
 ┃
-<b>┣━━ 3. NAVEGAR</b>
+<b>┣--- 3. NAVEGAR</b>
 ┃  ▸ Botão "Google Maps" em cada pin
 ┃  ▸ Navegação turn-by-turn automática
-┃  ┗━▸ Siga a ordem otimizada
+┃  ┗---▸ Siga a ordem otimizada
 ┃
-<b>┗━━ 4. MARCAR ENTREGAS</b>
+<b>┗--- 4. MARCAR ENTREGAS</b>
    ▸ ✅ Entregue — Sucesso
    ▸ ❌ Insucesso — Não conseguiu
-   ┗━▸ 🔄 Transferir — Passar pra colega
+   ┗---▸ 🔄 Transferir — Passar pra colega
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>🎯 CONCEITO DE STOPS</b>
 
@@ -340,7 +340,7 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
    
 <i>Faça todas de uma vez pra economizar tempo!</i>
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>🏍️ MODO SCOOTER</b>
 
@@ -355,7 +355,7 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
  • Menos combustível gasto
  • Mais entregas por hora
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>💡 DICAS DE OURO</b>
 
@@ -374,14 +374,14 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
  ▸ Comunique problemas rapidamente
     <i>→ Suporte ágil do admin</i>
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>🆘 SUPORTE</b>
 
 Dúvidas ou problemas?
 Fale diretamente com o admin!
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>🚀 Boas entregas, parceiro(a)!</b>
 ⚡ <b>v2.1</b> | Atualizado: 21/12/2025"""
@@ -419,7 +419,7 @@ async def cmd_cancelar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.message.reply_text(
         "🚫 <b>OPERAÇÃO CANCELADA</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "---\n\n"
         "Todo o fluxo atual foi interrompido e os estados limpos.\n"
         "O bot está pronto para uma nova tarefa.\n\n"
         "<i>Dica: Se algo travou, isso geralmente resolve.</i>",
@@ -465,7 +465,7 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
         
         await update.message.reply_text(
             "🔍 <b>ANÁLISE INTELIGENTE DE ROTA</b>\n"
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            "---\n\n"
             "📎 <b>AGORA, OS DADOS:</b>\n\n"
             "📄 <b>OPÇÃO 1: Arquivo Excel</b>\n"
             "   Anexe o .xlsx da Shopee\n\n"
@@ -743,7 +743,7 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
         
         await update.message.reply_text(
             "🟢 <b>NOVA SESSÃO INICIADA!</b>\n"
-            "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            "---\n\n"
             f"📅 Data: <b>{today}</b>\n\n"
             "🎯 <b>PRÓXIMO PASSO:</b>\n"
             "Defina a <b>LOCALIZAÇÃO DA BASE</b> (onde o carro/bike está)\n\n"
@@ -794,10 +794,10 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
         
         await update.message.reply_text(
             f"✅ <b>BASE CONFIGURADA!</b>\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"---\n\n"
             f"📍 Local: <b>{base_address}</b>\n"
             f"🌐 Coords: <code>{base_lat:.6f}, {base_lng:.6f}</code>\n\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"---\n\n"
             f"🚀 <b>PRÓXIMO PASSO:</b> Envie os romaneios!\n\n"
             f"<b>📂 MÉTODOS ACEITOS:</b>\n\n"
             f"📄 <b>1. Arquivo Excel (.xlsx)</b>\n"
@@ -809,7 +809,7 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
             f"   Formato: tracking,endereco,lat,lon\n\n"
             f"📕 <b>4. PDF Scaneado</b>\n"
             f"   OCR automático (legado)\n\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"---\n\n"
             f"💡 Quando terminar: <code>/fechar_rota</code>",
             parse_mode='HTML'
         )
@@ -863,11 +863,11 @@ async def handle_location_message(update: Update, context: ContextTypes.DEFAULT_
     
     await update.message.reply_text(
         f"✅ <b>BASE CONFIGURADA COM LOCALIZAÇÃO EXATA!</b>\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"---\n\n"
         f"📍 Local: <b>{base_address}</b>\n"
         f"🌐 Coords: <code>{base_lat:.6f}, {base_lng:.6f}</code>\n"
         f"🚴 <b>Otimizado para economia de bateria!</b>\n\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"---\n\n"
         f"🚀 <b>PRÓXIMO PASSO:</b> Envie os romaneios!\n\n"
         f"<b>📂 MÉTODOS ACEITOS:</b>\n\n"
         f"📄 <b>1. Arquivo Excel (.xlsx)</b>\n"
@@ -879,7 +879,7 @@ async def handle_location_message(update: Update, context: ContextTypes.DEFAULT_
         f"   Formato: tracking,endereco,lat,lon\n\n"
         f"📕 <b>4. PDF Scaneado</b>\n"
         f"   OCR automático (legado)\n\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"---\n\n"
         f"💡 Quando terminar: <code>/fechar_rota</code>",
         parse_mode='HTML'
     )
@@ -904,7 +904,7 @@ async def send_deliverer_summary(update: Update, user_id: int, data: dict):
 
     msg = (
         "📋 <b>Confirmar entregador</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "---\n\n"
         f"👤 Nome: <b>{name}</b>\n"
         f"🆔 ID: <code>{telegram_id}</code>\n"
         f"🏷️ Tipo: {tipo_txt}\n"
@@ -948,7 +948,7 @@ async def handle_document_message(update: Update, context: ContextTypes.DEFAULT_
         
         await update.message.reply_text(
             "🟢 <b>Sessão criada automaticamente!</b>\n"
-            "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            "---\n\n"
             f"📅 Data: <b>{today}</b>\n\n"
             "🎯 Antes de importar, defina a <b>LOCALIZAÇÃO DA BASE</b>:\n\n"
             "📍 <b>OPÇÃO 1 (RECOMENDADO):</b>\n"
@@ -1088,7 +1088,7 @@ async def handle_document_message(update: Update, context: ContextTypes.DEFAULT_
         logger.error(f"Erro ao processar arquivo: {e}")
         await update.message.reply_text(
             f"❌ <b>ERRO NO PROCESSAMENTO!</b>\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"---\n\n"
             f"🚫 Detalhes do erro:\n"
             f"<code>{str(e)[:200]}</code>\n\n"
             f"💡 <b>ALTERNATIVAS:</b>\n\n"
@@ -1567,7 +1567,7 @@ async def process_route_analysis_text(update: Update, context: ContextTypes.DEFA
         
         msg = (
             f"{score_emoji} <b>ANÁLISE DE ROTA - TEXTO</b>\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"---\n\n"
             f"⭐ <b>Score Viabilidade: {score}/10</b>\n\n"
             f"📊 <b>ESTATÍSTICAS</b>\n"
             f"📦 {analysis.get('total_stops', 0)} pontos de entrega\n"
@@ -1597,7 +1597,7 @@ async def process_route_analysis_text(update: Update, context: ContextTypes.DEFA
         if comment:
             msg += f"💬 <b>CONCLUSÃO</b>\n{comment}\n\n"
         
-        msg += "━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        msg += "---\n"
         msg += "📍 Veja o mapa abaixo ↓"
         
         await update.message.reply_text(msg, parse_mode='HTML')
@@ -1854,12 +1854,12 @@ async def process_route_analysis(update: Update, context: ContextTypes.DEFAULT_T
         
         message = (
             f"🔍 <b>ANÁLISE DE ROTA COMPLETA</b>\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"---\n\n"
             f"💰 <b>VALOR REAL: R$ {analysis.route_value:.2f}</b>\n"
             f"🏘️ <b>PERFIL: {analysis.route_type}</b>\n\n"
             f"📊 <b>SCORE GERAL: {analysis.overall_score}/10</b>\n"
             f"<code>{score_bar}</code> {analysis.recommendation}\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"---\n\n"
             f"📝 <b>RESUMO TÉCNICO:</b>\n"
             f"• <b>{analysis.total_packages} pacotes</b> ({analysis.total_stops} paradas)\n"
             f"• <b>{analysis.unique_addresses} endereços únicos</b>\n"
@@ -1879,7 +1879,7 @@ async def process_route_analysis(update: Update, context: ContextTypes.DEFAULT_T
                 message += f"{icon} {name} ({count} pct)\n"
             message += "\n"
 
-        message += f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        message += f"---\n\n"
         
         # Prós
         if analysis.pros:
@@ -1895,9 +1895,9 @@ async def process_route_analysis(update: Update, context: ContextTypes.DEFAULT_T
                 message += f"  • {con}\n"
             message += "\n"
         
-        message += f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        message += f"---\n\n"
         message += f"🤖 <b>ANÁLISE DA IA:</b>\n\n{analysis.ai_comment}\n\n"
-        message += f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        message += f"---\n\n"
         message += f"🗺️ <b>Mapa interativo em anexo!</b>"
         
         await update.message.reply_text(message, parse_mode='HTML')
@@ -1949,7 +1949,7 @@ async def cmd_analisar_rota(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.message.reply_text(
         "💰 <b>QUANTO PAGA ESSA ROTA?</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "---\n\n"
         "Para uma análise financeira real, informe o valor total ofertado.\n\n"
         "<i>Digite 0 se não souber ou não quiser informar.</i>\n\n"
         "💲 <b>Digite o valor (ex: 154.50):</b>",
@@ -1979,7 +1979,7 @@ async def cmd_sessoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     # Monta lista de sessões ATIVAS
-    msg = "📂 <b>SESSÕES ATIVAS</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+    msg = "📂 <b>SESSÕES ATIVAS</b>\n---\n\n"
     
     keyboard = []
     
@@ -2017,7 +2017,7 @@ async def cmd_sessoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
         ])
     
-    msg += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+    msg += "---\n"
     msg += "💡 <i>Clique para ver detalhes ou excluir</i>"
     
     reply_markup = InlineKeyboardMarkup(keyboard) if keyboard else None
@@ -2125,7 +2125,7 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
         
         await query.edit_message_text(
             f"✅ <b>SESSÃO RESGATADA!</b>\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"---\n\n"
             f"📝 Nome: <b>{session.session_name}</b>\n"
             f"📅 Data: {session.date}\n"
             f"{status_icon} Status: <b>{status_text}</b>\n\n"
@@ -2200,14 +2200,14 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
         
         await query.edit_message_text(
             f"{title}\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"---\n\n"
             f"<b>{session.session_id}</b>\n"
             f"📅 {session.date}\n"
             f"📦 {session.total_packages} pacotes · {len(session.routes)} rotas\n"
             f"📍 {session.base_address[:50] if session.base_address else 'Sem base definida'}\n"
             f"Status: {finalized_text}"
             f"{routes_info}\n\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"---\n\n"
             f"{'📍 Você já está nesta sessão!' if is_already_active else '✅ Agora você está trabalhando nesta sessão!'}",
             parse_mode='HTML'
         )
@@ -2230,7 +2230,7 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
         
         # Monta mensagem detalhada
         msg = f"📊 <b>DETALHES DA SESSÃO</b>\n"
-        msg += f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        msg += f"---\n\n"
         msg += f"🆔 ID: <code>{session.session_id}</code>\n"
         msg += f"📛 Nome: <b>{session.session_name or 'Sem nome'}</b>\n"
         msg += f"📅 Data: {session.date}\n"
@@ -2266,7 +2266,7 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
                     )
                 ])
         
-        msg += f"\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        msg += f"\n---\n"
         
         # Botão voltar
         keyboard.append([
@@ -2346,7 +2346,7 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
             )
             return
         
-        msg = "📂 <b>SESSÕES ATIVAS</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        msg = "📂 <b>SESSÕES ATIVAS</b>\n---\n\n"
         keyboard = []
         
         for i, session in enumerate(sessions[:10], 1):
@@ -2372,7 +2372,7 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
                 InlineKeyboardButton(f"🗑️ Excluir", callback_data=f"session_delete_{session.session_id}")
             ])
         
-        msg += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        msg += "---\n"
         msg += "💡 <i>Clique para ver detalhes ou excluir</i>"
         
         await query.edit_message_text(msg, parse_mode='HTML', reply_markup=InlineKeyboardMarkup(keyboard))
@@ -2447,7 +2447,7 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
         
         await query.edit_message_text(
             "🎨 <b>ESCOLHA AS CORES DOS ADESIVOS</b>\n"
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            "---\n\n"
             f"📌 <b>Selecionadas ({num_colors}):</b> {color_list}\n\n"
             "🏷️ <b>Selecione as cores disponíveis:</b>\n"
             "• Clique nas cores que você tem como adesivo\n"
@@ -2596,7 +2596,7 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
 
         await query.edit_message_text(
             f"✅ <b>Entregador cadastrado!</b>\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"---\n\n"
             f"{tipo_emoji} <b>{deliverer.name}</b>\n"
             f"🆔 ID: <code>{deliverer.telegram_id}</code>\n"
             f"📦 Capacidade: {deliverer.max_capacity} pacotes/dia\n"
@@ -2620,7 +2620,7 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
     
     elif data == "help_start_operation":
         operation_text = """<b>🚀 GUIA: INICIAR OPERAÇÃO DO DIA</b>
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>📋 FLUXO COMPLETO (3 ETAPAS)</b>
 
@@ -2637,7 +2637,7 @@ Digite <code>/importar</code> ou envie arquivos diretamente.
 <b>💡 Pode enviar vários arquivos!</b>
 O sistema consolida automaticamente.
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>2️⃣ SELECIONAR ENTREGADORES</b>
 
@@ -2649,7 +2649,7 @@ Após importar, o bot pergunta:
 • Sistema mostra capacidade total
 • Valida se é suficiente para os pacotes
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>3️⃣ OTIMIZAR E DISTRIBUIR</b>
 
@@ -2662,7 +2662,7 @@ Digite <code>/otimizar</code> (ou <code>/distribuir</code>)
 ✓ Gera mapa HTML interativo
 ✓ Envia para cada entregador no privado
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>✅ PRONTO!</b>
 
@@ -2672,7 +2672,7 @@ Cada entregador recebe:
 • Botões de navegação Google Maps
 • Sistema para marcar entregas
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>⏱ Tempo total: ~3 minutos</b>
 <b>🎯 Economia: 79% vs manual</b>"""
@@ -2687,7 +2687,7 @@ Cada entregador recebe:
     
     elif data == "help_team_management":
         team_text = """<b>👥 GERENCIAR EQUIPE</b>
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>CADASTRAR NOVO ENTREGADOR</b>
 
@@ -2703,7 +2703,7 @@ Use: <code>/add_entregador</code>
 • <b>Capacidade</b>: Pacotes por dia (ex: 50)
 • <b>Custo</b>: R$ por pacote (0 para parceiro)
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>📝 EXEMPLOS PRÁTICOS</b>
 
@@ -2713,7 +2713,7 @@ Use: <code>/add_entregador</code>
 <b>Cadastrar colaborador:</b>
 <code>/add_entregador 789012 Maria terceiro 40 1.5</code>
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>TIPOS DE ENTREGADOR</b>
 
@@ -2725,7 +2725,7 @@ Use: <code>/add_entregador</code>
    • Custo: R$ 1,00~2,50/pacote
    • Pagamento por produção
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>VER EQUIPE COMPLETA</b>
 
@@ -2737,7 +2737,7 @@ Mostra lista com:
 • Capacidade diária
 • Estatísticas de entregas
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>GAMIFICAÇÃO</b>
 
@@ -2758,7 +2758,7 @@ Veja quem está mandando bem!
     
     elif data == "help_monitoring":
         monitoring_text = """<b>📊 MONITORAMENTO EM TEMPO REAL</b>
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>COMANDOS DISPONÍVEIS</b>
 
@@ -2771,7 +2771,7 @@ Mostra:
 • Rotas criadas e distribuídas
 • Progresso de cada entregador
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>🤖 Predição com IA</b>
 <code>/prever</code>
@@ -2782,7 +2782,7 @@ Calcula antes de distribuir:
 • Melhor divisão de rotas
 • Alertas de sobrecarga
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>🏆 Ranking de Performance</b>
 <code>/ranking</code>
@@ -2793,7 +2793,7 @@ Gamificação da equipe:
 • Conquistas desbloqueadas
 • Comparativo de eficiência
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>💰 Relatório Financeiro</b>
 
@@ -2812,7 +2812,7 @@ Em desenvolvimento:
     
     elif data == "help_file_formats":
         formats_text = """<b>📂 FORMATOS DE ARQUIVO ACEITOS</b>
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>✅ EXCEL SHOPEE (.xlsx)</b> — <i>Recomendado</i>
 
@@ -2822,7 +2822,7 @@ Em desenvolvimento:
 • Sem necessidade de geocoding
 • Processamento instantâneo
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>✅ CSV GENÉRICO (.csv)</b>
 
@@ -2832,7 +2832,7 @@ Em desenvolvimento:
 <b>Exemplo:</b>
 <code>BR123,Rua A 100,-23.5,-46.6,normal</code>
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>✅ PDF ROMANEIO (.pdf)</b>
 
@@ -2843,7 +2843,7 @@ Em desenvolvimento:
 
 <b>⚠️ Limite:</b> 50 endereços por PDF
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>✅ TEXTO MANUAL (.txt)</b>
 
@@ -2856,7 +2856,7 @@ Rua Oscar Freire 500, São Paulo - SP</code>
 
 Sistema faz geocoding automaticamente.
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>💡 DICA:</b>
 Pode enviar múltiplos arquivos!
@@ -2872,7 +2872,7 @@ Sistema consolida tudo."""
     
     elif data == "help_technology":
         tech_text = """<b>🧠 TECNOLOGIA SCOOTER MODE</b>
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>ALGORITMOS APLICADOS</b>
 
@@ -2882,7 +2882,7 @@ Entregas no mesmo endereço = 1 parada
 • Agrupa apartamentos/salas
 • Economiza tempo de navegação
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>2️⃣ Divisão Geográfica</b>
 <b>K-means Clustering</b>
@@ -2890,7 +2890,7 @@ Entregas no mesmo endereço = 1 parada
 • Equilibra carga entre entregadores
 • Minimiza sobreposição de rotas
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>3️⃣ Otimização de Rota</b>
 <b>Algoritmo Genético</b>
@@ -2898,7 +2898,7 @@ Entregas no mesmo endereço = 1 parada
 • Distância euclidiana otimizada
 • Considera contrafluxo quando seguro
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>4️⃣ Modo Scooter</b>
 <b>Atalhos Permitidos:</b>
@@ -2907,7 +2907,7 @@ Entregas no mesmo endereço = 1 parada
 ✓ Contrafluxo em ruas locais
 ✓ Aglomerações próximas
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>📈 RESULTADOS COMPROVADOS</b>
 
@@ -2916,7 +2916,7 @@ Entregas no mesmo endereço = 1 parada
 • <b>60% mais capacidade</b> diária
 • <b>95% taxa de sucesso</b>
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>🤖 IA PREDITIVA</b>
 
@@ -2936,7 +2936,7 @@ Sistema aprende com cada entrega:
     
     elif data == "help_financial":
         financial_text = """<b>💰 SISTEMA FINANCEIRO</b>
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>📊 COMANDOS BÁSICOS</b>
 
@@ -2962,7 +2962,7 @@ Fechamento semanal com divisão
 Configura percentuais dos sócios
 Exemplo: <code>/config_socios João 70 Maria 30 10</code>
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>💡 FLUXO DIÁRIO RECOMENDADO</b>
 
@@ -2988,7 +2988,7 @@ Domingo/Segunda → <code>/fechar_semana</code>
     
     elif data == "help_advanced_features":
         advanced_text = """<b>🔮 FUNCIONALIDADES AVANÇADAS</b>
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>📊 DASHBOARD WEB</b>
 
@@ -3002,7 +3002,7 @@ Inicia interface web em <code>http://localhost:5000</code>
 ✅ Divisão semanal entre sócios
 ✅ Auto-refresh a cada 5 minutos
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>📄 EXPORTAÇÃO PROFISSIONAL</b>
 
@@ -3015,7 +3015,7 @@ Inicia interface web em <code>http://localhost:5000</code>
 <b>Formato Excel:</b> Tabelas formatadas, cores, totais
 <b>Formato PDF:</b> Layout A4 landscape, divisão sócios
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>🏦 INTEGRAÇÃO BANCO INTER</b>
 
@@ -3032,7 +3032,7 @@ Fechamento automático com receita do banco
 <code>/saldo_banco</code>
 Consulta saldo em tempo real
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>🤖 PROJEÇÕES COM IA</b>
 
@@ -3048,7 +3048,7 @@ Consulta saldo em tempo real
 ✓ Taxa de crescimento
 ✓ Confiança (alta/média/baixa)
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>📚 DOCUMENTAÇÃO COMPLETA</b>
 
@@ -3067,7 +3067,7 @@ Veja: <code>MANUAL_FUNCIONALIDADES_AVANCADAS.md</code>"""
         help_text = """<b>🚀 BOT MULTI-ENTREGADOR v3.0</b>
 <i>Sistema Inteligente com IA + Dashboard</i>
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>⚡ COMANDOS PRINCIPAIS</b>
 
@@ -3087,7 +3087,7 @@ Veja: <code>MANUAL_FUNCIONALIDADES_AVANCADAS.md</code>"""
 <code>/projecoes</code> — Previsões IA
 <code>/fechar_dia_auto</code> — Banco Inter
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 💡 <b>Clique nos botões</b> para guias detalhados"""
 
@@ -3123,7 +3123,7 @@ Veja: <code>MANUAL_FUNCIONALIDADES_AVANCADAS.md</code>"""
         help_text = """<b>🚀 BOT MULTI-ENTREGADOR v3.0</b>
 <i>Sistema Inteligente com IA + Dashboard</i>
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>⚡ COMANDOS PRINCIPAIS</b>
 
@@ -3143,7 +3143,7 @@ Veja: <code>MANUAL_FUNCIONALIDADES_AVANCADAS.md</code>"""
 <code>/projecoes</code> — Previsões IA
 <code>/fechar_dia_auto</code> — Banco Inter
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 💡 <b>Clique nos botões</b> para guias detalhados"""
 
@@ -3368,7 +3368,7 @@ async def show_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     bar = "█" * filled + "░" * (bar_length - filled)
     
     msg = f"📊 <b>STATUS DA OPERAÇÃO</b>\n"
-    msg += f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+    msg += f"---\n\n"
     msg += f"📅 Data: <b>{session.date}</b>\n"
     msg += f"📍 Base: {session.base_address}\n\n"
     msg += f"<b>📦 ENTREGAS:</b>\n"
@@ -3389,7 +3389,7 @@ async def show_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
             msg += f"{emoji_status} <b>Rota {i}</b> - {entregador}\n"
             msg += f"   📦 {progresso} ({percent_rota:.0f}%) | 🛣️ {route.total_distance_km:.1f}km\n\n"
     
-    msg += "━━━━━━━━━━━━━━━━━━━━━━━"
+    msg += "---"
     
     await update.message.reply_text(msg, parse_mode='HTML')
 
@@ -3407,7 +3407,7 @@ async def show_financial_report(update: Update, context: ContextTypes.DEFAULT_TY
         return
     
     msg = f"💰 <b>RELATÓRIO FINANCEIRO</b>\n"
-    msg += f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+    msg += f"---\n\n"
     msg += f"📅 Data: <b>{session.date}</b>\n\n"
     
     costs_by_deliverer = {}
@@ -3434,7 +3434,7 @@ async def show_financial_report(update: Update, context: ContextTypes.DEFAULT_TY
     total_cost = sum(costs_by_deliverer.values())
     total_deliveries = sum(deliveries_by_deliverer.values())
     
-    msg += "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+    msg += "---\n\n"
     msg += f"<b>📊 TOTAIS:</b>\n"
     msg += f"📦 Entregas: <b>{total_deliveries}</b>\n"
     msg += f"💰 Custo Total: <b>R$ {total_cost:.2f}</b>\n\n"
@@ -3443,7 +3443,7 @@ async def show_financial_report(update: Update, context: ContextTypes.DEFAULT_TY
         avg_cost = total_cost / total_deliveries
         msg += f"📈 Custo Médio: R$ {avg_cost:.2f}/entrega\n\n"
     
-    msg += "━━━━━━━━━━━━━━━━━━━━━━━"
+    msg += "---"
     
     await update.message.reply_text(msg, parse_mode='HTML')
 
@@ -3465,7 +3465,7 @@ async def cmd_add_deliverer(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(
         "🧑‍💼 <b>Cadastro de Entregador</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "---\n\n"
         "Vamos cadastrar em 4 passos rápidos.\n\n"
         "1️⃣ Nome completo do entregador?",
         parse_mode='HTML'
@@ -3495,7 +3495,7 @@ async def cmd_list_deliverers(update: Update, context: ContextTypes.DEFAULT_TYPE
     inactive = [d for d in deliverers if not d.is_active]
     
     msg = "👥 <b>TIME DE ENTREGADORES</b>\n"
-    msg += "━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+    msg += "---\n\n"
     
     if active:
         msg += f"✅ <b>ATIVOS</b> ({len(active)})\n\n"
@@ -3524,7 +3524,7 @@ async def cmd_list_deliverers(update: Update, context: ContextTypes.DEFAULT_TYPE
         for d in inactive:
             msg += f"• {d.name} (ID: {d.telegram_id})\n"
     
-    msg += "\n━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    msg += "\n---"
     
     await update.message.reply_text(msg, parse_mode='HTML')
 
@@ -3546,7 +3546,7 @@ async def cmd_ranking(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     msg = "🏆 <b>RANKING DOS ENTREGADORES</b>\n"
-    msg += "━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+    msg += "---\n\n"
     
     for entry in leaderboard:
         # Medalhas
@@ -3697,7 +3697,7 @@ async def cmd_fechar_dia(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.message.reply_text(
         f"💰 <b>FECHAMENTO FINANCEIRO ({date_str})</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "---\n\n"
         "Vamos calcular o lucro real.\n\n"
         "1️⃣ <b>PASSO 1: Faturamento</b>\n"
         "Qual foi o valor TOTAL recebido das rotas?\n\n"
@@ -3771,12 +3771,12 @@ async def cmd_financeiro(update: Update, context: ContextTypes.DEFAULT_TYPE):
         total_profit = sum(r.net_profit for r in reports)
         
         msg = f"""{chr(0x1F4CA)} <b>RESUMO SEMANAL</b>
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 {chr(0x1F4C5)} Período: {start_date.strftime('%d/%m')} a {end_date.strftime('%d/%m/%Y')}
 {chr(0x1F4C6)} Dias com dados: {len(reports)}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>{chr(0x1F4B5)} TOTAIS DA SEMANA</b>
 
@@ -3784,14 +3784,14 @@ async def cmd_financeiro(update: Update, context: ContextTypes.DEFAULT_TYPE):
 {chr(0x1F4B8)} Custos: R$ {total_costs:,.2f}
 {chr(0x1F4B0)} Lucro: <b>R$ {total_profit:,.2f}</b>
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>{chr(0x1F4C8)} MÉDIAS DIÁRIAS</b>
 
 Receita: R$ {total_revenue/len(reports):,.2f}
 Lucro: R$ {total_profit/len(reports):,.2f}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 {chr(0x1F4A1)} Use <code>/fechar_semana</code> para dividir lucros"""
         
@@ -3872,7 +3872,7 @@ async def cmd_config_socios(update: Update, context: ContextTypes.DEFAULT_TYPE):
         cfg = financial_service.partner_config
         
         msg = f"""⚙️ <b>CONFIGURAÇÃO DOS SÓCIOS</b>
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>👥 SÓCIOS:</b>
 
@@ -3881,7 +3881,7 @@ async def cmd_config_socios(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 <b>🏦 RESERVA EMPRESA:</b> {cfg.reserve_percentage*100:.0f}%
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 <b>📝 PARA ALTERAR:</b>
 
@@ -4220,7 +4220,7 @@ async def cmd_saldo_banco(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 💰 <b>Disponível:</b> R$ {disponivel:,.2f}
 🔒 <b>Bloqueado:</b> R$ {bloqueado:,.2f}
-━━━━━━━━━━━━━━━━━━━━━━━
+---
 💵 <b>Total:</b> R$ {(disponivel + bloqueado):,.2f}
 
 <i>Atualizado em: {datetime.now().strftime('%d/%m/%Y %H:%M')}</i>""",
@@ -4266,7 +4266,7 @@ async def cmd_projecoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
 📈 <b>Taxa de Crescimento:</b> {growth['growth_rate']:.1f}%
 📊 <b>Tendência:</b> {growth['trend']}
 
-━━━━━━━━━━━━━━━━━━━━━━━
+---
 <b>📅 PRÓXIMOS {days} DIAS:</b>
 
 """
@@ -4286,7 +4286,7 @@ async def cmd_projecoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             total_predicted += pred['predicted_profit']
         
-        msg += f"\n━━━━━━━━━━━━━━━━━━━━━━━"
+        msg += f"\n---"
         msg += f"\n💵 <b>TOTAL PREVISTO:</b> R$ {total_predicted:,.2f}"
         msg += f"\n📊 <b>MÉDIA DIÁRIA:</b> R$ {total_predicted/days:,.2f}"
         
@@ -4329,7 +4329,7 @@ async def cmd_dashboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
 Para acesso externo, use o IP público do servidor:
 <code>http://SEU_IP:{port}</code>
 
-━━━━━━━━━━━━━━━━━━━━━━━
+---
 <i>Dashboard rodando em background...</i>""",
             parse_mode='HTML'
         )
@@ -4384,7 +4384,7 @@ async def cmd_selecionar_sessao(update: Update, context: ContextTypes.DEFAULT_TY
     
     await update.message.reply_text(
         "📂 <b>SELECIONAR SESSÃO</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "---\n\n"
         "Escolha qual sessão usar para:\n"
         "• <code>/modo_separacao</code>\n"
         "• <code>/analisar_rota</code>\n"
@@ -4477,11 +4477,11 @@ async def cmd_modo_separacao(update: Update, context: ContextTypes.DEFAULT_TYPE)
         scanner_link = f"\n📱 <b>SCANNER WEB (celular):</b>\n<a href='{scanner_url}'>{scanner_url}</a>\n"
     
     mensagem = f"""🎨 <b>MODO SEPARAÇÃO ATIVADO!</b>
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 {session_warning}
 {mensagem_cores}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 {scanner_link}
 <b>🔍 COMO USAR:</b>
 
@@ -4495,7 +4495,7 @@ async def cmd_modo_separacao(update: Update, context: ContextTypes.DEFAULT_TYPE)
 • Bipe o código
 • Código aparece no chat automaticamente
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 1️⃣ Pegue um pacote da pilha
 2️⃣ Bipe/Scaneie o código de barras
@@ -4512,7 +4512,7 @@ Use <code>/status_separacao</code> para ver quantos faltam
 <b>🏁 FINALIZAR:</b>
 Quando terminar: <code>/fim_separacao</code>
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
 🔥 <b>BORA SEPARAR!</b>"""
     
@@ -4625,7 +4625,7 @@ async def cmd_otimizar_rotas(update: Update, context: ContextTypes.DEFAULT_TYPE)
     
     msg = (
         "🧠 <b>OTIMIZAÇÃO INTELIGENTE</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "---\n\n"
         f"📦 Total de pacotes: <b>{total_packages}</b>\n"
         f"📅 Sessão: {session.session_name}\n\n"
         "🔢 <b>Quantos entregadores vão rodar?</b>"
@@ -4675,7 +4675,7 @@ async def handle_optimization_num(update: Update, context: ContextTypes.DEFAULT_
     
     await query.edit_message_text(
         "🎨 <b>ESCOLHA AS CORES DOS ADESIVOS</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "---\n\n"
         f"📦 Serão criadas <b>{num_entregadores} rotas</b>\n\n"
         "🏷️ <b>Selecione as cores disponíveis:</b>\n"
         "• Clique nas cores que você tem como adesivo\n"
@@ -4839,7 +4839,7 @@ async def _execute_route_distribution(update: Update, context: ContextTypes.DEFA
         total_time = sum(r.total_time_minutes for r in routes)
         
         summary = f"✅ <b>ROTAS OTIMIZADAS E DISTRIBUÍDAS!</b>\n"
-        summary += f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        summary += f"---\n\n"
         summary += f"📦 <b>RESUMO GERAL:</b>\n"
         summary += f"• Total: {len(deliveries)} pacotes\n"
         summary += f"• Entregadores: {num_entregadores}\n"
@@ -4858,7 +4858,7 @@ async def _execute_route_distribution(update: Update, context: ContextTypes.DEFA
             summary += f"   🛣️ {route.total_distance_km:.1f}km | ⏱️ {route.total_time_minutes:.0f}min\n"
             summary += f"   ⚡ Atalhos: {route.shortcuts}\n\n"
         
-        summary += f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        summary += f"---\n"
         summary += f"📲 Mapas HTML enviados para cada entregador!\n"
         summary += f"👀 Monitore pelo dashboard: http://localhost:8765\n\n"
         summary += f"🔥 <i>Bora faturar!</i>"
@@ -4902,7 +4902,7 @@ async def _execute_route_distribution(update: Update, context: ContextTypes.DEFA
             try:
                 msg = (
                     f"{color_emoji} <b>SUA ROTA DO DIA ESTÁ PRONTA!</b>\n"
-                    f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                    f"---\n\n"
                     f"🎨 <b>COR DA SUA ROTA: {color_emoji} {route_color.upper() if route_color else 'Sem cor'}</b>\n\n"
                     f"📦 <b>RESUMO:</b>\n"
                     f"• Pacotes: <b>{route.total_packages}</b>\n"
@@ -4912,7 +4912,7 @@ async def _execute_route_distribution(update: Update, context: ContextTypes.DEFA
                     f"• Atalhos: <b>{route.shortcuts}</b> ⚡\n\n"
                     f"🎯 <b>INÍCIO:</b>\n{route.start_point[2][:60]}\n\n"
                     f"🏁 <b>FIM:</b>\n{route.end_point[2][:60]}\n\n"
-                    f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                    f"---\n\n"
                     f"🗺️ Baixe o <b>mapa HTML</b> abaixo!\n"
                     f"🔥 Abra no navegador e siga os pins!\n\n"
                     f"<i>Boa sorte, parceiro! 🚀</i>"
@@ -4970,7 +4970,7 @@ async def cmd_distribuir_rota(update: Update, context: ContextTypes.DEFAULT_TYPE
     if len(args) < 2:
         await update.message.reply_text(
             "🧠 <b>OTIMIZAR E DISTRIBUIR ROTAS</b>\n"
-            "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            "---\n\n"
             "<b>📝 FORMATO:</b>\n"
             "<code>/otimizar &lt;arquivo.xlsx&gt; &lt;N_entregadores&gt;</code>\n\n"
             "<b>🎯 EXEMPLO:</b>\n"
@@ -5029,7 +5029,7 @@ async def cmd_distribuir_rota(update: Update, context: ContextTypes.DEFAULT_TYPE
     
     await update.message.reply_text(
         "🎨 <b>ESCOLHA AS CORES DOS ADESIVOS</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "---\n\n"
         f"📦 Serão criadas <b>{num_entregadores} rotas</b>\n\n"
         "🏷️ <b>Selecione as cores disponíveis:</b>\n"
         "• Clique nas cores que você tem como adesivo\n"
@@ -5182,10 +5182,10 @@ async def _show_costs_menu(update, context, revenue, expenses):
     # Se for mensagem nova ou edição
     msg_text = (
         f"📊 <b>EXTRATO PARCIAL DO DIA</b>\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"---\n\n"
         f"💰 <b>Faturamento:</b> R$ {revenue:.2f}\n"
         f"🔻 <b>Custos Totais:</b> R$ {total_expenses:.2f}\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"---\n"
         f"💵 <b>LUCRO LÍQUIDO: R$ {partial_profit:.2f}</b>\n\n"
         f"📝 <b>Despesas Lançadas:</b>\n"
     )
@@ -5245,7 +5245,7 @@ async def cmd_faturamento(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         msg = (
             f"🕴️ <b>ÁREA DO SÓCIO: {partner.name}</b>\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"---\n\n"
             f"📅 Semana: {start_date} a {end_date}\n\n"
             f"💰 <b>Lucro da Empresa:</b> R$ {report['distributable_profit']:.2f}\n"
             f"〽️ <b>Sua Parte ({share_pct*100:.0f}%):</b> R$ {my_share:.2f}\n\n"
@@ -5257,7 +5257,7 @@ async def cmd_faturamento(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         msg = (
             f"💰 <b>SEU FATURAMENTO</b>\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"---\n\n"
             f"👤 {partner.name}\n"
             f"📅 Semana: {start_date} a {end_date}\n\n"
             f"💵 <b>A Receber: R$ {earnings:.2f}</b>\n\n"
@@ -5265,3 +5265,4 @@ async def cmd_faturamento(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         
     await update.message.reply_text(msg, parse_mode='HTML')
+
