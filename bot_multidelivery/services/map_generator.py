@@ -307,14 +307,60 @@ class MapGenerator:
             margin-bottom: 10px;
         }}
         
-        /* MARKERS OTIMIZADOS PARA MOBILE - VISÍVEIS E LEVES */
-        .marker-label {{
+        /* 🎯 PINS ESTILO SHOPEE - Balão colorido com número */
+        .pin-marker {{
+            position: relative;
+            width: 32px;
+            height: 40px;
+        }}
+        
+        .pin-marker .pin-body {{
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 32px;
+            height: 32px;
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+        }}
+        
+        .pin-marker .pin-number {{
+            position: absolute;
+            top: 4px;
+            left: 0;
+            width: 32px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 13px;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+            z-index: 1;
+        }}
+        
+        /* Cores dos pins por status */
+        .pin-pending .pin-body {{ background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%); }}
+        .pin-current .pin-body {{ background: linear-gradient(135deg, #FF9800 0%, #E65100 100%); }}
+        .pin-completed .pin-body {{ background: linear-gradient(135deg, #9E9E9E 0%, #616161 100%); }}
+        .pin-failed .pin-body {{ background: linear-gradient(135deg, #F44336 0%, #C62828 100%); }}
+        
+        /* Pin da BASE */
+        .pin-base .pin-body {{
+            background: linear-gradient(135deg, #9C27B0 0%, #6A1B9A 100%);
+        }}
+        
+        /* Tooltip customizado */
+        .leaflet-tooltip.pin-tooltip {{
             background: transparent;
             border: none;
-            color: inherit;
+            box-shadow: none;
             font-weight: bold;
-            font-size: 14px;
-            text-shadow: 0 0 2px #fff;
+            font-size: 11px;
+            color: #333;
+            padding: 0;
         }}
     </style>
 </head>
@@ -407,14 +453,33 @@ class MapGenerator:
             }});
         }}
         
+        // 🎯 Função para criar pin estilo Shopee
+        function createShopeePin(number, status) {{
+            const statusClass = `pin-${{status}}`;
+            return L.divIcon({{
+                className: 'pin-container',
+                html: `<div class="pin-marker ${{statusClass}}">
+                         <div class="pin-body"></div>
+                         <div class="pin-number">${{number}}</div>
+                       </div>`,
+                iconSize: [32, 40],
+                iconAnchor: [16, 40],  // Ponta do pin
+                popupAnchor: [0, -40]
+            }});
+        }}
+        
         // Adiciona marker da BASE se houver
         if (baseLocation) {{
             console.log("🏠 Adicionando marker da BASE:", baseLocation);
             const baseIcon = L.divIcon({{
-                className: 'marker-icon',
-                html: '<div class="marker-pin" style="border-color: #FF5722; color: #FF5722;">🏠</div>',
-                iconSize: [32, 32],
-                iconAnchor: [16, 16]
+                className: 'pin-container',
+                html: `<div class="pin-marker pin-base">
+                         <div class="pin-body"></div>
+                         <div class="pin-number">🏠</div>
+                       </div>`,
+                iconSize: [32, 40],
+                iconAnchor: [16, 40],
+                popupAnchor: [0, -40]
             }});
             
             const baseMarker = L.marker([baseLocation[0], baseLocation[1]], {{ icon: baseIcon }}).addTo(map);
@@ -423,20 +488,14 @@ class MapGenerator:
             console.log("⚠️ Sem base location configurada");
         }}
         
-        // Adiciona markers das entregas - usando ícone padrão do Leaflet (garantia visual)
-        console.log(`📌 Adicionando ${{markers.length}} markers no mapa...`);
+        // 🎯 Adiciona markers estilo Shopee
+        console.log(`📌 Adicionando ${{markers.length}} pins Shopee no mapa...`);
         let markersAdded = 0;
         
         markers.forEach((m, idx) => {{
             try {{
-                const marker = L.marker([m.lat, m.lon]).addTo(map);
-                
-                // Tooltip permanente com número/símbolo
-                marker.bindTooltip(`${{m.symbol}}`, {{
-                    permanent: true,
-                    direction: 'top',
-                    className: 'marker-label'
-                }});
+                const pinIcon = createShopeePin(m.number, m.status);
+                const marker = L.marker([m.lat, m.lon], {{ icon: pinIcon }}).addTo(map);
                 
                 marker.on('click', () => {{
                     openCard(m);
