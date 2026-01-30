@@ -1466,10 +1466,18 @@ async def process_route_analysis_text(update: Update, context: ContextTypes.DEFA
         failed = 0
         for i, result in enumerate(geocoded_results):
             if result['lat'] and result['lon']:
+                # Tenta extrair bairro do endereço (ex: "Copacabana, Rio de Janeiro")
+                extracted_bairro = ""
+                addr_parts = result['address'].split(',')
+                if len(addr_parts) >= 3:
+                     # Heurística simples: Pega parte antes da cidade se tiver formato "Rua, Num, Bairro, Cidade, UF"
+                     # Mas geocoder retorna formatações variadas. Vamos deixar vazio se não tiver certeza.
+                     pass
+
                 deliveries_data.append({
                     'id': f"END_{i+1:03d}",
                     'address': result['address'],
-                    'bairro': '',  # Não extraímos bairro de texto livre
+                    'bairro': extracted_bairro,
                     'lat': result['lat'],
                     'lon': result['lon'],
                     'stop': i + 1
@@ -1478,6 +1486,39 @@ async def process_route_analysis_text(update: Update, context: ContextTypes.DEFA
                 failed += 1
                 logger.warning(f"[X] Falhou geocoding: {result['address'][:60]}")
         
+        # [OUTLIER FILTER] Remove pontos muito distantes da mediana (ex: >10km)
+        # Corrige problema de endereços geocodificados em outra cidade/estado
+        if len(deliveries_data) > 3:
+            try:
+                lats = [d['lat'] for d in deliveries_data]
+                lons = [d['lon'] for d in deliveries_data]
+                median_lat = sorted(lats)[len(lats)//2]
+                median_lon = sorted(lons)[len(lons)//2]
+                
+                filtered_data = []
+                outliers = 0
+                
+                for d in deliveries_data:
+                    # Distancia simples euclidiana aproximada (1 grau ~ 111km)
+                    lat_diff = abs(d['lat'] - median_lat) * 111
+                    lon_diff = abs(d['lon'] - median_lon) * 111
+                    dist_approx = (lat_diff**2 + lon_diff**2)**0.5
+                    
+                    if dist_approx < 15:  # Raio de 15km da mediana (cobre Zona Sul <-> Centro <-> Barra)
+                        filtered_data.append(d)
+                    else:
+                        outliers += 1
+                        logger.warning(f"[X] Outlier removido ({dist_approx:.1f}km): {d['address']}")
+                
+                if outliers > 0:
+                    deliveries_data = filtered_data
+                    await update.message.reply_text(
+                        f"🧹 <b>Limpeza de Rota:</b> {outliers} endereços removidos por estarem muito longe (>15km).",
+                        parse_mode='HTML'
+                    )
+            except Exception as e:
+                logger.error(f"Erro filtro outliers: {e}")
+
         if failed > 0:
             await update.message.reply_text(
                 f"[ALERTA] <b>AVISO:</b> {failed}/{len(addresses_raw)} endereços não geocodificados\n\n"
