@@ -3347,6 +3347,11 @@ async def handle_deliverer_message(update: Update, context: ContextTypes.DEFAULT
         )
 
 
+async def cmd_status_sessao(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Alias para show_status - compatibilidade com callbacks"""
+    await show_status(update, context)
+
+
 async def show_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Mostra status atual da sesso"""
     session = session_manager.get_current_session()
@@ -5142,9 +5147,6 @@ def run_bot():
         print("\n[ALERTA] Bot parou após múltiplas falhas. Verifique sua conexão e tente novamente.")
 
 
-if __name__ == "__main__":
-    run_bot()
-
 async def _show_costs_menu(update, context, revenue, expenses):
     """Mostra menu interativo de custos e resumo parcial"""
     
@@ -5238,5 +5240,9 @@ async def cmd_faturamento(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         
     await update.message.reply_text(msg, parse_mode='HTML')
+
+
+if __name__ == "__main__":
+    run_bot()
 
 
