@@ -87,6 +87,14 @@ class MapGenerator:
         markers_data = []
         completed_count = 0
         
+        # 🔍 DEBUG: Verifica se stops não está vazio
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"📊 MapGenerator: Processando {len(stops)} stops")
+        
+        if len(stops) == 0:
+            logger.warning("⚠️ MapGenerator: STOPS VAZIO! Não há pontos para marcar!")
+        
         for i, (lat, lon, address, packages, status) in enumerate(stops):
             if status == 'completed':
                 completed_count += 1
@@ -114,6 +122,7 @@ class MapGenerator:
                 'is_current': i == current_stop
             })
         
+        logger.info(f"✅ MapGenerator: {len(markers_data)} markers preparados")
         markers_json = json.dumps(markers_data)
         
         # HTML completo

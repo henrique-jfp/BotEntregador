@@ -1089,9 +1089,67 @@ async def create_romaneio_from_addresses(update: Update, context: ContextTypes.D
         f"✅ Romaneio <b>#{romaneio.id}</b> adicionado!\n"
         f"📦 {len(points)} pacotes\n\n"
         f"Total acumulado: <b>{session.total_packages} pacotes</b>\n\n"
-        "Envie mais romaneios ou digite <code>/fechar_rota</code> para dividir.",
+        "⏳ <b>Gerando minimapa...</b>",
         parse_mode='HTML'
     )
+    
+    # 🗺️ GERA E ENVIA MINIMAPA COMPLETO (todos os pontos, sem dividir)
+    try:
+        all_session_points = []
+        for rom in session.romaneios:
+            all_session_points.extend(rom.points)
+        
+        if all_session_points:
+            # Prepara stops_data (sem otimização, apenas mostra os pontos)
+            minimap_stops = []
+            for i, point in enumerate(all_session_points):
+                minimap_stops.append((point.lat, point.lng, point.address, 1, 'pending'))
+            
+            # Base location
+            base_loc = (session.base_lat, session.base_lng, session.base_address) if session.base_lat and session.base_lng else None
+            
+            # Gera mapa
+            minimap_html = MapGenerator.generate_interactive_map(
+                stops=minimap_stops,
+                entregador_nome=f"Minimapa Completo - {session.total_packages} pacotes",
+                current_stop=-1,  # Sem parada atual
+                total_packages=session.total_packages,
+                total_distance_km=0,  # Sem cálculo ainda
+                total_time_min=0,
+                base_location=base_loc
+            )
+            
+            minimap_file = f"minimap_session_{session.session_id}.html"
+            MapGenerator.save_map(minimap_html, minimap_file)
+            
+            # Envia minimapa
+            with open(minimap_file, 'rb') as f:
+                await context.bot.send_document(
+                    chat_id=BotConfig.ADMIN_TELEGRAM_ID,
+                    document=f,
+                    filename=f"Minimapa_{session.total_packages}pacotes.html",
+                    caption=(
+                        f"🗺️ <b>MINIMAPA COMPLETO</b>\n\n"
+                        f"📦 Total: {session.total_packages} pacotes\n"
+                        f"📋 Romaneios: {len(session.romaneios)}\n\n"
+                        f"💡 <i>Este mapa mostra TODOS os pontos acumulados.\n"
+                        f"Use /fechar_rota para dividir entre entregadores.</i>"
+                    ),
+                    parse_mode='HTML'
+                )
+            
+            # Limpa arquivo temporário
+            import os
+            os.unlink(minimap_file)
+            logger.info(f"✅ Minimapa enviado com {session.total_packages} pontos")
+    
+    except Exception as e:
+        logger.error(f"❌ Erro ao gerar minimapa: {e}")
+        await update.message.reply_text(
+            f"⚠️ Minimapa não pôde ser gerado (erro: {e}).\n\n"
+            "Envie mais romaneios ou digite <code>/fechar_rota</code> para dividir.",
+            parse_mode='HTML'
+        )
 
 
 async def cmd_fechar_rota(update: Update, context: ContextTypes.DEFAULT_TYPE):
