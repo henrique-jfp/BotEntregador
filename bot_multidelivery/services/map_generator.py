@@ -309,28 +309,22 @@ class MapGenerator:
         
         /* MARKERS OTIMIZADOS PARA MOBILE - SEM POLUIÇÃO VISUAL */
         .marker-icon {{
-            background: white !important;
-            border: 3px solid !important;
-            border-radius: 50% !important;
-            width: 30px !important;
-            height: 30px !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            font-weight: bold !important;
-            font-size: 14px !important;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.4) !important;
-            /* CRÍTICO: Remove qualquer sombra/pin padrão do Leaflet */
-            background-image: none !important;
+            background: transparent !important;
+            border: none !important;
         }}
         
-        .marker-icon div {{
+        .marker-pin {{
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 3px solid;
+            background: white;
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
+            font-weight: bold;
+            font-size: 14px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
         }}
         
         /* REMOVE COMPLETAMENTE pins/sombras do Leaflet */
@@ -462,7 +456,7 @@ class MapGenerator:
                 const icon = L.divIcon({{
                     className: 'marker-icon',
                     // Usa SYMBOL (✓, ✗ ou número) em vez de sempre número
-                    html: `<div style="border-color: ${{m.color}}; color: ${{m.color}}; background: white;">${{m.symbol}}</div>`,
+                    html: `<div class="marker-pin" style="border-color: ${{m.color}}; color: ${{m.color}};">${{m.symbol}}</div>`,
                     iconSize: [30, 30],  // Tamanho ideal para mobile
                     iconAnchor: [15, 15]  // Centraliza perfeitamente
                 }});
