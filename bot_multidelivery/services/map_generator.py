@@ -485,7 +485,7 @@ class MapGenerator:
                 
                 markersAdded++;
             }} catch (e) {{
-                console.error(`❌ ERRO ao adicionar marker #${idx}:`, e, m);
+                console.error(`❌ ERRO ao adicionar marker #${{idx}}:`, e, m);
             }}
         }});
         

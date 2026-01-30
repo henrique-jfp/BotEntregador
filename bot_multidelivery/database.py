@@ -316,6 +316,28 @@ class DatabaseManager:
                             session.execute(text('SELECT 1'))
                         
                         print(f"✅ PostgreSQL conectado com sucesso! (tentativa {attempt}/{max_retries})")
+                        
+                        # --- AUTO-MIGRATION (Schema Fix) ---
+                        try:
+                            with self.engine.connect() as conn:
+                                # Adiciona colunas faltantes se necessário
+                                # Usa bloco try/catch para cada uma caso IF NOT EXISTS falhe ou já exista
+                                try:
+                                    conn.execute(text("ALTER TABLE sessions ADD COLUMN session_name VARCHAR(50)"))
+                                    conn.commit()
+                                    print("🛠️ Schema fix: Coluna 'session_name' adicionada.")
+                                except Exception:
+                                    pass # Ignora se já existe
+                                    
+                                try:
+                                    conn.execute(text("ALTER TABLE sessions ADD COLUMN period VARCHAR(10)"))
+                                    conn.commit()
+                                    print("🛠️ Schema fix: Coluna 'period' adicionada.")
+                                except Exception:
+                                    pass # Ignora se já existe
+                        except Exception as e:
+                            print(f"⚠️ Erro ao verificar schema: {e}")
+                        # -----------------------------------
                         print("💾 Dados serão persistidos permanentemente")
                         print(f"📋 Total de tabelas no schema: {len(Base.metadata.tables)}")
                         print(f"🗂️  Tabelas: {', '.join(Base.metadata.tables.keys())}")
