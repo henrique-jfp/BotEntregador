@@ -156,311 +156,237 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Comando /help - Lista completa de todas as funcionalidades"""
+    """Comando /help - Menu Interativo Bonito"""
     user_id = update.effective_user.id
     
+    # 1. ADMIN
     if user_id == BotConfig.ADMIN_TELEGRAM_ID:
-        # Mensagem 1 - Visão Geral + Importação
-        msg1 = """<b>[ROCKET] BOT MULTI-ENTREGADOR v5.0</b>
-<i>Sistema Completo: Sessões + IA + Cores Automáticas</i>
-
----
-
-<b>[PASTA] SESSÕES PERSISTENTES 🆕</b>
-<code>/sessoes</code> — Gerenciar sessões
-<code>/selecionar_sessao</code> — Escolher sessão ativa
-- 💾 Auto-save em JSON (nunca perde dados)
-- [LISTA] Ver todas (ativas + finalizadas)
-- [AZUL] Trocar entre sessões a qualquer momento
-- [GRAFICO] Histórico completo com timestamps
-- [COR] Cores automáticas por entregador
-- [ALERTA] Múltiplas sessões simultâneas suportadas
-
-<i>[DICA] Sistema "save game" - reinicia o bot sem medo!</i>
-
----
-
-<b>[PACOTE] IMPORTAÇÃO & ANÁLISE</b>
-<code>/importar</code> — Enviar romaneios
-- Shopee, ML, Loggi (CSV/PDF/TXT)
-- Parsing automático + validação
-
-<code>/analisar_rota</code> — IA avalia rota 🆕
-- 🌍 Geocoding automático (sem lat/lon? sem problema!)
-- 🤖 Score 0-10 + prós/contras
-- [GRAFICO] Densidade, concentração, tempo estimado
-- [MAPA] Mapa interativo + análise completa
-- [OK] Decide se vale pegar ANTES de aceitar!
-
-<code>/fechar_rota</code> — Dividir rotas
-- K-Means + Algoritmo Genético
-- [COR] Atribui COR única por entregador
-- Modo Scooter (79% menos distância)
-- Mapa HTML com rotas reais (OSRM)
-
----
-
-<b>[PESSOAS] GESTÃO DE EQUIPE</b>
-<code>/add_entregador</code> — Cadastrar
-- Sócio ou Colaborador
-- Capacidade + custo/pacote
-
-<code>/entregadores</code> — Listar time
-<code>/ranking</code> — Gamificação + XP
-
----
-
-<b>[COR] SEPARAÇÃO FÍSICA COM CORES</b>
-<code>/modo_separacao</code> — Ativar
-- [PACOTE] Escaneia barcode → retorna COR DO ENTREGADOR
-- [VERMELHO][VERDE][AZUL] Usa cores atribuídas na divisão
-- [ALVO] Mostra sequência: "Entrega #5 de 23"
-- 🔢 Etiquetadora MX550 (8 dígitos)
-- [RAPIDO] ~3s por pacote (20 pacotes/min)
-
-<code>/status_separacao</code> — Progresso
-<code>/fim_separacao</code> — Relatório final
-
----
-
-<b>[MAPA] ROTEIRIZAÇÃO INTELIGENTE</b>
-🏍️ Scooter — Contrafluxo + atalhos
-🚗 Padrão — Google Maps oficial
-🧬 Genético — TSP otimizado
-[ESTRADA] OSRM — Rotas reais pelas ruas
-
-- STOPS: múltiplos no mesmo pin
-- HTML offline + turn-by-turn
-- Leaflet Routing Machine integrado"""
-
-        msg2 = """<b>[DINHEIRO] FINANCEIRO COMPLETO</b>
-
-<code>/fechar_dia</code> — Manual
-- Calcula custos colaboradores
-- Relatório + histórico JSON
-
-<code>/financeiro</code> — Relatórios
-- Filtro: dia/semana/mês
-- Receitas, custos, lucro
-- Gráficos + tendências
-
-<code>/fechar_semana</code> — Sócios
-- Lucro após descontar custos
-- % configurável por sócio
-
-<code>/config_socios</code> — Define %
-- Validação soma = 100%
-
----
-
-<b>🏦 BANCO INTER (Opcional)</b>
-<code>/config_banco_inter</code> — Config
-- Upload .crt + .key
-- Teste de conexão
-
-<code>/fechar_dia_auto</code> — Auto
-- Busca saldo real via API
-- Calcula receita automaticamente
-
-<code>/saldo_banco</code> — Consulta
-- Saldo + últimas movimentações
-
----
-
-<b>[GRAFICO] EXPORTAÇÃO</b>
-<code>/exportar</code> — Arquivos
-- Excel (.xlsx) multi-abas
-- PDF formatado + gráficos
-- CSV análise externa"""
-
-        msg3 = """<b>🔮 INTELIGÊNCIA ARTIFICIAL</b>
-
-<code>/projecoes</code> — Machine Learning
-- Prevê volume de entregas
-- Estima receita futura
-- Sugere dimensionamento equipe
-
-<code>/dashboard</code> — Web UI
-- Interface navegador
-- Monitoramento real-time
-- Mapa de calor + KPIs
-
----
-
-<b>📱 OUTROS</b>
-<code>/start</code> — Menu principal
-<code>/help</code> — Este guia
-<code>/status</code> — Status sessão
-<code>/fechar_rota</code> — Encerrar rota
-
----
-
-<b>[DICA] FLUXO DIÁRIO</b>
-1️⃣ /add_entregador → Cadastra
-2️⃣ /config_socios → Define %
-3️⃣ /importar → Romaneios
-4️⃣ /otimizar → Rotas IA
-5️⃣ /modo_separacao → Físico
-6️⃣ Entregadores executam
-7️⃣ /fechar_dia → Financeiro
-8️⃣ /fechar_semana → Divisão
-
----
-
-<b>🧠 TECNOLOGIA</b>
-- K-Means + Algoritmo Genético
-- Google Geocoding (cache local)
-- Python 3.12 async
-- Zero dependência APIs pagas
-
-<b>[FIRE] Deploy: Railway.app | v4.0</b>"""
-
-        # Envia as 3 mensagens sequencialmente
-        await update.message.reply_text(msg1, parse_mode='HTML')
-        await update.message.reply_text(msg2, parse_mode='HTML')
-        await update.message.reply_text(msg3, parse_mode='HTML')
+        text = (
+            "<b>🤖 CENTRAL DE AJUDA DO ADMIN</b>\n"
+            "<i>Controle total do Bot Multi-Entregador v5.0</i>\n\n"
+            "Selecione um tópico para aprender mais:"
+        )
+        keyboard = [
+            [
+                InlineKeyboardButton("📦 Sessões & Rotas", callback_data="help_admin_routes"),
+                InlineKeyboardButton("👥 Equipe", callback_data="help_admin_team")
+            ],
+            [
+                InlineKeyboardButton("💰 Financeiro", callback_data="help_admin_finance"),
+                InlineKeyboardButton("⚙️ Config & IA", callback_data="help_admin_config")
+            ]
+        ]
         
+    # 2. ENTREGADORES
     else:
-        # ════════════════════════════════════════
-        # HELP ENTREGADOR - Versão Simplificada
-        # ════════════════════════════════════════
+        deliverer = deliverer_service.get_deliverer(user_id)
         
-        partner = BotConfig.get_partner_by_id(user_id)
-        if not partner:
+        if not deliverer:
             await update.message.reply_text(
-                "⛔ <b>ACESSO NEGADO</b>\n\n"
-                "Você não está cadastrado como entregador.\n\n"
-                "Fale com o admin pra solicitar cadastro!",
+                "⛔ <b>NÃO CADASTRADO</b>\n\n"
+                "Você não está registrado no sistema.\n"
+                "Peça ao administrador para te adicionar com <code>/add_entregador</code>.",
                 parse_mode='HTML'
             )
             return
+
+        name = deliverer.name.split()[0]
         
-        tipo_emoji = "[SOCIO]" if partner.is_partner else "[COLAB]"
-        tipo_texto = "PARCEIRO (Sócio)" if partner.is_partner else "COLABORADOR"
-        
-        pagamento_info = (
-            "Você é <b>SÓCIO</b> do negócio\n"
-            "   - Custo: R$ 0,00/pacote\n"
-            "   - Participa dos lucros"
-            if partner.is_partner else
-            f"Você é <b>COLABORADOR</b>\n"
-            f"   - Pagamento: <b>R$ {partner.cost_per_package:.2f}/pacote</b>\n"
-            f"   - Acerto no final do dia"
+        if deliverer.is_partner:
+            # SÓCIO
+            text = (
+                f"<b>👮‍♂️ AJUDA SÓCIO: {name.upper()}</b>\n"
+                f"<i>Gestão estratégica de lucros e rotas.</i>\n\n"
+                f"O que você deseja saber?"
+            )
+            keyboard = [
+                [
+                    InlineKeyboardButton("📊 Meus Lucros", callback_data="help_socio_earnings"),
+                    InlineKeyboardButton("📦 Rotas e Equipe", callback_data="help_socio_routes")
+                ]
+            ]
+        else:
+            # COMUM
+            text = (
+                f"<b>🛵 AJUDA ENTREGADOR: {name.upper()}</b>\n"
+                f"<i>Bora rodar e faturar! 🚀</i>\n\n"
+                f"Dúvidas sobre o app?"
+            )
+            keyboard = [
+                [
+                    InlineKeyboardButton("💰 Ganhos", callback_data="help_deliv_earnings"),
+                    InlineKeyboardButton("📦 Rotas", callback_data="help_deliv_routes")
+                ],
+                [InlineKeyboardButton("🏆 Ranking", callback_data="help_deliv_rank")]
+            ]
+
+    # Envia mensagem inicial
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text(text, parse_mode='HTML', reply_markup=reply_markup)
+
+
+async def help_callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Gerencia cliques no menu de Ajuda"""
+    query = update.callback_query
+    await query.answer()
+    
+    data = query.data
+    
+    # === CONTEÚDO ADMIN ===
+    if data == "help_admin_routes":
+        text = (
+            "<b>📦 SESSÕES E ROTAS (ADMIN)</b>\n\n"
+            "<b>1. IMPORTAR</b>\n"
+            "<code>/importar</code> - (Use o clipe 📎) Envie PDF/CSV e o bot processa.\n\n"
+            "<b>2. ANALISAR (IA)</b>\n"
+            "<code>/analisar_rota</code> - Use ANTES de aceitar! Score 0-10, prós/contras.\n"
+            "• Cole a lista de endereços ou mande o arquivo.\n\n"
+            "<b>3. DIVIDIR & ENTREGAR</b>\n"
+            "<code>/fechar_rota</code> - Otimiza e divide entre os entregadores ativos.\n"
+            "• Cria <b>Mapas Interativos</b>\n"
+            "• Separa <b>Por Cores</b>\n"
+            "• Gera links Waze/Google Maps\n\n"
+            "<b>4. SESSÕES</b>\n"
+            "<code>/sessoes</code> - Gerencie múltiplos turnos de forma isolada.\n\n"
+            "<i>Dica: Use <code>/modo_separacao</code> com leitor de código de barras!</i>"
         )
+        back_btn = "help_main_admin"
         
-        help_text = f"""╔═══════════════════════════════════╗
-║  <b>📚 MANUAL DO ENTREGADOR</b>     ║
-║  <i>Seu guia completo de entregas</i>   ║
-╚═══════════════════════════════════╝
-
-👋 Olá, <b>{partner.name}</b>!
-
-<b>[LISTA] SEU PERFIL</b>
----
- {tipo_emoji} Tipo: <b>{tipo_texto}</b>
- [PACOTE] Capacidade: <b>{partner.max_capacity} pacotes/dia</b>
- [DINHEIRO] {pagamento_info}
-
----
-
-<b>[ROCKET] FLUXO DE TRABALHO</b>
-
-<b>┏--- 1. RECEBER ROTA</b>
-┃  ▸ Admin envia sua rota otimizada
-┃  ▸ Arquivo HTML interativo com mapa
-┃  ┗---▸ Baixe e abra no navegador
-┃
-<b>┣--- 2. VISUALIZAR MAPA</b>
-┃  ▸ Pins numerados por ordem
-┃  ▸ Linha conecta toda a rota
-┃  ┗---▸ Clique para ver detalhes
-┃
-<b>┣--- 3. NAVEGAR</b>
-┃  ▸ Botão "Google Maps" em cada pin
-┃  ▸ Navegação turn-by-turn automática
-┃  ┗---▸ Siga a ordem otimizada
-┃
-<b>┗--- 4. MARCAR ENTREGAS</b>
-   ▸ [OK] Entregue — Sucesso
-   ▸ [X] Insucesso — Não conseguiu
-   ┗---▸ 🔄 Transferir — Passar pra colega
-
----
-
-<b>[ALVO] CONCEITO DE STOPS</b>
-
-<b>1 STOP</b> = Múltiplas entregas no mesmo local
-
-<b>Exemplo Real:</b>
-[PIN] Edifício Solar das Palmeiras
-   ├─ Apto 201 (1 pacote)
-   ├─ Apto 603 (2 pacotes)
-   └─ Apto 903 (1 pacote)
-   
-   <b>= 1 STOP com 4 entregas</b>
-   
-<i>Faça todas de uma vez pra economizar tempo!</i>
-
----
-
-<b>🏍️ MODO SCOOTER</b>
-
-<b>Seu algoritmo considera:</b>
- ✓ Contrafluxo (quando seguro)
- ✓ Calçadas e atalhos permitidos
- ✓ Vielas e becos acessíveis
- ✓ Aglomerações de entregas próximas
-
-<b>Resultado:</b>
- - <b>79% mais eficiente</b> que rota original
- - Menos combustível gasto
- - Mais entregas por hora
-
----
-
-<b>[DICA] DICAS DE OURO</b>
-
- ▸ Sempre siga a ordem do mapa
-    <i>→ A IA já otimizou pra você</i>
-
- ▸ Marque entregas imediatamente
-    <i>→ Admin monitora em tempo real</i>
-
- ▸ Use o botão Google Maps
-    <i>→ Navegação precisa garantida</i>
-
- ▸ Agrupe entregas do mesmo STOP
-    <i>→ Eficiência = mais ganhos</i>
-
- ▸ Comunique problemas rapidamente
-    <i>→ Suporte ágil do admin</i>
-
----
-
-<b>🆘 SUPORTE</b>
-
-Dúvidas ou problemas?
-Fale diretamente com o admin!
-
----
-
-<b>[ROCKET] Boas entregas, parceiro(a)!</b>
-[RAPIDO] <b>v2.1</b> | Atualizado: 21/12/2025"""
+    elif data == "help_admin_team":
+        text = (
+            "<b>👥 GESTÃO DE EQUIPE</b>\n\n"
+            "<b>CADASTRO</b>\n"
+            "<code>/add_entregador</code> - Adicione gente nova.\n"
+            "• Define se é Sócio ou Comum\n"
+            "• Capacidade de carga\n\n"
+            "<b>VISUALIZAR</b>\n"
+            "<code>/entregadores</code> - Lista status, ID e eficiência.\n"
+            "<code>/ranking</code> - Quem entregou mais? Quem foi mais rápido?\n\n"
+            "<i>O sistema ajusta rotas automaticamente baseadas na capacidade de cada um!</i>"
+        )
+        back_btn = "help_main_admin"
         
-        # Botão simples para entregador
-        keyboard = [[
-            InlineKeyboardButton("[DICA] Dica do Dia", callback_data="deliverer_tip")
-        ]]
+    elif data == "help_admin_finance":
+        text = (
+            "<b>💰 FINANCEIRO BLINDADO</b>\n\n"
+            "<b>DIÁRIO</b>\n"
+            "<code>/fechar_dia</code> - Encerra trabalhos, calcula pagamentos e gera relatório.\n\n"
+            "<b>SEMANAL (SÓCIOS)</b>\n"
+            "<code>/fechar_semana</code> - Pega o lucro líquido e divide entre os sócios.\n\n"
+            "<b>CONFIGURAÇÃO</b>\n"
+            "<code>/config_socios</code> - Ajusta a % de cada sócio.\n\n"
+            "<b>BANCO INTER</b>\n"
+            "<code>/saldo_banco</code> - Vê o saldo real via API."
+        )
+        back_btn = "help_main_admin"
+
+    elif data == "help_admin_config":
+        text = (
+            "<b>⚙️ CONFIGURAÇÕES & IA</b>\n\n"
+            "<b>IA PREDITIVA</b>\n"
+            "<code>/projecoes</code> - Previsão de demanda futura.\n\n"
+            "<b>DASHBOARD WEB</b>\n"
+            "<code>/dashboard</code> - Link para ver mapas de calor no navegador.\n\n"
+            "<b>EXPORTAÇÃO</b>\n"
+            "<code>/exportar</code> - Baixa tudo em Excel/PDF para contabilidade."
+        )
+        back_btn = "help_main_admin"
+
+    # === CONTEÚDO SÓCIO ===
+    elif data == "help_socio_earnings":
+        text = (
+            "<b>📊 SEUS LUCROS (SÓCIO)</b>\n\n"
+            "Você ganha sobre o <b>LUCRO LÍQUIDO</b> da operação.\n\n"
+            "1. Receita Total (Entregas)\n"
+            "2. (-) Custos (Entregadores, Combus.)\n"
+            "3. (=) Lucro Líquido\n"
+            "4. (x) Sua Porcentagem %\n\n"
+            "Use <code>/financeiro</code> para ver a prévia."
+        )
+        back_btn = "help_main_socio"
+        
+    elif data == "help_socio_routes":
+        text = (
+            "<b>🗺️ GESTÃO DE ROTAS</b>\n\n"
+            "Visão privilegiada do sócio:\n\n"
+            "• Monitore o time pelo <b>Mapa Interativo</b>.\n"
+            "• Ajude no <code>/modo_separacao</code>.\n"
+            "• Use <code>/dashboard</code> para ver KPIs em tempo real."
+        )
+        back_btn = "help_main_socio"
+
+    # === CONTEÚDO COMUM ===
+    elif data == "help_deliv_earnings":
+        text = (
+            "<b>💰 SEUS GANHOS</b>\n\n"
+            "Você recebe um valor fixo por pacote entregue com sucesso.\n\n"
+            "• Sistema conta automaticamente.\n"
+            "• Pagamento calculado no fechamento diário.\n\n"
+            "<i>Quanto mais rápido e eficiente, mais confiança você ganha!</i>"
+        )
+        back_btn = "help_main_deliv"
+        
+    elif data == "help_deliv_routes":
+        text = (
+            "<b>📦 SUAS ROTAS</b>\n\n"
+            "1. Procure seu <b>NOME</b> ou <b>COR</b> na lista.\n"
+            "2. Abra o link do GPS.\n"
+            "3. <b>Siga a ordem!</b> Ela economiza gasolina.\n"
+            "4. Reporte problemas no grupo imediatamente."
+        )
+        back_btn = "help_main_deliv"
+
+    elif data == "help_deliv_rank":
+        text = (
+            "<b>🏆 RANKING E XP</b>\n\n"
+            "Seja o melhor entregador da semana!\n\n"
+            "<b>Pontos por:</b>\n"
+            "• Quantidade de Pacotes\n"
+            "• Velocidade\n"
+            "• Assiduidade\n\n"
+            "Use <code>/ranking</code> para ver sua posição."
+        )
+        back_btn = "help_main_deliv"
+
+    # === MENUS PRINCIPAIS (VOLTAR) ===
+    elif data == "help_main_admin":
+        text = "<b>🤖 CENTRAL DO ADMIN</b>\nO que deseja ver?"
+        keyboard = [
+            [InlineKeyboardButton("📦 Sessões & Rotas", callback_data="help_admin_routes"), InlineKeyboardButton("👥 Equipe", callback_data="help_admin_team")],
+            [InlineKeyboardButton("💰 Financeiro", callback_data="help_admin_finance"), InlineKeyboardButton("⚙️ Config & IA", callback_data="help_admin_config")]
+        ]
         reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text(text=text, reply_markup=reply_markup, parse_mode='HTML')
+        return
+
+    elif data == "help_main_socio":
+        text = "<b>👮‍♂️ MENU SÓCIO</b>\nSelecione um tópico:"
+        keyboard = [
+            [InlineKeyboardButton("📊 Meus Lucros", callback_data="help_socio_earnings"),
+             InlineKeyboardButton("📦 Rotas e Equipe", callback_data="help_socio_routes")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text(text=text, reply_markup=reply_markup, parse_mode='HTML')
+        return
+
+    elif data == "help_main_deliv":
+        text = "<b>🛵 MENU ENTREGADOR</b>\nTire suas dúvidas:"
+        keyboard = [
+            [InlineKeyboardButton("💰 Ganhos", callback_data="help_deliv_earnings"), InlineKeyboardButton("📦 Rotas", callback_data="help_deliv_routes")],
+            [InlineKeyboardButton("🏆 Ranking", callback_data="help_deliv_rank")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text(text=text, reply_markup=reply_markup, parse_mode='HTML')
+        return
         
-        await update.message.reply_text(
-            help_text, 
-            parse_mode='HTML',
-            reply_markup=reply_markup
-        )
+    else:
+        # Se não casar com nada (erro), volta
+        return
 
-
-async def cmd_cancelar(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Edição padrão para sub-menus
+    keyboard = [[InlineKeyboardButton("🔙 Voltar", callback_data=back_btn)]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await query.edit_message_text(text=text, reply_markup=reply_markup, parse_mode='HTML')async def cmd_cancelar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Cancela qualquer operação em andamento"""
     user_id = update.effective_user.id
     
@@ -5131,6 +5057,7 @@ def run_bot():
             # Handlers
             app.add_handler(CommandHandler("start", cmd_start))
             app.add_handler(CommandHandler("help", cmd_help))
+            app.add_handler(CallbackQueryHandler(help_callback_handler, pattern="^help_"))
             app.add_handler(CommandHandler("cancelar", cmd_cancelar))  # [PROIBIDO] NOVO COMMANDO DE EMERGÊNCIA
             app.add_handler(CommandHandler("importar", handle_document_message))  # Novo comando!
             app.add_handler(CommandHandler("otimizar", cmd_distribuir_rota))  # Renomeado!
