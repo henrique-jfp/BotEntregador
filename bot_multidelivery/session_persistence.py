@@ -328,8 +328,32 @@ class SessionStore:
         """Lista todas as sessões (mais recentes primeiro)"""
         sessions = []
         
+        # Tenta carregar do PostgreSQL primeiro
+        if self.using_database:
+            try:
+                with db_manager.get_session() as db_session:
+                    sessions_db = db_session.query(SessionDB).order_by(SessionDB.created_at.desc()).limit(limit).all()
+                    
+                    for s in sessions_db:
+                        sessions.append({
+                            'session_id': s.session_id,
+                            'session_name': s.session_name or '',
+                            'date': s.date,
+                            'period': s.period or '',
+                            'created_at': s.created_at,
+                            'is_finalized': s.is_finalized,
+                            'base_address': s.base_address,
+                            'total_packages': sum(len(r['points']) for r in (s.romaneios_data or [])),
+                            'num_routes': db_session.query(RouteDB).filter_by(session_id=s.session_id).count()
+                        })
+                    
+                    if sessions:
+                        return sessions
+            except Exception as e:
+                print(f"⚠️ Erro ao listar sessões do PostgreSQL: {e}")
+        
+        # Fallback: JSON
         try:
-            # Garante que diretório existe
             if not self.sessions_dir.exists():
                 return []
             
@@ -340,9 +364,12 @@ class SessionStore:
                         
                     sessions.append({
                         'session_id': data['session_id'],
+                        'session_name': data.get('session_name', ''),
                         'date': data['date'],
+                        'period': data.get('period', ''),
                         'created_at': datetime.fromisoformat(data['created_at']),
                         'is_finalized': data.get('is_finalized', False),
+                        'base_address': data.get('base_address'),
                         'total_packages': sum(len(r['points']) for r in data.get('romaneios', [])),
                         'num_routes': len(data.get('routes', []))
                     })
@@ -350,7 +377,6 @@ class SessionStore:
                     print(f"⚠️ Erro ao carregar {file_path}: {e}")
                     continue
             
-            # Ordena por data de criação (mais recente primeiro)
             sessions.sort(key=lambda x: x['created_at'], reverse=True)
             
             return sessions[:limit]
@@ -358,14 +384,75 @@ class SessionStore:
             print(f"⚠️ Erro ao listar sessões: {e}")
             return []
     
-    def delete_session(self, session_id: str) -> bool:
-        """Deleta sessão do disco"""
-        file_path = self._session_file(session_id)
+    def load_all_sessions(self) -> List['DailySession']:
+        """Carrega TODAS as sessões completas do PostgreSQL ou JSON"""
+        sessions = []
         
+        # Tenta carregar do PostgreSQL
+        if self.using_database:
+            try:
+                with db_manager.get_session() as db_session:
+                    sessions_db = db_session.query(SessionDB).order_by(SessionDB.created_at.desc()).limit(50).all()
+                    
+                    for s_db in sessions_db:
+                        session = self.load_session(s_db.session_id)
+                        if session:
+                            sessions.append(session)
+                    
+                    if sessions:
+                        print(f"✅ {len(sessions)} sessões carregadas do PostgreSQL")
+                        return sessions
+            except Exception as e:
+                print(f"⚠️ Erro ao carregar sessões do PostgreSQL: {e}")
+        
+        # Fallback: JSON
+        try:
+            if not self.sessions_dir.exists():
+                return []
+            
+            for file_path in self.sessions_dir.glob("*.json"):
+                try:
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        data = json.load(f)
+                    session = self.load_session(data['session_id'])
+                    if session:
+                        sessions.append(session)
+                except Exception as e:
+                    print(f"⚠️ Erro ao carregar {file_path}: {e}")
+                    continue
+            
+            print(f"✅ {len(sessions)} sessões carregadas do JSON")
+            return sessions
+        except Exception as e:
+            print(f"⚠️ Erro ao carregar sessões: {e}")
+            return []
+    
+    def delete_session(self, session_id: str) -> bool:
+        """Deleta sessão do PostgreSQL e/ou disco"""
+        deleted = False
+        
+        # Tenta deletar do PostgreSQL
+        if self.using_database:
+            try:
+                with db_manager.get_session() as db_session:
+                    # Deleta rotas primeiro (foreign key)
+                    db_session.query(RouteDB).filter_by(session_id=session_id).delete()
+                    # Deleta sessão
+                    result = db_session.query(SessionDB).filter_by(session_id=session_id).delete()
+                    if result > 0:
+                        deleted = True
+                        print(f"✅ Sessão {session_id} deletada do PostgreSQL")
+            except Exception as e:
+                print(f"⚠️ Erro ao deletar sessão do PostgreSQL: {e}")
+        
+        # Deleta do JSON também (se existir)
+        file_path = self._session_file(session_id)
         if file_path.exists():
             file_path.unlink()
-            return True
-        return False
+            deleted = True
+            print(f"✅ Sessão {session_id} deletada do JSON")
+        
+        return deleted
 
 
 # Instância global

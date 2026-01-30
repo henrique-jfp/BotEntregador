@@ -200,6 +200,31 @@ class SessionManager:
         sessions.sort(key=lambda x: x.created_at, reverse=True)
         return sessions
     
+    @property
+    def sessions(self) -> List[DailySession]:
+        """Alias para compatibilidade - retorna lista de sessões"""
+        return list(self.active_sessions.values())
+    
+    @sessions.setter
+    def sessions(self, value: List[DailySession]):
+        """Permite setar sessions diretamente (usado ao deletar)"""
+        self.active_sessions = {s.session_id: s for s in value}
+    
+    def delete_session(self, session_id: str) -> bool:
+        """Remove uma sessão do gerenciador e do banco"""
+        if session_id in self.active_sessions:
+            del self.active_sessions[session_id]
+            
+            # Remove do banco também
+            try:
+                from .session_persistence import session_store
+                session_store.delete_session(session_id)
+            except Exception as e:
+                print(f"⚠️ Erro ao deletar sessão do banco: {e}")
+            
+            return True
+        return False
+    
     def add_romaneio(self, romaneio: Romaneio, session_id: Optional[str] = None):
         """Adiciona romaneio à sessão"""
         session = self.get_session(session_id) if session_id else self.get_current_session()

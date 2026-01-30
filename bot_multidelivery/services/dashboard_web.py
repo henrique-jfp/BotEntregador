@@ -1,6 +1,6 @@
 """
-📊 DASHBOARD WEB
-Interface visual com gráficos para análise financeira
+📊 DASHBOARD WEB + API DE SINCRONIZAÇÃO
+Interface visual com gráficos + API para sincronizar entregas do mapa
 """
 from flask import Flask, render_template, jsonify, request, send_file
 from datetime import datetime, timedelta
@@ -21,6 +21,15 @@ except ImportError:
     financial_service = None
     projection_service = None
     export_service = None
+
+# Importa serviços de sessão e entregador
+try:
+    from bot_multidelivery.session import session_manager
+    from bot_multidelivery.services.deliverer_service import deliverer_service
+except ImportError:
+    logger.warning("Session/Deliverer services não importados")
+    session_manager = None
+    deliverer_service = None
 
 
 app = Flask(__name__, template_folder='../templates', static_folder='../static')
@@ -261,6 +270,191 @@ def start_dashboard(host='0.0.0.0', port=5000, debug=False):
     """
     logger.info(f"Iniciando dashboard em http://{host}:{port}")
     app.run(host=host, port=port, debug=debug)
+
+
+# ═══════════════════════════════════════════════════════════════════
+# 🔄 API DE SINCRONIZAÇÃO DE ENTREGAS (chamada pelo mapa HTML)
+# ═══════════════════════════════════════════════════════════════════
+
+@app.route('/api/delivery/update', methods=['POST'])
+def update_delivery_status():
+    """
+    API: Atualiza status de uma entrega
+    Chamada pelo mapa quando entregador clica em Entregue/Insucesso
+    """
+    try:
+        data = request.get_json()
+        
+        entregador_id = data.get('entregador_id')
+        session_id = data.get('session_id')
+        package_address = data.get('address')
+        stop_number = data.get('stop_number')
+        new_status = data.get('status')  # 'completed' ou 'failed'
+        
+        logger.info(f"📦 Update recebido: {entregador_id} - stop {stop_number} -> {new_status}")
+        
+        if not all([entregador_id, new_status]):
+            return jsonify({'success': False, 'error': 'Dados incompletos'}), 400
+        
+        # Converte entregador_id para int se for string
+        try:
+            entregador_id = int(entregador_id)
+        except (ValueError, TypeError):
+            pass
+        
+        # Atualiza estatísticas do entregador
+        if deliverer_service:
+            delivery_success = (new_status == 'completed')
+            deliverer_service.update_stats_after_delivery(
+                telegram_id=entregador_id,
+                delivery_success=delivery_success,
+                delivery_time_minutes=5  # Tempo estimado
+            )
+            logger.info(f"✅ Stats do entregador {entregador_id} atualizadas")
+        
+        # Marca pacote como entregue na sessão
+        if session_manager and session_id:
+            if new_status == 'completed':
+                session_manager.mark_package_delivered(
+                    telegram_id=entregador_id,
+                    package_id=package_address,  # Usa endereço como ID
+                    session_id=session_id
+                )
+                logger.info(f"✅ Pacote marcado como entregue na sessão {session_id}")
+        
+        return jsonify({
+            'success': True,
+            'message': f'Status atualizado para {new_status}',
+            'entregador_id': entregador_id,
+            'stop_number': stop_number
+        })
+        
+    except Exception as e:
+        logger.error(f"❌ Erro ao atualizar entrega: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/delivery/sync', methods=['POST'])
+def sync_all_deliveries():
+    """
+    API: Sincroniza todos os status de uma rota
+    Chamada quando mapa é fechado ou periodicamente
+    """
+    try:
+        data = request.get_json()
+        
+        entregador_id = data.get('entregador_id')
+        session_id = data.get('session_id')
+        deliveries = data.get('deliveries', [])  # Lista de {address, status}
+        
+        logger.info(f"🔄 Sync recebido: {entregador_id} - {len(deliveries)} entregas")
+        
+        completed_count = 0
+        failed_count = 0
+        
+        for delivery in deliveries:
+            status = delivery.get('status')
+            if status == 'completed':
+                completed_count += 1
+            elif status == 'failed':
+                failed_count += 1
+        
+        # Atualiza estatísticas do entregador com batch
+        if deliverer_service and entregador_id:
+            try:
+                entregador_id = int(entregador_id)
+                for _ in range(completed_count):
+                    deliverer_service.update_stats_after_delivery(
+                        telegram_id=entregador_id,
+                        delivery_success=True,
+                        delivery_time_minutes=5
+                    )
+                for _ in range(failed_count):
+                    deliverer_service.update_stats_after_delivery(
+                        telegram_id=entregador_id,
+                        delivery_success=False,
+                        delivery_time_minutes=5
+                    )
+            except Exception as e:
+                logger.error(f"Erro ao atualizar stats: {e}")
+        
+        return jsonify({
+            'success': True,
+            'synced': len(deliveries),
+            'completed': completed_count,
+            'failed': failed_count
+        })
+        
+    except Exception as e:
+        logger.error(f"❌ Erro ao sincronizar: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/sessions', methods=['GET'])
+def get_sessions():
+    """API: Lista todas as sessões"""
+    try:
+        if not session_manager:
+            return jsonify({'error': 'Session manager não disponível'}), 503
+        
+        sessions = session_manager.list_sessions()
+        
+        result = []
+        for s in sessions:
+            # Conta entregas feitas
+            total_delivered = sum(len(r.delivered_packages) for r in s.routes)
+            total_failed = 0  # TODO: implementar contador de falhas
+            
+            result.append({
+                'session_id': s.session_id,
+                'session_name': s.session_name,
+                'date': s.date,
+                'period': s.period,
+                'created_at': s.created_at.isoformat() if s.created_at else None,
+                'is_finalized': s.is_finalized,
+                'total_packages': s.total_packages,
+                'total_routes': len(s.routes),
+                'total_delivered': total_delivered,
+                'total_failed': total_failed,
+                'routes': [
+                    {
+                        'id': r.id,
+                        'assigned_to_name': r.assigned_to_name,
+                        'assigned_to_id': r.assigned_to_telegram_id,
+                        'total_packages': r.total_packages,
+                        'delivered': len(r.delivered_packages),
+                        'color': r.color
+                    } for r in s.routes
+                ]
+            })
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"❌ Erro ao listar sessões: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/sessions/<session_id>', methods=['DELETE'])
+def delete_session(session_id):
+    """API: Deleta uma sessão"""
+    try:
+        if not session_manager:
+            return jsonify({'error': 'Session manager não disponível'}), 503
+        
+        # Remove sessão do manager
+        sessions = [s for s in session_manager.sessions if s.session_id != session_id]
+        session_manager.sessions = sessions
+        
+        # TODO: Remover do banco de dados também
+        
+        return jsonify({'success': True, 'deleted': session_id})
+        
+    except Exception as e:
+        logger.error(f"❌ Erro ao deletar sessão: {e}")
+        return jsonify({'error': str(e)}), 500
 
 
 def start_dashboard_thread(host='0.0.0.0', port=5000):

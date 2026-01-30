@@ -1210,7 +1210,8 @@ async def cmd_fechar_rota(update: Update, context: ContextTypes.DEFAULT_TYPE):
             total_distance_km=route.total_distance_km,
             total_time_min=eta_minutes,
             base_location=base_loc,
-            entregadores_lista=entregadores_lista
+            entregadores_lista=entregadores_lista,
+            session_id=session.session_id
         )
         map_file = f"map_{route.id}.html"
         MapGenerator.save_map(html, map_file)
@@ -1874,8 +1875,7 @@ async def cmd_analisar_rota(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def cmd_sessoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
-    📂 Lista todas as sessões (ativas e finalizadas)
-    Permite trocar entre sessões e ver histórico
+    📂 Lista todas as sessões ativas com botões de Ver Detalhes e Excluir
     """
     user_id = update.effective_user.id
     
@@ -1894,47 +1894,47 @@ async def cmd_sessoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
     
-    # Monta lista de sessões
-    msg = "📂 <b>TODAS AS SESSÕES</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+    # Monta lista de sessões ATIVAS
+    msg = "📂 <b>SESSÕES ATIVAS</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
     
     keyboard = []
     
-    for session in sessions[:15]:  # Limita a 15 mais recentes
+    for i, session in enumerate(sessions[:10], 1):  # Limita a 10
         # Indicador visual
         if current_session and session.session_id == current_session.session_id:
-            indicator = "🔵 ATIVA"
+            indicator = "🔵"
+            status_text = "ATIVA"
         elif session.is_finalized:
-            indicator = "✅ Finalizada"
+            indicator = "✅"
+            status_text = "Finalizada"
         else:
-            indicator = "⚪ Em andamento"
+            indicator = "⚪"
+            status_text = "Em andamento"
         
-        # Timestamp formatado
-        created = session.created_at.strftime("%d/%m %H:%M")
+        # Conta entregas feitas
+        total_delivered = sum(len(r.delivered_packages) for r in session.routes)
         
-        # Info resumida
-        msg += f"{indicator}\n"
-        msg += f"<b>{session.session_id}</b>\n"
-        msg += f"📅 {session.date} ({created})\n"
-        msg += f"📦 {session.total_packages} pacotes · {len(session.routes)} rotas\n"
+        # Nome da sessão
+        session_name = session.session_name or f"Sessão {session.session_id[:8]}"
         
-        if session.base_address:
-            msg += f"📍 {session.base_address[:40]}...\n"
+        msg += f"{indicator} <b>{i}. {session_name}</b> ({status_text})\n"
+        msg += f"   📅 {session.date} | 📦 {session.total_packages} pacotes\n"
+        msg += f"   ✅ {total_delivered} entregas | 🗺️ {len(session.routes)} rotas\n\n"
         
-        msg += "\n"
-        
-        # Botão para trocar sessão OU ver detalhes da atual
-        is_current = current_session and session.session_id == current_session.session_id
-        button_text = f"🔵 Ver detalhes ({session.session_id})" if is_current else f"📂 Trocar para {session.session_id}"
-        
+        # Botões: Ver Detalhes + Excluir
         keyboard.append([
             InlineKeyboardButton(
-                button_text,
-                callback_data=f"switch_session_{session.session_id}"
+                f"👁️ Detalhes",
+                callback_data=f"session_details_{session.session_id}"
+            ),
+            InlineKeyboardButton(
+                f"🗑️ Excluir",
+                callback_data=f"session_delete_{session.session_id}"
             )
         ])
     
-    msg += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-    msg += "💡 <b>Clique para trocar de sessão</b>"
+    msg += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+    msg += "💡 <i>Clique para ver detalhes ou excluir</i>"
     
     reply_markup = InlineKeyboardMarkup(keyboard) if keyboard else None
     await update.message.reply_text(msg, parse_mode='HTML', reply_markup=reply_markup)
@@ -2033,6 +2033,171 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
             f"{'📍 Você já está nesta sessão!' if is_already_active else '✅ Agora você está trabalhando nesta sessão!'}",
             parse_mode='HTML'
         )
+        return
+    
+    # ═══════════════════════════════════════════
+    # 👁️ VER DETALHES DA SESSÃO
+    # ═══════════════════════════════════════════
+    if data.startswith("session_details_"):
+        session_id = data.replace("session_details_", "")
+        session = session_manager.get_session(session_id)
+        
+        if not session:
+            await query.edit_message_text(f"❌ Sessão {session_id} não encontrada!", parse_mode='HTML')
+            return
+        
+        # Conta estatísticas
+        total_delivered = sum(len(r.delivered_packages) for r in session.routes)
+        total_pending = session.total_packages - total_delivered
+        
+        # Monta mensagem detalhada
+        msg = f"📊 <b>DETALHES DA SESSÃO</b>\n"
+        msg += f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        msg += f"🆔 ID: <code>{session.session_id}</code>\n"
+        msg += f"📛 Nome: <b>{session.session_name or 'Sem nome'}</b>\n"
+        msg += f"📅 Data: {session.date}\n"
+        msg += f"⏰ Período: {session.period or 'Não definido'}\n"
+        msg += f"📍 Base: {session.base_address or 'Não definida'}\n\n"
+        
+        msg += f"<b>📦 PACOTES:</b>\n"
+        msg += f"   Total: {session.total_packages}\n"
+        msg += f"   ✅ Entregues: {total_delivered}\n"
+        msg += f"   ⏳ Pendentes: {total_pending}\n\n"
+        
+        msg += f"<b>🗺️ ROTAS ({len(session.routes)}):</b>\n"
+        
+        # Botões para cada rota (baixar mapa)
+        keyboard = []
+        
+        for route in session.routes:
+            color_name = get_color_name(route.color) if hasattr(route, 'color') and route.color else "⚪"
+            delivered = len(route.delivered_packages)
+            total = route.total_packages
+            entregador = route.assigned_to_name or "Não atribuído"
+            
+            msg += f"\n{color_name} <b>{route.id}</b> - {entregador}\n"
+            msg += f"   📦 {delivered}/{total} entregas | "
+            msg += f"{'✅ Completa' if delivered >= total else '⏳ Em andamento'}\n"
+            
+            # Botão para baixar mapa da rota
+            if route.map_file:
+                keyboard.append([
+                    InlineKeyboardButton(
+                        f"🗺️ Mapa {route.id}",
+                        callback_data=f"download_map_{session_id}_{route.id}"
+                    )
+                ])
+        
+        msg += f"\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        
+        # Botão voltar
+        keyboard.append([
+            InlineKeyboardButton("◀️ Voltar", callback_data="back_to_sessions")
+        ])
+        
+        reply_markup = InlineKeyboardMarkup(keyboard) if keyboard else None
+        await query.edit_message_text(msg, parse_mode='HTML', reply_markup=reply_markup)
+        return
+    
+    # ═══════════════════════════════════════════
+    # 🗑️ EXCLUIR SESSÃO (confirmação)
+    # ═══════════════════════════════════════════
+    if data.startswith("session_delete_"):
+        session_id = data.replace("session_delete_", "")
+        session = session_manager.get_session(session_id)
+        
+        if not session:
+            await query.edit_message_text(f"❌ Sessão {session_id} não encontrada!", parse_mode='HTML')
+            return
+        
+        # Confirmação antes de excluir
+        msg = f"⚠️ <b>CONFIRMAR EXCLUSÃO?</b>\n\n"
+        msg += f"Sessão: <b>{session.session_name or session.session_id}</b>\n"
+        msg += f"📅 {session.date}\n"
+        msg += f"📦 {session.total_packages} pacotes\n"
+        msg += f"🗺️ {len(session.routes)} rotas\n\n"
+        msg += f"<b>⚠️ Esta ação não pode ser desfeita!</b>\n"
+        msg += f"Todas as rotas e dados serão perdidos."
+        
+        keyboard = [
+            [
+                InlineKeyboardButton("✅ Sim, excluir", callback_data=f"session_confirm_delete_{session_id}"),
+                InlineKeyboardButton("❌ Cancelar", callback_data="back_to_sessions")
+            ]
+        ]
+        
+        await query.edit_message_text(msg, parse_mode='HTML', reply_markup=InlineKeyboardMarkup(keyboard))
+        return
+    
+    # ═══════════════════════════════════════════
+    # ✅ CONFIRMAR EXCLUSÃO DA SESSÃO
+    # ═══════════════════════════════════════════
+    if data.startswith("session_confirm_delete_"):
+        session_id = data.replace("session_confirm_delete_", "")
+        
+        # Remove do session manager E do banco de dados
+        deleted = session_manager.delete_session(session_id)
+        
+        if deleted:
+            await query.edit_message_text(
+                f"🗑️ <b>SESSÃO EXCLUÍDA!</b>\n\n"
+                f"A sessão <code>{session_id}</code> foi removida permanentemente.\n\n"
+                f"Use /sessoes para ver as sessões restantes.",
+                parse_mode='HTML'
+            )
+        else:
+            await query.edit_message_text(
+                f"❌ <b>ERRO AO EXCLUIR</b>\n\n"
+                f"Sessão <code>{session_id}</code> não encontrada.",
+                parse_mode='HTML'
+            )
+        return
+    
+    # ═══════════════════════════════════════════
+    # ◀️ VOLTAR PARA LISTA DE SESSÕES
+    # ═══════════════════════════════════════════
+    if data == "back_to_sessions":
+        # Re-gera a lista de sessões
+        sessions = session_manager.list_sessions()
+        current_session = session_manager.get_current_session()
+        
+        if not sessions:
+            await query.edit_message_text(
+                "📂 <b>NENHUMA SESSÃO ENCONTRADA</b>",
+                parse_mode='HTML'
+            )
+            return
+        
+        msg = "📂 <b>SESSÕES ATIVAS</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        keyboard = []
+        
+        for i, session in enumerate(sessions[:10], 1):
+            if current_session and session.session_id == current_session.session_id:
+                indicator = "🔵"
+                status_text = "ATIVA"
+            elif session.is_finalized:
+                indicator = "✅"
+                status_text = "Finalizada"
+            else:
+                indicator = "⚪"
+                status_text = "Em andamento"
+            
+            total_delivered = sum(len(r.delivered_packages) for r in session.routes)
+            session_name = session.session_name or f"Sessão {session.session_id[:8]}"
+            
+            msg += f"{indicator} <b>{i}. {session_name}</b> ({status_text})\n"
+            msg += f"   📅 {session.date} | 📦 {session.total_packages} pacotes\n"
+            msg += f"   ✅ {total_delivered} entregas | 🗺️ {len(session.routes)} rotas\n\n"
+            
+            keyboard.append([
+                InlineKeyboardButton(f"👁️ Detalhes", callback_data=f"session_details_{session.session_id}"),
+                InlineKeyboardButton(f"🗑️ Excluir", callback_data=f"session_delete_{session.session_id}")
+            ])
+        
+        msg += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        msg += "💡 <i>Clique para ver detalhes ou excluir</i>"
+        
+        await query.edit_message_text(msg, parse_mode='HTML', reply_markup=InlineKeyboardMarkup(keyboard))
         return
     
     # ═══════════════════════════════════════════
@@ -2893,7 +3058,9 @@ async def send_route_to_deliverer(context: ContextTypes.DEFAULT_TYPE, telegram_i
             total_distance_km=route.total_distance_km,
             total_time_min=eta_minutes,
             base_location=base_loc,
-            entregadores_lista=entregadores_lista
+            entregadores_lista=entregadores_lista,
+            session_id=session.session_id if session else None,
+            entregador_id=str(telegram_id)
         )
         route.map_file = f"map_{route.id}.html"
         MapGenerator.save_map(html, route.map_file)

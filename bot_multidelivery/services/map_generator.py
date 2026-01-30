@@ -33,7 +33,9 @@ class MapGenerator:
         total_distance_km: float = 0,
         total_time_min: float = 0,
         base_location: Tuple[float, float, str] = None,  # (lat, lon, address)
-        entregadores_lista: List[dict] = None  # Lista de entregadores para transferência
+        entregadores_lista: List[dict] = None,  # Lista de entregadores para transferência
+        session_id: str = None,  # ID da sessão para sincronizar com servidor
+        entregador_id: str = None  # ID do entregador para sincronizar estatísticas
     ) -> str:
         """
         Gera HTML do mapa interativo
@@ -47,6 +49,8 @@ class MapGenerator:
             total_time_min: Tempo estimado total
             base_location: (lat, lon, endereco) da base
             entregadores_lista: Lista de dicts {name, id} para transferência
+            session_id: ID da sessão para sync com backend
+            entregador_id: Telegram ID do entregador para stats
             
         Returns:
             HTML completo do mapa
@@ -517,6 +521,34 @@ class MapGenerator:
         // 🔍 DEBUG: Mostra quantos markers chegaram
         console.log("🚀 Iniciando mapa...");
         
+        // 🔗 Dados para sincronização com servidor
+        const SESSION_ID = '{session_id}';
+        const ENTREGADOR_ID = '{entregador_id}';
+        const API_BASE = window.location.origin;  // URL base do servidor
+        
+        // 📡 Função para sincronizar com servidor
+        async function syncToServer(stopNumber, status, address) {{
+            try {{
+                const response = await fetch(API_BASE + '/api/delivery/update', {{
+                    method: 'POST',
+                    headers: {{ 'Content-Type': 'application/json' }},
+                    body: JSON.stringify({{
+                        entregador_id: ENTREGADOR_ID,
+                        session_id: SESSION_ID,
+                        stop_number: stopNumber,
+                        status: status,
+                        address: address
+                    }})
+                }});
+                const data = await response.json();
+                console.log('✅ Sync com servidor:', data);
+                return data.success;
+            }} catch(e) {{
+                console.warn('⚠️ Sync offline (localStorage):', e.message);
+                return false;
+            }}
+        }}
+        
         // Dados dos markers
         let markers = {markers_json};
         console.log("✅ " + markers.length + " markers carregados do JSON");
@@ -928,8 +960,9 @@ class MapGenerator:
             if (!currentMarker) return;
             
             const stopNum = currentMarker.number;
+            const address = currentMarker.address;
             
-            // 1. Salva status
+            // 1. Salva status local
             deliveryStatus[stopNum] = 'completed';
             saveStatus();
             
@@ -944,13 +977,16 @@ class MapGenerator:
             btn.textContent = '✓ Entregue!';
             btn.style.background = '#2E7D32';
             
-            // 5. Tenta enviar pro Telegram (se estiver no WebApp)
+            // 5. 📡 SYNC COM SERVIDOR (atualiza estatísticas do entregador)
+            syncToServer(stopNum, 'completed', address);
+            
+            // 6. Tenta enviar pro Telegram (se estiver no WebApp)
             try {{
                 if (window.Telegram && window.Telegram.WebApp) {{
                     window.Telegram.WebApp.sendData(JSON.stringify({{
                         action: 'delivered',
                         stop: stopNum,
-                        address: currentMarker.address
+                        address: address
                     }}));
                 }}
             }} catch(e) {{}}
@@ -967,8 +1003,9 @@ class MapGenerator:
             if (!currentMarker) return;
             
             const stopNum = currentMarker.number;
+            const address = currentMarker.address;
             
-            // 1. Salva status
+            // 1. Salva status local
             deliveryStatus[stopNum] = 'failed';
             saveStatus();
             
@@ -983,13 +1020,16 @@ class MapGenerator:
             btn.textContent = '✗ Insucesso!';
             btn.style.background = '#B71C1C';
             
-            // 5. Tenta enviar pro Telegram
+            // 5. 📡 SYNC COM SERVIDOR (atualiza estatísticas do entregador)
+            syncToServer(stopNum, 'failed', address);
+            
+            // 6. Tenta enviar pro Telegram
             try {{
                 if (window.Telegram && window.Telegram.WebApp) {{
                     window.Telegram.WebApp.sendData(JSON.stringify({{
                         action: 'failed',
                         stop: stopNum,
-                        address: currentMarker.address
+                        address: address
                     }}));
                 }}
             }} catch(e) {{}}
@@ -1040,7 +1080,9 @@ class MapGenerator:
             zoom=zoom,
             markers_json=markers_json,
             base_location_json=base_location_json,
-            entregadores_json=entregadores_json
+            entregadores_json=entregadores_json,
+            session_id=session_id or '',
+            entregador_id=entregador_id or ''
         )
         
         return html
