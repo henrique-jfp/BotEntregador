@@ -859,9 +859,9 @@ class MapGenerator:
                 const saved = localStorage.getItem(key);
                 if (saved) {{
                     const pacotes = JSON.parse(saved);
-                    let msg = '📦 PACOTES RECEBIDOS:\n\n';
+                    let msg = '📦 PACOTES RECEBIDOS:\\n\\n';
                     pacotes.forEach((p, i) => {{
-                        msg += `${{i+1}}. ${{p.address}}\n   (de: ${{p.from}})\n\n`;
+                        msg += `${{i+1}}. ${{p.address}}\\n   (de: ${{p.from}})\\n\\n`;
                     }});
                     msg += 'Deseja aceitar e adicionar à sua rota?';
                     
