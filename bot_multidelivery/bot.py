@@ -3712,9 +3712,9 @@ async def cmd_fechar_dia(update: Update, context: ContextTypes.DEFAULT_TYPE):
         msg += f"{emoji} {name}: R$ {cost:.2f}\n"
     
     msg += f"\n<b>Total Custos: R$ {total_costs:.2f}</b>\n"
-    msg += "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-    msg += "💵 <b>Qual foi a RECEITA BRUTA de hoje?</b>\n\n"
-    msg += "Digite o valor em reais (ex: 450.00)\n"
+    msg += "\\n-------------------------------\\n\\n"
+    msg += "<b>Qual foi a RECEITA BRUTA de hoje?</b>\\n\\n"
+    msg += "Digite o valor em reais (ex: 450.00)\\n"
     msg += "Ou digite /cancelar para abortar."
     
     await update.message.reply_text(msg, parse_mode='HTML')
@@ -3836,11 +3836,11 @@ async def cmd_fechar_semana(update: Update, context: ContextTypes.DEFAULT_TYPE):
     })
     
     msg = f"""{chr(0x1F4B0)} <b>FECHAMENTO SEMANAL</b>
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-------------------------------
 
 {chr(0x1F4C5)} Semana: {week_start.strftime('%d/%m/%Y')} a {(week_start + timedelta(days=6)).strftime('%d/%m/%Y')}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-------------------------------
 
 <b>{chr(0x1F3E2)} CUSTOS OPERACIONAIS DA SEMANA</b>
 
