@@ -920,7 +920,12 @@ async def handle_document_message(update: Update, context: ContextTypes.DEFAULT_
     
     # Parse baseado no tipo
     try:
+        # Lógica de importação e processamento
+        deliveries = []
+        addresses = []
+        
         if file_name.endswith('.xlsx') or file_name.endswith('.xls'):
+            import os  # Garantindo import para uso posterior
             await update.message.reply_text(
                 "📊 <b>PROCESSANDO EXCEL SHOPEE...</b>\n\n"
                 "• Lendo planilha\n"
@@ -948,7 +953,32 @@ async def handle_document_message(update: Update, context: ContextTypes.DEFAULT_
             finally:
                 import os
                 os.unlink(tmp_path)
-        
+                
+            # --- LÓGICA DE NOME DE SESSÃO DINÂMICA (ENZO STYLE) ---
+            imported_count = len(session.romaneios)
+            original_fn = document.file_name
+            stem_name = os.path.splitext(original_fn)[0]
+            
+            # Formato padrão: dd/mm/aaaaDIADASEMANA-(manhã ou tarde)
+            try:
+                import locale
+                try: locale.setlocale(locale.LC_TIME, 'pt_BR.utf8')
+                except: pass
+                dt_obj = datetime.strptime(session.date, '%Y-%m-%d')
+                weekday_map = {0:'SEGUNDA', 1:'TERCA', 2:'QUARTA', 3:'QUINTA', 4:'SEXTA', 5:'SABADO', 6:'DOMINGO'}
+                wday = weekday_map.get(dt_obj.weekday(), "DIA")
+                std_name = f"{dt_obj.strftime('%d/%m/%Y')}{wday}-{session.period}"
+            except:
+                std_name = f"{session.date}-{session.period}"
+
+            # Regra: Se é o 1º arquivo e é Shopee -> Nome = AT do arquivo
+            # Se entrar mais um arquivo -> Nome = Padrãozão
+            if imported_count == 0:
+                session.session_name = stem_name
+            else:
+                session.session_name = std_name
+            # -----------------------------------------------------
+
         elif file_name.endswith('.csv'):
             await update.message.reply_text(
                 "📄 <b>PROCESSANDO CSV...</b>\n\n"
@@ -1964,22 +1994,60 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
         # Define como sessão atual
         session_manager.set_current_session(session_id)
         
-        status = "🔒 Finalizada" if session.is_finalized else "🟢 Ativa"
+        status_icon = "🔴" if session.is_finalized else "🟢"
+        status_text = "Finalizada" if session.is_finalized else "ATIVA"
+        
+        pending = session.total_pending
+        
+        # Determina próxima ação sugerida
+        next_step = ""
+        buttons = []
+        
+        if not session.romaneios:
+            next_step = "📥 <b>Nenhum pacote importado!</b> Use /importar."
+        elif not session.routes:
+            next_step = "⚙️ <b>Pacotes prontos!</b> Use /otimizar para criar rotas."
+            buttons.append([InlineKeyboardButton("🚀 Otimizar Agora", callback_data="shortcut_optimize")])
+        elif pending > 0:
+            next_step = f"🚀 <b>Em andamento!</b> Restam {pending} pacotes."
+            buttons.append([InlineKeyboardButton("🎨 Separação", callback_data="shortcut_separacao")])
+            buttons.append([InlineKeyboardButton("📊 Status", callback_data="shortcut_status")])
+        else:
+            next_step = "✅ <b>Tudo entregue!</b> Feche o dia."
+            
+        markup = InlineKeyboardMarkup(buttons) if buttons else None
         
         await query.edit_message_text(
-            f"✅ <b>SESSÃO SELECIONADA!</b>\n"
+            f"✅ <b>SESSÃO RESGATADA!</b>\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"📅 Data: <b>{session.date}</b>\n"
-            f"🆔 ID: <code>{session.session_id}</code>\n"
-            f"📊 Status: {status}\n"
+            f"📝 Nome: <b>{session.session_name}</b>\n"
+            f"📅 Data: {session.date}\n"
+            f"{status_icon} Status: <b>{status_text}</b>\n\n"
             f"📦 Romaneios: {len(session.romaneios)}\n"
-            f"🛣️ Rotas: {len(session.routes)}\n\n"
-            f"Agora você pode usar:\n"
-            f"• <code>/modo_separacao</code>\n"
-            f"• <code>/analisar_rota</code>\n"
-            f"• Outros comandos nesta sessão",
-            parse_mode='HTML'
+            f"🛣️ Rotas: {len(session.routes)}\n"
+            f"⏳ Pendentes: {pending}\n\n"
+            f"{next_step}",
+            parse_mode='HTML',
+            reply_markup=markup
         )
+        return
+
+    # ═══════════════════════════════════════════
+    # ATALHOS INTELIGENTES (SHORTCUTS)
+    # ═══════════════════════════════════════════
+    if data == "shortcut_optimize":
+        await query.answer("🚀 Iniciando otimização...")
+        await cmd_otimizar_rotas(update, context)
+        return
+
+    if data == "shortcut_separacao":
+        await query.answer("🎨 Abrindo modo separação...")
+        await cmd_modo_separacao(update, context)
+        return
+
+    if data == "shortcut_status":
+        await query.answer("📊 Carregando status...")
+        await cmd_status_sessao(update, context)
         return
     
     # ═══════════════════════════════════════════

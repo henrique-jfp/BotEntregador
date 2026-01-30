@@ -1,0 +1,896 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rota - Teste</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Leaflet Routing Machine CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            overflow: hidden;
+        }
+        
+        /* Esconde painel de instruções do routing */
+        .leaflet-routing-container {
+            display: none !important;
+        }
+        
+        #map {
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        /* Aviso de mapa vazio */
+        #empty-warning {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2000;
+            background: #FF5722;
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+            font-size: 20px;
+            font-weight: bold;
+            text-align: center;
+            display: none;
+        }
+        
+        .header {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        .header .title {
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
+        
+        .header .stats {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+        
+        .bottom-card {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-radius: 20px 20px 0 0;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.2);
+            padding: 20px;
+            z-index: 1000;
+            max-height: 40vh;
+            overflow-y: auto;
+            display: none;
+        }
+        
+        .bottom-card.visible {
+            display: block;
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+        
+        .card-number {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        
+        .card-close {
+            background: #f5f5f5;
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            font-size: 20px;
+            cursor: pointer;
+        }
+        
+        .card-address {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .card-info {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .btn:active {
+            transform: scale(0.95);
+        }
+        
+        .btn-success {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .btn-danger {
+            background: #F44336;
+            color: white;
+        }
+        
+        .btn-transfer {
+            background: #2196F3;
+            color: white;
+        }
+        
+        .btn-maps {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin-bottom: 10px;
+        }
+        
+        /* 🎯 PINS ESTILO SHOPEE - Balão colorido com número */
+        .pin-marker {
+            position: relative;
+            width: 32px;
+            height: 40px;
+        }
+        
+        .pin-marker .pin-body {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 32px;
+            height: 32px;
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+        }
+        
+        .pin-marker .pin-number {
+            position: absolute;
+            top: 4px;
+            left: 0;
+            width: 32px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 13px;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+            z-index: 1;
+        }
+        
+        /* Cores dos pins por status */
+        .pin-pending .pin-body { background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%); }
+        .pin-current .pin-body { background: linear-gradient(135deg, #FF9800 0%, #E65100 100%); }
+        .pin-completed .pin-body { background: linear-gradient(135deg, #9E9E9E 0%, #616161 100%); }
+        .pin-failed .pin-body { background: linear-gradient(135deg, #F44336 0%, #C62828 100%); }
+        
+        /* Pin da BASE */
+        .pin-base .pin-body {
+            background: linear-gradient(135deg, #9C27B0 0%, #6A1B9A 100%);
+        }
+        
+        /* Tooltip customizado */
+        .leaflet-tooltip.pin-tooltip {
+            background: transparent;
+            border: none;
+            box-shadow: none;
+            font-weight: bold;
+            font-size: 11px;
+            color: #333;
+            padding: 0;
+        }
+        
+        /* Pin de transferência (roxo) */
+        .pin-transfer .pin-body { background: linear-gradient(135deg, #9C27B0 0%, #6A1B9A 100%); }
+        
+        /* Badge de pacotes recebidos (+N) */
+        .received-badge {
+            position: fixed;
+            top: 80px;
+            right: 15px;
+            background: linear-gradient(135deg, #FF9800 0%, #E65100 100%);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 14px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            z-index: 1001;
+            cursor: pointer;
+            display: none;
+        }
+        
+        /* Modal de transferência */
+        .transfer-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .transfer-modal.visible {
+            display: flex;
+        }
+        
+        .transfer-content {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            width: 90%;
+            max-width: 350px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .transfer-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .entregador-btn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            margin: 8px 0;
+            border: 2px solid #2196F3;
+            border-radius: 12px;
+            background: white;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .entregador-btn:hover {
+            background: #2196F3;
+            color: white;
+        }
+        
+        .cancel-transfer {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            margin-top: 15px;
+            border: none;
+            border-radius: 12px;
+            background: #f5f5f5;
+            color: #666;
+            font-size: 14px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="empty-warning">
+        ⚠️ MAPA VAZIO!<br>
+        Nenhum marker encontrado.<br>
+        <small>Verifique o console (F12)</small>
+    </div>
+    
+    <div class="header">
+        <div class="title">Teste</div>
+        <div class="stats">
+            <span id="progress">0 de 1 paradas</span> | 
+            <span>1 pacotes</span>
+        </div>
+    </div>
+    
+    <div id="map"></div>
+    
+    <!-- Badge de pacotes recebidos -->
+    <div id="received-badge" class="received-badge" onclick="showReceivedPackages()">
+        📦 +<span id="received-count">0</span> recebido(s)
+    </div>
+    
+    <!-- Modal de transferência -->
+    <div id="transfer-modal" class="transfer-modal">
+        <div class="transfer-content">
+            <div class="transfer-title">↗️ Transferir para:</div>
+            <div id="entregadores-list"></div>
+            <button class="cancel-transfer" onclick="closeTransferModal()">Cancelar</button>
+        </div>
+    </div>
+    
+    <div id="bottom-card" class="bottom-card">
+        <div class="card-header">
+            <div id="card-number" class="card-number"></div>
+            <button class="card-close" onclick="closeCard()">×</button>
+        </div>
+        <div id="card-address" class="card-address"></div>
+        <div id="card-info" class="card-info"></div>
+        
+        <button id="btn-maps" class="btn btn-maps" onclick="openGoogleMaps()">
+            Abrir no Google Maps
+        </button>
+        
+        <div class="action-buttons">
+            <button class="btn btn-success" onclick="markDelivered()">
+                Entregue
+            </button>
+            <button class="btn btn-danger" onclick="markFailed()">
+                Insucesso
+            </button>
+            <button class="btn btn-transfer" onclick="transferPackage()">
+                Transferir
+            </button>
+        </div>
+    </div>
+    
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Leaflet Routing Machine JS -->
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+    
+    <script>
+        // 🔍 DEBUG: Mostra quantos markers chegaram
+        console.log("🚀 Iniciando mapa...");
+        
+        // Dados dos markers
+        let markers = [{"lat": -22.9450391, "lon": -43.1842129, "address": "Rua Teste, 1", "packages": 1, "status": "pending", "number": 1, "symbol": "1", "color": "#9C27B0", "is_current": true}];
+        console.log("✅ " + markers.length + " markers carregados do JSON");
+        if (markers.length === 0) {
+            console.error("⚠️ MARKERS VAZIO! Nenhum ponto para marcar!");
+        }
+        
+        let currentMarker = null;
+        
+        // Inicializa mapa com zoom automático
+        console.log("📍 Criando mapa centrado em [-22.9450391, -43.1842129]");
+        const map = L.map('map').setView([-22.9450391, -43.1842129], 16);
+        
+        // Tile layer (OpenStreetMap)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap',  // Simplificado
+            maxZoom: 19,
+            minZoom: 12  // Evita zoom muito longe
+        }).addTo(map);
+        
+        // Declara baseLocation ANTES de usar (evita ReferenceError)
+        const baseLocation = null;
+        
+        // AUTO-ZOOM: Ajusta para ver TODA a rota perfeitamente
+        // Calcula bounds de TODOS os pontos (base + entregas)
+        const allPoints = baseLocation ? 
+            [[baseLocation[0], baseLocation[1]], ...markers.map(m => [m.lat, m.lon])] :
+            markers.map(m => [m.lat, m.lon]);
+        
+        if (allPoints.length > 0) {
+            const bounds = L.latLngBounds(allPoints);
+            // Padding maior para mobile = melhor visualização
+            map.fitBounds(bounds, {
+                padding: [50, 50],  // Margem de 50px
+                maxZoom: 16  // Não dá zoom demais (perde contexto)
+            });
+        }
+        
+        // 🎯 Função para criar pin estilo Shopee
+        function createShopeePin(number, status) {
+            let statusClass = `pin-${status}`;
+            let displayText = number;
+            
+            // Símbolos especiais para status finais
+            if (status === 'completed') {
+                displayText = '✓';
+            } else if (status === 'failed') {
+                displayText = '✗';
+            }
+            
+            return L.divIcon({
+                className: 'pin-container',
+                html: `<div class="pin-marker ${statusClass}">
+                         <div class="pin-body"></div>
+                         <div class="pin-number">${displayText}</div>
+                       </div>`,
+                iconSize: [32, 40],
+                iconAnchor: [16, 40],
+                popupAnchor: [0, -40]
+            });
+        }
+        
+        // 🗺️ Guarda referência aos markers do Leaflet para poder atualizar
+        const leafletMarkers = {};
+        
+        // Adiciona marker da BASE se houver
+        if (baseLocation) {
+            console.log("🏠 Adicionando marker da BASE:", baseLocation);
+            const baseIcon = L.divIcon({
+                className: 'pin-container',
+                html: `<div class="pin-marker pin-base">
+                         <div class="pin-body"></div>
+                         <div class="pin-number">🏠</div>
+                       </div>`,
+                iconSize: [32, 40],
+                iconAnchor: [16, 40],
+                popupAnchor: [0, -40]
+            });
+            
+            const baseMarker = L.marker([baseLocation[0], baseLocation[1]], { icon: baseIcon }).addTo(map);
+            baseMarker.bindPopup(`<b>🏠 BASE</b><br>${baseLocation[2]}`);
+        } else {
+            console.log("⚠️ Sem base location configurada");
+        }
+        
+        // 📦 Estado local das entregas (para funcionar no navegador)
+        let deliveryStatus = {};
+        
+        // Carrega estado salvo (se houver)
+        try {
+            const saved = localStorage.getItem('deliveryStatus_' + 'Teste'.replace(/\s/g, '_'));
+            if (saved) deliveryStatus = JSON.parse(saved);
+        } catch(e) {}
+        
+        function saveStatus() {
+            try {
+                localStorage.setItem('deliveryStatus_' + 'Teste'.replace(/\s/g, '_'), JSON.stringify(deliveryStatus));
+            } catch(e) {}
+        }
+        
+        // 🎯 Adiciona markers estilo Shopee
+        console.log(`📌 Adicionando ${markers.length} pins Shopee no mapa...`);
+        let markersAdded = 0;
+        
+        markers.forEach((m, idx) => {
+            try {
+                // Verifica se já tem status salvo
+                const savedStatus = deliveryStatus[m.number] || m.status;
+                m.status = savedStatus;  // Atualiza o objeto
+                
+                const pinIcon = createShopeePin(m.number, savedStatus);
+                const marker = L.marker([m.lat, m.lon], { icon: pinIcon }).addTo(map);
+                
+                // Guarda referência para atualizar depois
+                leafletMarkers[m.number] = marker;
+                
+                marker.on('click', () => {
+                    openCard(m);
+                });
+                
+                if (m.is_current) {
+                    marker.setZIndexOffset(1000);
+                }
+                
+                markersAdded++;
+            } catch (e) {
+                console.error(`❌ ERRO ao adicionar marker #${idx}:`, e, m);
+            }
+        });
+        
+        console.log(`✅ ${markersAdded} markers adicionados com sucesso!`);
+        
+        // 🚨 Mostra aviso se não tiver markers
+        if (markersAdded === 0) {
+            console.error("🚨 NENHUM MARKER ADICIONADO AO MAPA!");
+            document.getElementById('empty-warning').style.display = 'block';
+        }
+        
+        // ✅ SEM POLYLINE - Mapa de análise mostra só os PONTOS
+        console.log("📍 Mapa limpo - sem linhas de rota (análise visual)");
+        
+        // 🔄 Função para atualizar o ícone de um pin no mapa
+        function updatePinOnMap(stopNumber, newStatus) {
+            const marker = leafletMarkers[stopNumber];
+            if (marker) {
+                const newIcon = createShopeePin(stopNumber, newStatus);
+                marker.setIcon(newIcon);
+                console.log(`🔄 Pin ${stopNumber} atualizado para ${newStatus}`);
+            }
+            
+            // Atualiza também no array de markers
+            const m = markers.find(x => x.number === stopNumber);
+            if (m) m.status = newStatus;
+        }
+        
+        // 📊 Atualiza contador no header
+        function updateProgress() {
+            const completed = markers.filter(m => m.status === 'completed' || m.status === 'failed').length;
+            document.getElementById('progress').textContent = `${completed} de ${markers.length} paradas`;
+        }
+        
+        // ➡️ Vai para próxima parada pendente com zoom adequado
+        function goToNextPending() {
+            const nextPending = markers.find(m => m.status === 'pending' || m.status === 'current');
+            if (nextPending) {
+                // Fecha card atual primeiro
+                closeCard();
+                
+                // Anima o mapa até a próxima parada com zoom 18 (ver rua claramente)
+                map.flyTo([nextPending.lat, nextPending.lon], 18, {
+                    duration: 1.0,  // 1 segundo de animação
+                    easeLinearity: 0.5
+                });
+                
+                // Abre o card após a animação
+                setTimeout(() => {
+                    openCard(nextPending);
+                }, 1000);
+            } else {
+                // Todas finalizadas! Mostra visão geral
+                closeCard();
+                
+                // Volta pro zoom que mostra todas as paradas
+                const allPoints = markers.map(m => [m.lat, m.lon]);
+                if (allPoints.length > 0) {
+                    map.flyToBounds(L.latLngBounds(allPoints), {
+                        padding: [50, 50],
+                        duration: 1.0
+                    });
+                }
+                
+                setTimeout(() => {
+                    alert('🎉 Parabéns! Todas as entregas finalizadas!');
+                }, 500);
+            }
+        }
+        
+        // 📦 Lista de entregadores disponíveis (injetada pelo Python)
+        const entregadoresDisponiveis = [{"name": "Jo\u00e3o", "id": "123"}];
+        
+        // Salva no localStorage para sincronizar entre mapas
+        if (entregadoresDisponiveis.length > 0) {
+            localStorage.setItem('entregadores_lista', JSON.stringify(entregadoresDisponiveis));
+        }
+        
+        // Carrega entregadores do localStorage (sync entre mapas)
+        function loadEntregadores() {
+            try {
+                const saved = localStorage.getItem('entregadores_lista');
+                if (saved) {
+                    const lista = JSON.parse(saved);
+                    lista.forEach(e => {
+                        if (!entregadoresDisponiveis.find(x => x.id === e.id)) {
+                            entregadoresDisponiveis.push(e);
+                        }
+                    });
+                }
+            } catch(e) {}
+        }
+        loadEntregadores();
+        
+        // 📤 Abre modal de transferência
+        function openTransferModal() {
+            const list = document.getElementById('entregadores-list');
+            list.innerHTML = '';
+            
+            // Busca entregadores salvos
+            loadEntregadores();
+            
+            if (entregadoresDisponiveis.length === 0) {
+                // Se não tem lista, usa input manual
+                list.innerHTML = `
+                    <input type="text" id="transfer-dest" placeholder="Nome do entregador" 
+                           style="width:100%; padding:15px; border:2px solid #ddd; border-radius:12px; font-size:16px; margin-bottom:10px;">
+                    <button class="entregador-btn" onclick="transferToManual()" style="background:#2196F3; color:white;">
+                        ✓ Confirmar Transferência
+                    </button>
+                `;
+            } else {
+                // Mostra lista de entregadores
+                entregadoresDisponiveis.forEach(e => {
+                    const btn = document.createElement('button');
+                    btn.className = 'entregador-btn';
+                    btn.innerHTML = `👤 ${e.name}`;
+                    btn.onclick = () => transferTo(e);
+                    list.appendChild(btn);
+                });
+            }
+            
+            document.getElementById('transfer-modal').classList.add('visible');
+        }
+        
+        function closeTransferModal() {
+            document.getElementById('transfer-modal').classList.remove('visible');
+        }
+        
+        // Transfere para entregador específico
+        function transferTo(entregador) {
+            if (!currentMarker) return;
+            
+            const stopNum = currentMarker.number;
+            const pacote = {
+                stop: stopNum,
+                address: currentMarker.address,
+                lat: currentMarker.lat,
+                lon: currentMarker.lon,
+                packages: currentMarker.packages,
+                from: 'Teste',
+                timestamp: Date.now()
+            };
+            
+            // Salva pacote transferido na "caixa de entrada" do destino
+            const key = `transferidos_para_${entregador.id || entregador.name}`;
+            let inbox = [];
+            try {
+                const saved = localStorage.getItem(key);
+                if (saved) inbox = JSON.parse(saved);
+            } catch(e) {}
+            inbox.push(pacote);
+            localStorage.setItem(key, JSON.stringify(inbox));
+            
+            // Marca como transferido localmente
+            deliveryStatus[stopNum] = 'transfer';
+            saveStatus();
+            updatePinOnMap(stopNum, 'transfer');
+            updateProgress();
+            
+            // Tenta enviar pro Telegram
+            try {
+                if (window.Telegram && window.Telegram.WebApp) {
+                    window.Telegram.WebApp.sendData(JSON.stringify({
+                        action: 'transfer',
+                        stop: stopNum,
+                        address: currentMarker.address,
+                        to_name: entregador.name,
+                        to_id: entregador.id
+                    }));
+                }
+            } catch(e) {}
+            
+            closeTransferModal();
+            alert(`📦 Pacote transferido para ${entregador.name}!`);
+            goToNextPending();
+        }
+        
+        // Transfere com nome manual
+        function transferToManual() {
+            const dest = document.getElementById('transfer-dest').value.trim();
+            if (!dest) {
+                alert('Digite o nome do entregador!');
+                return;
+            }
+            transferTo({ name: dest, id: dest.toLowerCase().replace(/\s/g, '_') });
+        }
+        
+        // 📥 Verifica pacotes recebidos (transferidos para mim)
+        function checkReceivedPackages() {
+            const myId = 'Teste'.toLowerCase().replace(/\s/g, '_');
+            const key = `transferidos_para_${myId}`;
+            
+            try {
+                const saved = localStorage.getItem(key);
+                if (saved) {
+                    const pacotes = JSON.parse(saved);
+                    if (pacotes.length > 0) {
+                        document.getElementById('received-count').textContent = pacotes.length;
+                        document.getElementById('received-badge').style.display = 'block';
+                    }
+                }
+            } catch(e) {}
+        }
+        checkReceivedPackages();
+        
+        // Mostra pacotes recebidos
+        function showReceivedPackages() {
+            const myId = 'Teste'.toLowerCase().replace(/\s/g, '_');
+            const key = `transferidos_para_${myId}`;
+            
+            try {
+                const saved = localStorage.getItem(key);
+                if (saved) {
+                    const pacotes = JSON.parse(saved);
+                    let msg = '📦 PACOTES RECEBIDOS:
+
+';
+                    pacotes.forEach((p, i) => {
+                        msg += `${i+1}. ${p.address}
+   (de: ${p.from})
+
+`;
+                    });
+                    msg += 'Deseja aceitar e adicionar à sua rota?';
+                    
+                    if (confirm(msg)) {
+                        // Adiciona os pacotes como novos markers
+                        pacotes.forEach((p, i) => {
+                            const newNum = markers.length + i + 1;
+                            const newMarker = {
+                                lat: p.lat,
+                                lon: p.lon,
+                                address: p.address,
+                                packages: p.packages || 1,
+                                status: 'pending',
+                                number: newNum,
+                                is_current: false
+                            };
+                            markers.push(newMarker);
+                            
+                            // Adiciona pin no mapa
+                            const pinIcon = createShopeePin(newNum, 'pending');
+                            const leafletM = L.marker([p.lat, p.lon], { icon: pinIcon }).addTo(map);
+                            leafletM.on('click', () => openCard(newMarker));
+                            leafletMarkers[newNum] = leafletM;
+                        });
+                        
+                        // Limpa inbox
+                        localStorage.removeItem(key);
+                        document.getElementById('received-badge').style.display = 'none';
+                        
+                        alert(`✅ ${pacotes.length} pacote(s) adicionados à sua rota!`);
+                        updateProgress();
+                    }
+                }
+            } catch(e) { console.error(e); }
+        }
+        // Funcoes
+        function openCard(marker) {
+            currentMarker = marker;
+            
+            document.getElementById('card-number').textContent = marker.number;
+            document.getElementById('card-address').textContent = marker.address;
+            
+            const statusText = marker.status === 'completed' ? '✅ Entregue' : 
+                              marker.status === 'failed' ? '❌ Insucesso' : 
+                              '📦 Pendente';
+            document.getElementById('card-info').textContent = 
+                `Entrega ${marker.packages} unidade${marker.packages > 1 ? 's' : ''} | ${statusText}`;
+            
+            document.getElementById('bottom-card').classList.add('visible');
+        }
+        
+        function closeCard() {
+            document.getElementById('bottom-card').classList.remove('visible');
+        }
+        
+        function openGoogleMaps() {
+            if (!currentMarker) return;
+            
+            const url = `https://www.google.com/maps/dir/?api=1&destination=${currentMarker.lat},${currentMarker.lon}`;
+            window.open(url, '_blank');
+        }
+        
+        function markDelivered() {
+            if (!currentMarker) return;
+            
+            const stopNum = currentMarker.number;
+            
+            // 1. Salva status
+            deliveryStatus[stopNum] = 'completed';
+            saveStatus();
+            
+            // 2. Atualiza o pin no mapa (muda cor para cinza + ✓)
+            updatePinOnMap(stopNum, 'completed');
+            
+            // 3. Atualiza contador
+            updateProgress();
+            
+            // 4. Feedback visual no botão
+            const btn = event.target;
+            btn.textContent = '✓ Entregue!';
+            btn.style.background = '#2E7D32';
+            
+            // 5. Tenta enviar pro Telegram (se estiver no WebApp)
+            try {
+                if (window.Telegram && window.Telegram.WebApp) {
+                    window.Telegram.WebApp.sendData(JSON.stringify({
+                        action: 'delivered',
+                        stop: stopNum,
+                        address: currentMarker.address
+                    }));
+                }
+            } catch(e) {}
+            
+            // 6. Vai para próxima parada após 500ms
+            setTimeout(() => {
+                btn.textContent = 'Entregue';
+                btn.style.background = '#4CAF50';
+                goToNextPending();
+            }, 500);
+        }
+        
+        function markFailed() {
+            if (!currentMarker) return;
+            
+            const stopNum = currentMarker.number;
+            
+            // 1. Salva status
+            deliveryStatus[stopNum] = 'failed';
+            saveStatus();
+            
+            // 2. Atualiza o pin no mapa (muda cor para vermelho + ✗)
+            updatePinOnMap(stopNum, 'failed');
+            
+            // 3. Atualiza contador
+            updateProgress();
+            
+            // 4. Feedback visual no botão
+            const btn = event.target;
+            btn.textContent = '✗ Insucesso!';
+            btn.style.background = '#B71C1C';
+            
+            // 5. Tenta enviar pro Telegram
+            try {
+                if (window.Telegram && window.Telegram.WebApp) {
+                    window.Telegram.WebApp.sendData(JSON.stringify({
+                        action: 'failed',
+                        stop: stopNum,
+                        address: currentMarker.address
+                    }));
+                }
+            } catch(e) {}
+            
+            // 6. Vai para próxima parada após 500ms
+            setTimeout(() => {
+                btn.textContent = 'Insucesso';
+                btn.style.background = '#F44336';
+                goToNextPending();
+            }, 500);
+        }
+        
+        function transferPackage() {
+            if (!currentMarker) return;
+            openTransferModal();
+        }
+        
+        // Atualiza progresso inicial
+        updateProgress();
+        
+        // Abre automaticamente primeiro marker pendente
+        if (markers.length > 0) {
+            const firstPending = markers.find(m => m.status === 'pending' || m.status === 'current');
+            if (firstPending) {
+                openCard(firstPending);
+            }
+        }
+    </script>
+</body>
+</html>
