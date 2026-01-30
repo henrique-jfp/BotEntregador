@@ -386,7 +386,10 @@ async def help_callback_handler(update: Update, context: ContextTypes.DEFAULT_TY
     # Edição padrão para sub-menus
     keyboard = [[InlineKeyboardButton("🔙 Voltar", callback_data=back_btn)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await query.edit_message_text(text=text, reply_markup=reply_markup, parse_mode='HTML')async def cmd_cancelar(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await query.edit_message_text(text=text, reply_markup=reply_markup, parse_mode='HTML')
+
+
+async def cmd_cancelar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Cancela qualquer operação em andamento"""
     user_id = update.effective_user.id
     
