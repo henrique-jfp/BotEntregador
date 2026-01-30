@@ -1411,16 +1411,18 @@ async def process_route_analysis_text(update: Update, context: ContextTypes.DEFA
         # ═══════════════════════════════════════════
         # GERA MAPA HTML (AGRUPA ENDEREÇOS DUPLICADOS)
         # ═══════════════════════════════════════════
-        from collections import defaultdict
+        from collections import OrderedDict
         
-        # Agrupa endereços duplicados
-        address_groups = defaultdict(list)
+        # Agrupa endereços duplicados (preserva ordem)
+        address_groups = OrderedDict()
         for d in deliveries_data:
             # Usa coordenadas arredondadas como chave (agrupa pontos muito próximos)
             key = (d['address'], round(d['lat'], 5), round(d['lon'], 5))
+            if key not in address_groups:
+                address_groups[key] = []
             address_groups[key].append(d)
         
-        # Cria stops_data com contagem correta
+        # Cria stops_data com contagem correta (ordem preservada)
         stops_data = []
         for (address, lat, lon), group in address_groups.items():
             num_packages = len(group)
@@ -1431,8 +1433,7 @@ async def process_route_analysis_text(update: Update, context: ContextTypes.DEFA
                 num_packages,  # Número real de pacotes
                 'pending'
             ))
-            if num_packages > 1:
-                logger.info(f"📦 {address[:60]} - {num_packages} pacotes agrupados")
+            logger.info(f"📍 Stop {len(stops_data)}: {address[:50]} - {num_packages} pacote(s)")
         
         logger.info(f"🗺️ {len(stops_data)} paradas únicas de {len(deliveries_data)} endereços")
         
@@ -1678,17 +1679,19 @@ async def process_route_analysis(update: Update, context: ContextTypes.DEFAULT_T
         # GERA MAPA HTML (AGRUPA PACOTES POR ENDEREÇO)
         # ═══════════════════════════════════════════
         
-        # Agrupa pacotes por endereço único
-        from collections import defaultdict
-        address_groups = defaultdict(list)
+        # Agrupa pacotes por endereço único (mantendo ordem de chegada)
+        from collections import defaultdict, OrderedDict
+        address_groups = OrderedDict()
         
         for d in deliveries_data:
             if d['lat'] and d['lon']:
                 # Usa endereço + coordenadas como chave única
                 key = (d['address'], round(d['lat'], 5), round(d['lon'], 5))
+                if key not in address_groups:
+                    address_groups[key] = []
                 address_groups[key].append(d)
         
-        # Cria stops com contagem correta de pacotes
+        # Cria stops com contagem correta de pacotes (ordem preservada)
         stops_data = []
         failed_geocoding = []
         
@@ -1701,7 +1704,7 @@ async def process_route_analysis(update: Update, context: ContextTypes.DEFAULT_T
                 num_packages,  # Número real de pacotes neste endereço
                 'pending'
             ))
-            logger.info(f"📍 {address[:60]} - {num_packages} pacote(s)")
+            logger.info(f"📍 Stop {len(stops_data)}: {address[:50]} - {num_packages} pacote(s)")
         
         logger.info(f"🗺️ Total de {len(stops_data)} paradas únicas para {len(deliveries_data)} pacotes")
         

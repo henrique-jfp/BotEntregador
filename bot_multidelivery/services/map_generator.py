@@ -524,14 +524,48 @@ class MapGenerator:
         // Linhas retas ficam feias cortando prédios
         console.log("📍 Mapa limpo - sem linhas de rota (análise visual)");
         
+        // 📦 Estado local das entregas (para funcionar no navegador)
+        let deliveryStatus = {{}};
+        
+        // Carrega estado salvo (se houver)
+        try {{
+            const saved = localStorage.getItem('deliveryStatus');
+            if (saved) deliveryStatus = JSON.parse(saved);
+        }} catch(e) {{}}
+        
+        function saveStatus() {{
+            try {{
+                localStorage.setItem('deliveryStatus', JSON.stringify(deliveryStatus));
+            }} catch(e) {{}}
+        }}
+        
+        // Atualiza visual do pin no mapa
+        function updatePinVisual(stopNumber, newStatus) {{
+            // Encontra o marker no array e atualiza
+            const m = markers.find(x => x.number === stopNumber);
+            if (m) {{
+                m.status = newStatus;
+                // Atualiza contador no header
+                updateProgress();
+            }}
+        }}
+        
+        function updateProgress() {{
+            const completed = Object.values(deliveryStatus).filter(s => s === 'completed').length;
+            document.getElementById('progress').textContent = `${{completed}} de ${{markers.length}} paradas`;
+        }}
+        
         // Funcoes
         function openCard(marker) {{
             currentMarker = marker;
             
+            // Verifica status salvo localmente
+            const savedStatus = deliveryStatus[marker.number] || marker.status;
+            
             document.getElementById('card-number').textContent = marker.number;
             document.getElementById('card-address').textContent = marker.address;
             document.getElementById('card-info').textContent = 
-                `Entrega ${{marker.packages}} unidade${{marker.packages > 1 ? 's' : ''}} | Status: ${{marker.status}}`;
+                `Entrega ${{marker.packages}} unidade${{marker.packages > 1 ? 's' : ''}} | Status: ${{savedStatus}}`;
             
             document.getElementById('bottom-card').classList.add('visible');
         }}
@@ -550,41 +584,91 @@ class MapGenerator:
         function markDelivered() {{
             if (!currentMarker) return;
             
-            // Envia callback pro bot
-            window.Telegram.WebApp.sendData(JSON.stringify({{
-                action: 'delivered',
-                stop: currentMarker.number,
-                address: currentMarker.address
-            }}));
+            // Salva status localmente
+            deliveryStatus[currentMarker.number] = 'completed';
+            saveStatus();
+            updatePinVisual(currentMarker.number, 'completed');
             
-            alert(`Marcado como entregue: Stop ${{currentMarker.number}}`);
-            closeCard();
+            // Tenta enviar pro Telegram (se estiver no WebApp)
+            try {{
+                if (window.Telegram && window.Telegram.WebApp) {{
+                    window.Telegram.WebApp.sendData(JSON.stringify({{
+                        action: 'delivered',
+                        stop: currentMarker.number,
+                        address: currentMarker.address
+                    }}));
+                }}
+            }} catch(e) {{}}
+            
+            // Feedback visual
+            const btn = event.target;
+            btn.textContent = '✓ Marcado!';
+            btn.style.background = '#2E7D32';
+            
+            setTimeout(() => {{
+                btn.textContent = 'Entregue';
+                btn.style.background = '#4CAF50';
+                closeCard();
+            }}, 800);
         }}
         
         function markFailed() {{
             if (!currentMarker) return;
             
-            window.Telegram.WebApp.sendData(JSON.stringify({{
-                action: 'failed',
-                stop: currentMarker.number,
-                address: currentMarker.address
-            }}));
+            // Salva status localmente
+            deliveryStatus[currentMarker.number] = 'failed';
+            saveStatus();
+            updatePinVisual(currentMarker.number, 'failed');
             
-            alert(`Marcado como insucesso: Stop ${{currentMarker.number}}`);
-            closeCard();
+            try {{
+                if (window.Telegram && window.Telegram.WebApp) {{
+                    window.Telegram.WebApp.sendData(JSON.stringify({{
+                        action: 'failed',
+                        stop: currentMarker.number,
+                        address: currentMarker.address
+                    }}));
+                }}
+            }} catch(e) {{}}
+            
+            // Feedback visual
+            const btn = event.target;
+            btn.textContent = '✗ Insucesso';
+            btn.style.background = '#B71C1C';
+            
+            setTimeout(() => {{
+                btn.textContent = 'Insucesso';
+                btn.style.background = '#F44336';
+                closeCard();
+            }}, 800);
         }}
         
         function transferPackage() {{
             if (!currentMarker) return;
             
-            window.Telegram.WebApp.sendData(JSON.stringify({{
-                action: 'transfer',
-                stop: currentMarker.number,
-                address: currentMarker.address
-            }}));
+            // Salva status localmente
+            deliveryStatus[currentMarker.number] = 'transfer';
+            saveStatus();
             
-            alert(`Solicitar transferencia: Stop ${{currentMarker.number}}`);
-            closeCard();
+            try {{
+                if (window.Telegram && window.Telegram.WebApp) {{
+                    window.Telegram.WebApp.sendData(JSON.stringify({{
+                        action: 'transfer',
+                        stop: currentMarker.number,
+                        address: currentMarker.address
+                    }}));
+                }}
+            }} catch(e) {{}}
+            
+            // Feedback visual
+            const btn = event.target;
+            btn.textContent = '↗ Transferindo...';
+            btn.style.background = '#1565C0';
+            
+            setTimeout(() => {{
+                btn.textContent = 'Transferir';
+                btn.style.background = '#2196F3';
+                closeCard();
+            }}, 800);
         }}
         
         // Abre automaticamente primeiro marker
