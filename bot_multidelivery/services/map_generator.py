@@ -408,11 +408,6 @@ class MapGenerator:
         if (markers.length === 0) {{
             console.error("⚠️ MARKERS VAZIO! Nenhum ponto para marcar!");
         }}
-            }}
-        }} catch (e) {{
-            console.error("❌ ERRO ao parsear markers JSON:", e);
-            console.error("JSON recebido:", markersJsonStr);
-        }}
         
         let currentMarker = null;
         
@@ -459,7 +454,7 @@ class MapGenerator:
         }}
         
         // Adiciona markers das entregas - OTIMIZADO PARA MOBILE
-        console.log(`📌 Adicionando ${markers.length} markers no mapa...`);
+        console.log(`📌 Adicionando ${{markers.length}} markers no mapa...`);
         let markersAdded = 0;
         
         markers.forEach((m, idx) => {{
@@ -494,7 +489,7 @@ class MapGenerator:
             }}
         }});
         
-        console.log(`✅ ${markersAdded} markers adicionados com sucesso!`);
+        console.log(`✅ ${{markersAdded}} markers adicionados com sucesso!`);
         
         // 🚨 Mostra aviso se não tiver markers
         if (markersAdded === 0) {{
