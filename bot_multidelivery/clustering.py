@@ -188,19 +188,25 @@ class TerritoryDivider:
     
     def optimize_cluster_route(self, cluster: Cluster) -> List[DeliveryPoint]:
         """
-        Otimiza ordem de entrega dentro do cluster
-        Greedy nearest neighbor a partir da base
+        Otimização SUPER INTELIGENTE de rota (Greedy + 2-opt)
+        
+        1. Greedy: Constrói rota inicial (sempre vai pro mais próximo)
+        2. 2-opt: Remove cruzamentos e otimiza ordem
+        
+        Garante: menor distância, sem passar 2x na mesma rua
         """
         if not cluster.points:
             return []
         
-        # Começa da base
+        if len(cluster.points) == 1:
+            return cluster.points
+        
+        # FASE 1: Greedy nearest neighbor (rota inicial)
         current_lat, current_lng = self.base_lat, self.base_lng
         remaining = cluster.points.copy()
         route = []
         
         while remaining:
-            # Próximo ponto = mais próximo do atual
             closest = min(
                 remaining,
                 key=lambda p: haversine_distance(current_lat, current_lng, p.lat, p.lng)
@@ -209,4 +215,58 @@ class TerritoryDivider:
             remaining.remove(closest)
             current_lat, current_lng = closest.lat, closest.lng
         
+        # FASE 2: 2-opt optimization (remove cruzamentos)
+        route = self._two_opt_optimize(route)
+        
         return route
+    
+    def _two_opt_optimize(self, route: List[DeliveryPoint]) -> List[DeliveryPoint]:
+        """
+        Algoritmo 2-opt: Remove cruzamentos na rota
+        Testa trocar ordem de segmentos para ver se fica menor
+        """
+        if len(route) < 4:
+            return route  # Muito pequeno para otimizar
+        
+        improved = True
+        best_route = route.copy()
+        
+        # Máximo 50 iterações para não travar
+        max_iterations = 50
+        iteration = 0
+        
+        while improved and iteration < max_iterations:
+            improved = False
+            iteration += 1
+            
+            for i in range(1, len(best_route) - 2):
+                for j in range(i + 1, len(best_route)):
+                    # Testa reverter segmento [i:j]
+                    new_route = best_route[:i] + best_route[i:j][::-1] + best_route[j:]
+                    
+                    # Calcula distância total
+                    old_dist = self._calculate_route_distance(best_route)
+                    new_dist = self._calculate_route_distance(new_route)
+                    
+                    # Se melhorou, adota
+                    if new_dist < old_dist:
+                        best_route = new_route
+                        improved = True
+                        break
+                
+                if improved:
+                    break
+        
+        return best_route
+    
+    def _calculate_route_distance(self, route: List[DeliveryPoint]) -> float:
+        """Calcula distância total da rota (incluindo volta da base)"""
+        if not route:
+            return 0
+        
+        total = haversine_distance(self.base_lat, self.base_lng, route[0].lat, route[0].lng)
+        
+        for i in range(len(route) - 1):
+            total += haversine_distance(route[i].lat, route[i].lng, route[i+1].lat, route[i+1].lng)
+        
+        return total

@@ -83,15 +83,24 @@ class MapGenerator:
             center_lon = 0
             zoom = 15
         
-        # Prepara dados dos markers
+        # Prepara dados dos markers - SEQUÊNCIA RENUMERADA 1, 2, 3...
         markers_data = []
         completed_count = 0
         
         for i, (lat, lon, address, packages, status) in enumerate(stops):
             if status == 'completed':
                 completed_count += 1
-                
-            color = MapGenerator.COLORS.get(status, MapGenerator.COLORS['pending'])
+            
+            # Define cor E símbolo baseado no status
+            if status == 'completed':
+                color = '#9E9E9E'  # Cinza
+                symbol = '✓'  # Check
+            elif status == 'failed':
+                color = '#F44336'  # Vermelho
+                symbol = '✗'  # X
+            else:
+                color = MapGenerator.COLORS.get(status, MapGenerator.COLORS['pending'])
+                symbol = str(i + 1)  # Número sequencial
             
             markers_data.append({
                 'lat': lat,
@@ -99,7 +108,8 @@ class MapGenerator:
                 'address': address,
                 'packages': packages,
                 'status': status,
-                'number': i + 1,
+                'number': i + 1,  # SEMPRE sequencial: 1, 2, 3, 4...
+                'symbol': symbol,  # O que aparece no marker
                 'color': color,
                 'is_current': i == current_stop
             })
@@ -269,31 +279,47 @@ class MapGenerator:
             margin-bottom: 10px;
         }}
         
+        /* MARKERS OTIMIZADOS PARA MOBILE - SEM POLUIÇÃO VISUAL */
         .marker-icon {{
-            background: white;
-            border: 3px solid;
-            border-radius: 50%;
-            width: 35px;
-            height: 35px;
+            background: white !important;
+            border: 3px solid !important;
+            border-radius: 50% !important;
+            width: 30px !important;
+            height: 30px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            font-weight: bold !important;
+            font-size: 14px !important;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4) !important;
+            /* CRÍTICO: Remove qualquer sombra/pin padrão do Leaflet */
+            background-image: none !important;
+        }}
+        
+        .marker-icon div {{
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: bold;
-            font-size: 14px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
         }}
         
-        /* Remove pontinho/pin do Leaflet */
+        /* REMOVE COMPLETAMENTE pins/sombras do Leaflet */
         .marker-icon::before,
-        .marker-icon::after {{
+        .marker-icon::after,
+        .leaflet-marker-icon::before,
+        .leaflet-marker-icon::after,
+        .leaflet-marker-shadow {{
             display: none !important;
             content: none !important;
+            opacity: 0 !important;
+            visibility: hidden !important;
         }}
         
-        .leaflet-marker-icon::before,
-        .leaflet-marker-icon::after {{
+        /* Remove sombra padrão dos markers */
+        .leaflet-shadow-pane {{
             display: none !important;
-            content: none !important;
         }}
     </style>
 </head>
@@ -348,9 +374,25 @@ class MapGenerator:
         
         // Tile layer (OpenStreetMap)
         L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
-            attribution: '© OpenStreetMap contributors',
-            maxZoom: 19
+            attribution: '© OpenStreetMap',  // Simplificado
+            maxZoom: 19,
+            minZoom: 12  // Evita zoom muito longe
         }}).addTo(map);
+        
+        // AUTO-ZOOM: Ajusta para ver TODA a rota perfeitamente
+        // Calcula bounds de TODOS os pontos (base + entregas)
+        const allPoints = baseLocation ? 
+            [[baseLocation[0], baseLocation[1]], ...markers.map(m => [m.lat, m.lon])] :
+            markers.map(m => [m.lat, m.lon]);
+        
+        if (allPoints.length > 0) {{
+            const bounds = L.latLngBounds(allPoints);
+            // Padding maior para mobile = melhor visualização
+            map.fitBounds(bounds, {{
+                padding: [50, 50],  // Margem de 50px
+                maxZoom: 16  // Não dá zoom demais (perde contexto)
+            }});
+        }}
         
         // Adiciona marker da BASE se houver
         const baseLocation = {json.dumps(base_location) if base_location else 'null'};
@@ -365,15 +407,22 @@ class MapGenerator:
             baseMarker.bindPopup(`<b>🏠 BASE</b><br>${{baseLocation[2]}}`);
         }}
         
-        // Adiciona markers das entregas
+        // Adiciona markers das entregas - OTIMIZADO PARA MOBILE
         markers.forEach((m, idx) => {{
             const icon = L.divIcon({{
                 className: 'marker-icon',
-                html: `<div style="border-color: ${{m.color}}; color: ${{m.color}}">${{m.number}}</div>`,
-                iconSize: [26, 26]
+                // Usa SYMBOL (✓, ✗ ou número) em vez de sempre número
+                html: `<div style="border-color: ${{m.color}}; color: ${{m.color}}; background: white;">${{m.symbol}}</div>`,
+                iconSize: [30, 30],  // Tamanho ideal para mobile
+                iconAnchor: [15, 15]  // Centraliza perfeitamente
             }});
             
-            const marker = L.marker([m.lat, m.lon], {{ icon }}).addTo(map);
+            // SEM popup automático = menos poluição visual
+            const marker = L.marker([m.lat, m.lon], {{ 
+                icon,
+                interactive: true,
+                keyboard: false  // Remove navegação por teclado (mobile)
+            }}).addTo(map);
             
             marker.on('click', () => {{
                 openCard(m);
