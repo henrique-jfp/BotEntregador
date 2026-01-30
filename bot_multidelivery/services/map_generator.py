@@ -437,8 +437,9 @@ class MapGenerator:
             console.log("🏠 Adicionando marker da BASE:", baseLocation);
             const baseIcon = L.divIcon({{
                 className: 'marker-icon',
-                html: '<div style="border-color: #FF5722; color: #FF5722; background: white; font-weight: bold;">🏠</div>',
-                iconSize: [32, 32]
+                html: '<div class="marker-pin" style="border-color: #FF5722; color: #FF5722;">🏠</div>',
+                iconSize: [32, 32],
+                iconAnchor: [16, 16]
             }});
             
             const baseMarker = L.marker([baseLocation[0], baseLocation[1]], {{ icon: baseIcon }}).addTo(map);
