@@ -3770,30 +3770,30 @@ async def cmd_financeiro(update: Update, context: ContextTypes.DEFAULT_TYPE):
         total_costs = sum(r.delivery_costs + r.other_costs for r in reports)
         total_profit = sum(r.net_profit for r in reports)
         
-        msg = f"""\U0001F4CA <b>RESUMO SEMANAL</b>
+        msg = f"""{chr(0x1F4CA)} <b>RESUMO SEMANAL</b>
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-\U0001F4C5 Período: {start_date.strftime('%d/%m')} a {end_date.strftime('%d/%m/%Y')}
-\U0001F4C6 Dias com dados: {len(reports)}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-<b>\U0001F4B5 TOTAIS DA SEMANA</b>
-
-\U0001F4C8 Receita: <b>R$ {total_revenue:,.2f}</b>
-\U0001F4B8 Custos: R$ {total_costs:,.2f}
-\U0001F4B0 Lucro: <b>R$ {total_profit:,.2f}</b>
+{chr(0x1F4C5)} Período: {start_date.strftime('%d/%m')} a {end_date.strftime('%d/%m/%Y')}
+{chr(0x1F4C6)} Dias com dados: {len(reports)}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-<b>\U0001F4C8 MÉDIAS DIÁRIAS</b>
+<b>{chr(0x1F4B5)} TOTAIS DA SEMANA</b>
+
+{chr(0x1F4C8)} Receita: <b>R$ {total_revenue:,.2f}</b>
+{chr(0x1F4B8)} Custos: R$ {total_costs:,.2f}
+{chr(0x1F4B0)} Lucro: <b>R$ {total_profit:,.2f}</b>
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+<b>{chr(0x1F4C8)} MÉDIAS DIÁRIAS</b>
 
 Receita: R$ {total_revenue/len(reports):,.2f}
 Lucro: R$ {total_profit/len(reports):,.2f}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-\U0001F4A1 Use <code>/fechar_semana</code> para dividir lucros"""
+{chr(0x1F4A1)} Use <code>/fechar_semana</code> para dividir lucros"""
         
         await update.message.reply_text(msg, parse_mode='HTML')
     
@@ -3835,14 +3835,14 @@ async def cmd_fechar_semana(update: Update, context: ContextTypes.DEFAULT_TYPE):
         'week_start': week_start.strftime('%Y-%m-%d')
     })
     
-    msg = f"""\U0001F4B0 <b>FECHAMENTO SEMANAL</b>
+    msg = f"""{chr(0x1F4B0)} <b>FECHAMENTO SEMANAL</b>
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-\U0001F4C5 Semana: {week_start.strftime('%d/%m/%Y')} a {(week_start + timedelta(days=6)).strftime('%d/%m/%Y')}
+{chr(0x1F4C5)} Semana: {week_start.strftime('%d/%m/%Y')} a {(week_start + timedelta(days=6)).strftime('%d/%m/%Y')}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-<b>\U0001F3E2 CUSTOS OPERACIONAIS DA SEMANA</b>
+<b>{chr(0x1F3E2)} CUSTOS OPERACIONAIS DA SEMANA</b>
 
 Digite o valor total de custos operacionais:
 • Aluguel
