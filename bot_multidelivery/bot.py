@@ -4,7 +4,7 @@ Fluxo completo de admin + entregadores
 """
 import os
 import logging
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, ContextTypes, filters
 from datetime import datetime, timedelta
 from .config import BotConfig, DeliveryPartner
@@ -396,6 +396,35 @@ Fale diretamente com o admin!
             parse_mode='HTML',
             reply_markup=reply_markup
         )
+
+
+async def cmd_cancelar(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """🚫 Cancela qualquer operação em andamento"""
+    user_id = update.effective_user.id
+    
+    # Limpa estado do admin no SessionManager
+    session_manager.clear_admin_state(user_id)
+    
+    # Limpa dados temporários do contexto do Telegram
+    if context.user_data:
+        context.user_data.clear()
+        
+    # Limpa dados temporários do services se houver
+    if hasattr(session_manager, 'temp_data') and user_id in session_manager.temp_data:
+        session_manager.temp_data.pop(user_id, None)
+    
+    # Remove teclado se houver
+    reply_markup = ReplyKeyboardRemove()
+    
+    await update.message.reply_text(
+        "🚫 <b>OPERAÇÃO CANCELADA</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "Todo o fluxo atual foi interrompido e os estados limpos.\n"
+        "O bot está pronto para uma nova tarefa.\n\n"
+        "<i>Dica: Se algo travou, isso geralmente resolve.</i>",
+        parse_mode='HTML',
+        reply_markup=reply_markup
+    )
 
 
 async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -4818,6 +4847,7 @@ def run_bot():
             # Handlers
             app.add_handler(CommandHandler("start", cmd_start))
             app.add_handler(CommandHandler("help", cmd_help))
+            app.add_handler(CommandHandler("cancelar", cmd_cancelar))  # 🚫 NOVO COMMANDO DE EMERGÊNCIA
             app.add_handler(CommandHandler("importar", handle_document_message))  # Novo comando!
             app.add_handler(CommandHandler("otimizar", cmd_distribuir_rota))  # Renomeado!
             app.add_handler(CommandHandler("distribuir", cmd_distribuir_rota))  # Mantido por compatibilidade
