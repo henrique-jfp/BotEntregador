@@ -455,18 +455,30 @@ class MapGenerator:
         
         // 🎯 Função para criar pin estilo Shopee
         function createShopeePin(number, status) {{
-            const statusClass = `pin-${{status}}`;
+            let statusClass = `pin-${{status}}`;
+            let displayText = number;
+            
+            // Símbolos especiais para status finais
+            if (status === 'completed') {{
+                displayText = '✓';
+            }} else if (status === 'failed') {{
+                displayText = '✗';
+            }}
+            
             return L.divIcon({{
                 className: 'pin-container',
                 html: `<div class="pin-marker ${{statusClass}}">
                          <div class="pin-body"></div>
-                         <div class="pin-number">${{number}}</div>
+                         <div class="pin-number">${{displayText}}</div>
                        </div>`,
                 iconSize: [32, 40],
-                iconAnchor: [16, 40],  // Ponta do pin
+                iconAnchor: [16, 40],
                 popupAnchor: [0, -40]
             }});
         }}
+        
+        // 🗺️ Guarda referência aos markers do Leaflet para poder atualizar
+        const leafletMarkers = {{}};
         
         // Adiciona marker da BASE se houver
         if (baseLocation) {{
@@ -488,14 +500,36 @@ class MapGenerator:
             console.log("⚠️ Sem base location configurada");
         }}
         
+        // 📦 Estado local das entregas (para funcionar no navegador)
+        let deliveryStatus = {{}};
+        
+        // Carrega estado salvo (se houver)
+        try {{
+            const saved = localStorage.getItem('deliveryStatus_' + '{entregador_nome}'.replace(/\\s/g, '_'));
+            if (saved) deliveryStatus = JSON.parse(saved);
+        }} catch(e) {{}}
+        
+        function saveStatus() {{
+            try {{
+                localStorage.setItem('deliveryStatus_' + '{entregador_nome}'.replace(/\\s/g, '_'), JSON.stringify(deliveryStatus));
+            }} catch(e) {{}}
+        }}
+        
         // 🎯 Adiciona markers estilo Shopee
         console.log(`📌 Adicionando ${{markers.length}} pins Shopee no mapa...`);
         let markersAdded = 0;
         
         markers.forEach((m, idx) => {{
             try {{
-                const pinIcon = createShopeePin(m.number, m.status);
+                // Verifica se já tem status salvo
+                const savedStatus = deliveryStatus[m.number] || m.status;
+                m.status = savedStatus;  // Atualiza o objeto
+                
+                const pinIcon = createShopeePin(m.number, savedStatus);
                 const marker = L.marker([m.lat, m.lon], {{ icon: pinIcon }}).addTo(map);
+                
+                // Guarda referência para atualizar depois
+                leafletMarkers[m.number] = marker;
                 
                 marker.on('click', () => {{
                     openCard(m);
@@ -520,52 +554,53 @@ class MapGenerator:
         }}
         
         // ✅ SEM POLYLINE - Mapa de análise mostra só os PONTOS
-        // A numeração nos pins já indica a sequência
-        // Linhas retas ficam feias cortando prédios
         console.log("📍 Mapa limpo - sem linhas de rota (análise visual)");
         
-        // 📦 Estado local das entregas (para funcionar no navegador)
-        let deliveryStatus = {{}};
-        
-        // Carrega estado salvo (se houver)
-        try {{
-            const saved = localStorage.getItem('deliveryStatus');
-            if (saved) deliveryStatus = JSON.parse(saved);
-        }} catch(e) {{}}
-        
-        function saveStatus() {{
-            try {{
-                localStorage.setItem('deliveryStatus', JSON.stringify(deliveryStatus));
-            }} catch(e) {{}}
-        }}
-        
-        // Atualiza visual do pin no mapa
-        function updatePinVisual(stopNumber, newStatus) {{
-            // Encontra o marker no array e atualiza
-            const m = markers.find(x => x.number === stopNumber);
-            if (m) {{
-                m.status = newStatus;
-                // Atualiza contador no header
-                updateProgress();
+        // 🔄 Função para atualizar o ícone de um pin no mapa
+        function updatePinOnMap(stopNumber, newStatus) {{
+            const marker = leafletMarkers[stopNumber];
+            if (marker) {{
+                const newIcon = createShopeePin(stopNumber, newStatus);
+                marker.setIcon(newIcon);
+                console.log(`🔄 Pin ${{stopNumber}} atualizado para ${{newStatus}}`);
             }}
+            
+            // Atualiza também no array de markers
+            const m = markers.find(x => x.number === stopNumber);
+            if (m) m.status = newStatus;
         }}
         
+        // 📊 Atualiza contador no header
         function updateProgress() {{
-            const completed = Object.values(deliveryStatus).filter(s => s === 'completed').length;
+            const completed = markers.filter(m => m.status === 'completed' || m.status === 'failed').length;
             document.getElementById('progress').textContent = `${{completed}} de ${{markers.length}} paradas`;
         }}
         
+        // ➡️ Vai para próxima parada pendente
+        function goToNextPending() {{
+            const nextPending = markers.find(m => m.status === 'pending' || m.status === 'current');
+            if (nextPending) {{
+                openCard(nextPending);
+                // Centraliza no mapa
+                map.setView([nextPending.lat, nextPending.lon], 16);
+            }} else {{
+                // Todas finalizadas!
+                closeCard();
+                alert('🎉 Todas as entregas finalizadas!');
+            }}
+        }}
         // Funcoes
         function openCard(marker) {{
             currentMarker = marker;
             
-            // Verifica status salvo localmente
-            const savedStatus = deliveryStatus[marker.number] || marker.status;
-            
             document.getElementById('card-number').textContent = marker.number;
             document.getElementById('card-address').textContent = marker.address;
+            
+            const statusText = marker.status === 'completed' ? '✅ Entregue' : 
+                              marker.status === 'failed' ? '❌ Insucesso' : 
+                              '📦 Pendente';
             document.getElementById('card-info').textContent = 
-                `Entrega ${{marker.packages}} unidade${{marker.packages > 1 ? 's' : ''}} | Status: ${{savedStatus}}`;
+                `Entrega ${{marker.packages}} unidade${{marker.packages > 1 ? 's' : ''}} | ${{statusText}}`;
             
             document.getElementById('bottom-card').classList.add('visible');
         }}
@@ -584,94 +619,121 @@ class MapGenerator:
         function markDelivered() {{
             if (!currentMarker) return;
             
-            // Salva status localmente
-            deliveryStatus[currentMarker.number] = 'completed';
-            saveStatus();
-            updatePinVisual(currentMarker.number, 'completed');
+            const stopNum = currentMarker.number;
             
-            // Tenta enviar pro Telegram (se estiver no WebApp)
+            // 1. Salva status
+            deliveryStatus[stopNum] = 'completed';
+            saveStatus();
+            
+            // 2. Atualiza o pin no mapa (muda cor para cinza + ✓)
+            updatePinOnMap(stopNum, 'completed');
+            
+            // 3. Atualiza contador
+            updateProgress();
+            
+            // 4. Feedback visual no botão
+            const btn = event.target;
+            btn.textContent = '✓ Entregue!';
+            btn.style.background = '#2E7D32';
+            
+            // 5. Tenta enviar pro Telegram (se estiver no WebApp)
             try {{
                 if (window.Telegram && window.Telegram.WebApp) {{
                     window.Telegram.WebApp.sendData(JSON.stringify({{
                         action: 'delivered',
-                        stop: currentMarker.number,
+                        stop: stopNum,
                         address: currentMarker.address
                     }}));
                 }}
             }} catch(e) {{}}
             
-            // Feedback visual
-            const btn = event.target;
-            btn.textContent = '✓ Marcado!';
-            btn.style.background = '#2E7D32';
-            
+            // 6. Vai para próxima parada após 500ms
             setTimeout(() => {{
                 btn.textContent = 'Entregue';
                 btn.style.background = '#4CAF50';
-                closeCard();
-            }}, 800);
+                goToNextPending();
+            }}, 500);
         }}
         
         function markFailed() {{
             if (!currentMarker) return;
             
-            // Salva status localmente
-            deliveryStatus[currentMarker.number] = 'failed';
-            saveStatus();
-            updatePinVisual(currentMarker.number, 'failed');
+            const stopNum = currentMarker.number;
             
+            // 1. Salva status
+            deliveryStatus[stopNum] = 'failed';
+            saveStatus();
+            
+            // 2. Atualiza o pin no mapa (muda cor para vermelho + ✗)
+            updatePinOnMap(stopNum, 'failed');
+            
+            // 3. Atualiza contador
+            updateProgress();
+            
+            // 4. Feedback visual no botão
+            const btn = event.target;
+            btn.textContent = '✗ Insucesso!';
+            btn.style.background = '#B71C1C';
+            
+            // 5. Tenta enviar pro Telegram
             try {{
                 if (window.Telegram && window.Telegram.WebApp) {{
                     window.Telegram.WebApp.sendData(JSON.stringify({{
                         action: 'failed',
-                        stop: currentMarker.number,
+                        stop: stopNum,
                         address: currentMarker.address
                     }}));
                 }}
             }} catch(e) {{}}
             
-            // Feedback visual
-            const btn = event.target;
-            btn.textContent = '✗ Insucesso';
-            btn.style.background = '#B71C1C';
-            
+            // 6. Vai para próxima parada após 500ms
             setTimeout(() => {{
                 btn.textContent = 'Insucesso';
                 btn.style.background = '#F44336';
-                closeCard();
-            }}, 800);
+                goToNextPending();
+            }}, 500);
         }}
         
         function transferPackage() {{
             if (!currentMarker) return;
             
-            // Salva status localmente
-            deliveryStatus[currentMarker.number] = 'transfer';
+            // Transferir abre prompt para escolher destino
+            const destino = prompt('Para quem transferir? (nome do entregador)');
+            if (!destino) return;
+            
+            const stopNum = currentMarker.number;
+            
+            // Marca como transferido (status especial)
+            deliveryStatus[stopNum] = 'transfer';
             saveStatus();
+            
+            // Feedback visual
+            const btn = event.target;
+            btn.textContent = '↗ Transferido!';
+            btn.style.background = '#1565C0';
             
             try {{
                 if (window.Telegram && window.Telegram.WebApp) {{
                     window.Telegram.WebApp.sendData(JSON.stringify({{
                         action: 'transfer',
-                        stop: currentMarker.number,
-                        address: currentMarker.address
+                        stop: stopNum,
+                        address: currentMarker.address,
+                        destino: destino
                     }}));
                 }}
             }} catch(e) {{}}
             
-            // Feedback visual
-            const btn = event.target;
-            btn.textContent = '↗ Transferindo...';
-            btn.style.background = '#1565C0';
-            
             setTimeout(() => {{
                 btn.textContent = 'Transferir';
                 btn.style.background = '#2196F3';
-                closeCard();
-            }}, 800);
+                goToNextPending();
+            }}, 500);
         }}
         
-        // Abre automaticamente primeiro marker
+        // Atualiza progresso inicial
+        updateProgress();
+        
+        // Abre automaticamente primeiro marker pendente
         if (markers.length > 0) {{
             const firstPending = markers.find(m => m.status === 'pending' || m.status === 'current');
             if (firstPending) {{
