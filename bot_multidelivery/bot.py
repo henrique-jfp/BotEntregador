@@ -23,6 +23,67 @@ import uuid
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# ==================== EMOJI FIX BY ENZITO 🚀 ====================
+from telegram import Bot
+
+EMOJI_MAP = {
+    "[ROCKET]": "🚀", "[PACOTE]": "📦", "[GRAFICO]": "📊", "[DINHEIRO]": "💰",
+    "[PESSOAS]": "👥", "[MAPA]": "🗺️", "[OK]": "✅", "[X]": "❌",
+    "[ALERTA]": "⚠️", "[DICA]": "💡", "[FIRE]": "🔥", "[PIN]": "📍",
+    "[ESTRADA]": "🛣️", "[TEMPO]": "⏱️", "[RAPIDO]": "⚡", "[CELULAR]": "📱",
+    "[OLHO]": "👁️", "[VERMELHO]": "🔴", "[VERDE]": "🟢", "[AZUL]": "🔵",
+    "[AMARELO]": "🟡", "[BRANCO]": "⚪", "[TAG]": "🏷️", "[DOC]": "📄",
+    "[CLIP]": "📎", "[SOCIO]": "🤝", "[COLAB]": "👷", "[ALVO]": "🎯",
+    "[LISTA]": "📋", "[PASTA]": "📂", "[R$]": "💵", "[ESTRELA]": "⭐"
+}
+
+def replace_tags(text: str) -> str:
+    """Substitui tags BRUTAS por Emojis bonitinhos"""
+    if not isinstance(text, str): return text
+    for tag, emoji in EMOJI_MAP.items():
+        text = text.replace(tag, emoji)
+    return text
+
+# Monkey Patching methods
+_original_send_message = Bot.send_message
+_original_edit_message_text = Bot.edit_message_text
+_original_send_document = Bot.send_document
+_original_send_photo = Bot.send_photo
+
+async def _patched_send_message(self, chat_id, text, *args, **kwargs):
+    try:
+        if kwargs.get('text'): kwargs['text'] = replace_tags(kwargs['text'])
+        else: text = replace_tags(text)
+    except: pass
+    return await _original_send_message(self, chat_id, text, *args, **kwargs)
+
+async def _patched_edit_message_text(self, text, *args, **kwargs):
+    try:
+        if kwargs.get('text'): kwargs['text'] = replace_tags(kwargs['text'])
+        else: text = replace_tags(text)
+    except: pass
+    return await _original_edit_message_text(self, text=text, *args, **kwargs)
+
+async def _patched_send_document(self, chat_id, document, *args, **kwargs):
+    try:
+        if kwargs.get('caption'): kwargs['caption'] = replace_tags(kwargs['caption'])
+    except: pass
+    return await _original_send_document(self, chat_id, document, *args, **kwargs)
+
+async def _patched_send_photo(self, chat_id, photo, *args, **kwargs):
+    try:
+        if kwargs.get('caption'): kwargs['caption'] = replace_tags(kwargs['caption'])
+    except: pass
+    return await _original_send_photo(self, chat_id, photo, *args, **kwargs)
+
+Bot.send_message = _patched_send_message
+Bot.edit_message_text = _patched_edit_message_text
+Bot.send_document = _patched_send_document
+Bot.send_photo = _patched_send_photo
+
+logger.info("✅ [ENZITO FIX] Sistema de Emojis Ativado com Sucesso (FULL)!")
+# ================================================================
+
 
 # ==================== ADMIN HANDLERS ====================
 
@@ -435,6 +496,11 @@ async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     
     # Admin flow
     if user_id == BotConfig.ADMIN_TELEGRAM_ID:
+        # [RAPIDO] Alias para comando /analisar_rota
+        if text.strip().lower().startswith('/analisar rota'):
+            await cmd_analisar_rota(update, context)
+            return
+
         await handle_admin_message(update, context, text)
     else:
         # Deliverer flow
@@ -1510,8 +1576,9 @@ async def process_route_analysis_text(update: Update, context: ContextTypes.DEFA
         # ═══════════════════════════════════════════
         # ANÁLISE COM IA (mesmo código que Excel)
         # ═══════════════════════════════════════════
+        route_value = session_manager.get_temp_data(user_id, "route_value") or 0.0
         from bot_multidelivery.services.route_analyzer import route_analyzer
-        analysis = route_analyzer.analyze_route(deliveries_data)
+        analysis = route_analyzer.analyze_route(deliveries_data, route_value=route_value)
         
         # ═══════════════════════════════════════════
         # GERA MAPA HTML (AGRUPA ENDEREÇOS DUPLICADOS)
@@ -1562,22 +1629,25 @@ async def process_route_analysis_text(update: Update, context: ContextTypes.DEFA
         # ═══════════════════════════════════════════
         # ENVIA ANÁLISE + MAPA
         # ═══════════════════════════════════════════
-        score = analysis.get('score', 0)
+        score = analysis.overall_score
         score_emoji = "[VERDE]" if score >= 7 else "[AMARELO]" if score >= 5 else "[VERMELHO]"
+        
+        # Correção: Acessar atributos do objeto dataclass diretamente (não é dict)
+        revenue_est = analysis.route_value if analysis.route_value > 0 else 0.0
         
         msg = (
             f"{score_emoji} <b>ANÁLISE DE ROTA - TEXTO</b>\n"
             f"---\n\n"
             f"[ESTRELA] <b>Score Viabilidade: {score}/10</b>\n\n"
             f"[GRAFICO] <b>ESTATÍSTICAS</b>\n"
-            f"[PACOTE] {analysis.get('total_stops', 0)} pontos de entrega\n"
-            f"📏 {analysis.get('total_distance_km', 0):.1f} km (estimado)\n"
-            f"[TEMPO] {analysis.get('estimated_time_min', 0)} min (estimado)\n"
-            f"[DINHEIRO] Receita estimada: R$ {analysis.get('estimated_revenue', 0):.2f}\n\n"
+            f"[PACOTE] {analysis.total_stops} pontos de entrega\n"
+            f"📏 {analysis.total_distance_km:.1f} km (estimado)\n"
+            f"[TEMPO] {analysis.estimated_time_minutes:.0f} min (estimado)\n"
+            f"[DINHEIRO] Receita estimada: R$ {revenue_est:.2f}\n\n"
         )
         
         # Prós
-        pros = analysis.get('pros', [])
+        pros = analysis.pros
         if pros:
             msg += "[OK] <b>PONTOS POSITIVOS</b>\n"
             for pro in pros:
@@ -1585,7 +1655,7 @@ async def process_route_analysis_text(update: Update, context: ContextTypes.DEFA
             msg += "\n"
         
         # Contras
-        cons = analysis.get('cons', [])
+        cons = analysis.cons
         if cons:
             msg += "[X] <b>PONTOS NEGATIVOS</b>\n"
             for con in cons:
@@ -1593,7 +1663,7 @@ async def process_route_analysis_text(update: Update, context: ContextTypes.DEFA
             msg += "\n"
         
         # Comentário
-        comment = analysis.get('comment', '')
+        comment = analysis.ai_comment
         if comment:
             msg += f"💬 <b>CONCLUSÃO</b>\n{comment}\n\n"
         
