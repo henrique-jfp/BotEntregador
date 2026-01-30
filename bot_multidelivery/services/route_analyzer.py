@@ -191,14 +191,14 @@ class RouteAnalyzer:
         # Prós e Contras
         pros = []
         if density > 50: pros.append("Alta densidade (muitos pacotes/km²)")
-        if avg_dist_between_stops < 0.5: pros.append("Paradas muito próximas (<500m)")
+        if avg_dist_between_stops < 0.5: pros.append("Paradas muito próximas (menos de 500m)")
         if total_packages > 60: pros.append(f"Volume alto ({total_packages} pacotes)")
         if coverage < 2: pros.append("Área compacta (fácil de completar)")
         if hourly_earnings > 25: pros.append(f"Boa média/hora (R$ {hourly_earnings:.2f})")
         
         cons = []
         if density < 10: cons.append("Baixa densidade (muita rodagem)")
-        if avg_dist_between_stops > 2: cons.append("Paradas distantes (>2km)")
+        if avg_dist_between_stops > 2: cons.append("Paradas distantes (mais de 2km)")
         if total_packages < 20: cons.append("Poucos pacotes")
         if dist_to_first > 15: cons.append(f"Longe da base ({dist_to_first:.1f}km)")
         if "Comercial" in route_type: cons.append("Muitos endereços comerciais (atenção horário)")

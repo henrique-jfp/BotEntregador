@@ -132,10 +132,40 @@ class GeocodingService:
     def _sanitize_address(self, address: str) -> str:
         """Limpa observacoes excessivas para melhorar match no OSM."""
         addr = address or ""
-        addr = re.sub(r"\(.*?\)", "", addr)  # remove parenteses
-        addr = re.sub(r"\b(portaria|recepcao|entrada|bloco [a-z0-9]+|bl\.?\s?[a-z0-9]+)\b", "", addr, flags=re.IGNORECASE)
+        
+        # 1. Remove texto entre parenteses (comum para ref)
+        addr = re.sub(r"\(.*?\)", "", addr)
+        
+        # 2. Remove complementos comuns (regex case insensitive)
+        # Ex: "Apt 101", "Sala 305", "Loja B", "Bloco 2", "Ao lado de..."
+        # Remove do termo encontrado até o fim da string (assumindo que complemento vem no fim)
+        # OU remove apenas o termo e o numero seguinte.
+        
+        # Lista de termos que indicam inicio de complemento que pode ser descartado
+        stop_words = [
+            r"apartamento", r"apto", r"apt", r"ap\.?", 
+            r"sala", r"sl\.?", 
+            r"loja", r"lj\.?", 
+            r"sobreloja", r"subsolo", 
+            r"cobertura", r"cob\.?", 
+            r"bloco", r"bl\.?", 
+            r"portaria", r"recepcao", r"entrada", 
+            r"ao lado", r"perto", r"próximo", r"frente", r"fundos",
+            r"condominio", r"edificio", r"ed\.?",
+            r"shopping", r"galeria", r"posto", r"mercado"
+        ]
+        
+        # \b no inicio garante que "sapato" nao seja pego por "ap"
+        # Sem \b no fim para pegar "Apto104" (merged)
+        pattern = r"\b(" + "|".join(stop_words) + r").*"
+        addr = re.sub(pattern, "", addr, flags=re.IGNORECASE)
+
+        # 3. Limpeza final de espaços e pontuação solta no fim
+        # Ex: "Rua Gilberto, 123, " -> "Rua Gilberto, 123"
         addr = re.sub(r"\s+", " ", addr)
-        return addr.strip(", ")
+        addr = addr.strip(",. -")
+        
+        return addr
 
     def _extract_neighborhood(self, address: str) -> Optional[str]:
         tokens = [t.strip() for t in re.split(r"[,;]", address) if t.strip()]
