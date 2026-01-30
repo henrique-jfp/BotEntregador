@@ -2035,7 +2035,7 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
         if not session.romaneios:
             next_step = "📥 <b>Nenhum pacote importado!</b> Use /importar."
         elif not session.routes:
-            next_step = "⚙️ <b>Pacotes prontos!</b> Use /otimizar para criar rotas."
+            next_step = "⚙️ <b>Pacotes prontos!</b> Use o botão abaixo para criar rotas."
             buttons.append([InlineKeyboardButton("🚀 Otimizar Agora", callback_data="shortcut_optimize")])
         elif pending > 0:
             next_step = f"🚀 <b>Em andamento!</b> Restam {pending} pacotes."
@@ -2066,7 +2066,11 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
     # ═══════════════════════════════════════════
     if data == "shortcut_optimize":
         await query.answer("🚀 Iniciando otimização...")
-        await cmd_otimizar_rotas(update, context)
+        await cmd_otimizar_rotas(update, context) # Agora existe!
+        return
+        
+    if data.startswith("optimize_num_"):
+        await handle_optimization_num(update, context)
         return
 
     if data == "shortcut_separacao":
@@ -4512,7 +4516,10 @@ async def _execute_route_distribution(update: Update, context: ContextTypes.DEFA
     num_entregadores = temp.get('otimizar_num')
     colors_selected = temp.get('colors_selected', [])
     
-    if not excel_path or not num_entregadores:
+    # Se excel_path for None, estamos no modo INTERATIVO (sessão memory)
+    is_interactive = excel_path is None
+    
+    if not num_entregadores:
         msg = "❌ Dados perdidos. Refaça o comando /otimizar"
         if query:
             await query.edit_message_text(msg)
@@ -4535,9 +4542,9 @@ async def _execute_route_distribution(update: Update, context: ContextTypes.DEFA
     
     # Edita mensagem pra mostrar processamento
     processing_msg = (
-        "⏳ <b>PROCESSANDO ROMANEIO...</b>\n\n"
+        "⏳ <b>PROCESSANDO ENTREGAS...</b>\n\n"
         f"🎨 Cores selecionadas: {', '.join(colors_selected)}\n\n"
-        "• Carregando entregas do arquivo\n"
+        "• Recuperando pontos da sessão\n"
         "• Agrupando por STOP\n"
         "• Dividindo entre entregadores\n"
         "• Otimizando rotas (Scooter Mode)\n"
@@ -4556,10 +4563,59 @@ async def _execute_route_distribution(update: Update, context: ContextTypes.DEFA
         from bot_multidelivery.services.roteo_divider import RoteoDivider
         from bot_multidelivery.services.map_generator import MapGenerator
         
-        # Parse Excel
-        deliveries = ShopeeRomaneioParser.parse(excel_path)
+        # OBTEM OS DADOS (Do arquivo ou da sessão)
+        deliveries = []
+        if is_interactive:
+            # Modo Session: Recupera do current_session.romaneios
+            session = session_manager.get_current_session()
+            if not session or not session.romaneios:
+                raise Exception("Sessão vazia ou perdida.")
+                
+            # Converter DeliveryPoints da sessão volta para formato que o divider aceita
+            # O RoteoDivider espera lista de objetos compatíveis com ShopeeDelivery
+            # Vou reconstruir dicts compatíveis
+            for romaneio in session.romaneios:
+                for pt in romaneio.points:
+                    deliveries.append({
+                        'tracking': pt.id,
+                        'address': pt.address,
+                        'bairro': '', 
+                        'city': '',
+                        'lat': pt.lat,
+                        'lon': pt.lng,
+                        'stop': 0, # STOP será recalculado
+                        'customer': '',
+                        'phone': ''
+                    })
+            
+            # Precisamos converter dicts para objetos se o divider espera objetos?
+            # Releitura rápida do parser: retorna objetos ShopeeDelivery.
+            # O divider espera LISTA DE OBJETOS COM ATRIBUTOS.
+            # Vou simular objeto compatível.
+            from collections import namedtuple
+            SimpleDelivery = namedtuple('SimpleDelivery', ['tracking', 'address', 'bairro', 'city', 'latitude', 'longitude', 'stop', 'customer_name', 'phone'])
+            
+            obj_deliveries = []
+            for d in deliveries:
+                obj_deliveries.append(SimpleDelivery(
+                    tracking=d['tracking'],
+                    address=d['address'],
+                    bairro=d['bairro'],
+                    city=d['city'],
+                    latitude=d['lat'],
+                    longitude=d['lon'],
+                    stop=d['stop'],
+                    customer_name=d['customer'],
+                    phone=d['phone']
+                ))
+            deliveries = obj_deliveries
+
+        else:
+            # Modo Legado: Lê Excel do path
+            deliveries = ShopeeRomaneioParser.parse(excel_path)
         
         # Pega entregadores disponiveis
+
         all_deliverers = deliverer_service.get_all_deliverers()
         if len(all_deliverers) < num_entregadores:
             msg = (
