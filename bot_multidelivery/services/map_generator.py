@@ -161,6 +161,24 @@ class MapGenerator:
             height: 100vh;
         }}
         
+        /* Aviso de mapa vazio */
+        #empty-warning {{
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2000;
+            background: #FF5722;
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+            font-size: 20px;
+            font-weight: bold;
+            text-align: center;
+            display: none;
+        }}
+        
         .header {{
             position: absolute;
             top: 10px;
@@ -333,6 +351,12 @@ class MapGenerator:
     </style>
 </head>
 <body>
+    <div id="empty-warning">
+        ⚠️ MAPA VAZIO!<br>
+        Nenhum marker encontrado.<br>
+        <small>Verifique o console (F12)</small>
+    </div>
+    
     <div class="header">
         <div class="title">{entregador_nome}</div>
         <div class="stats">
@@ -374,11 +398,26 @@ class MapGenerator:
     <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
     
     <script>
+        // 🔍 DEBUG: Mostra quantos markers chegaram
+        console.log("🚀 Iniciando mapa...");
+        
         // Dados dos markers
-        const markers = {markers_json};
+        let markers = [];
+        try {{
+            markers = {markers_json};
+            console.log(`✅ ${markers.length} markers carregados do JSON`);
+            if (markers.length === 0) {{
+                console.error("⚠️ MARKERS VAZIO! Nenhum ponto para marcar!");
+            }}
+        }} catch (e) {{
+            console.error("❌ ERRO ao parsear markers JSON:", e);
+            console.error("JSON recebido:", {markers_json});
+        }}
+        
         let currentMarker = null;
         
         // Inicializa mapa com zoom automático
+        console.log("📍 Criando mapa centrado em [{center_lat}, {center_lon}]");
         const map = L.map('map').setView([{center_lat}, {center_lon}], {zoom});
         
         // Tile layer (OpenStreetMap)
@@ -406,6 +445,7 @@ class MapGenerator:
         // Adiciona marker da BASE se houver
         const baseLocation = {json.dumps(base_location) if base_location else 'null'};
         if (baseLocation) {{
+            console.log("🏠 Adicionando marker da BASE:", baseLocation);
             const baseIcon = L.divIcon({{
                 className: 'marker-icon',
                 html: '<div style="border-color: #FF5722; color: #FF5722; background: white; font-weight: bold;">🏠</div>',
@@ -414,34 +454,53 @@ class MapGenerator:
             
             const baseMarker = L.marker([baseLocation[0], baseLocation[1]], {{ icon: baseIcon }}).addTo(map);
             baseMarker.bindPopup(`<b>🏠 BASE</b><br>${{baseLocation[2]}}`);
+        }} else {{
+            console.log("⚠️ Sem base location configurada");
         }}
         
         // Adiciona markers das entregas - OTIMIZADO PARA MOBILE
+        console.log(`📌 Adicionando ${markers.length} markers no mapa...`);
+        let markersAdded = 0;
+        
         markers.forEach((m, idx) => {{
-            const icon = L.divIcon({{
-                className: 'marker-icon',
-                // Usa SYMBOL (✓, ✗ ou número) em vez de sempre número
-                html: `<div style="border-color: ${{m.color}}; color: ${{m.color}}; background: white;">${{m.symbol}}</div>`,
-                iconSize: [30, 30],  // Tamanho ideal para mobile
-                iconAnchor: [15, 15]  // Centraliza perfeitamente
-            }});
-            
-            // SEM popup automático = menos poluição visual
-            const marker = L.marker([m.lat, m.lon], {{ 
-                icon,
-                interactive: true,
-                keyboard: false  // Remove navegação por teclado (mobile)
-            }}).addTo(map);
-            
-            marker.on('click', () => {{
-                openCard(m);
-            }});
-            
-            // Destaca marker atual
-            if (m.is_current) {{
-                marker.setZIndexOffset(1000);
+            try {{
+                const icon = L.divIcon({{
+                    className: 'marker-icon',
+                    // Usa SYMBOL (✓, ✗ ou número) em vez de sempre número
+                    html: `<div style="border-color: ${{m.color}}; color: ${{m.color}}; background: white;">${{m.symbol}}</div>`,
+                    iconSize: [30, 30],  // Tamanho ideal para mobile
+                    iconAnchor: [15, 15]  // Centraliza perfeitamente
+                }});
+                
+                // SEM popup automático = menos poluição visual
+                const marker = L.marker([m.lat, m.lon], {{ 
+                    icon,
+                    interactive: true,
+                    keyboard: false  // Remove navegação por teclado (mobile)
+                }}).addTo(map);
+                
+                marker.on('click', () => {{
+                    openCard(m);
+                }});
+                
+                // Destaca marker atual
+                if (m.is_current) {{
+                    marker.setZIndexOffset(1000);
+                }}
+                
+                markersAdded++;
+            }} catch (e) {{
+                console.error(`❌ ERRO ao adicionar marker #${idx}:`, e, m);
             }}
         }});
+        
+        console.log(`✅ ${markersAdded} markers adicionados com sucesso!`);
+        
+        // 🚨 Mostra aviso se não tiver markers
+        if (markersAdded === 0) {{
+            console.error("🚨 NENHUM MARKER ADICIONADO AO MAPA!");
+            document.getElementById('empty-warning').style.display = 'block';
+        }}
         
         // ⚠️ SCOOTER: Usa linha reta (não segue ruas de carro)
         // Scooters podem: contramão, calçada, atalhos
