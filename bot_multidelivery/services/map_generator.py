@@ -32,7 +32,8 @@ class MapGenerator:
         total_packages: int = 0,
         total_distance_km: float = 0,
         total_time_min: float = 0,
-        base_location: Tuple[float, float, str] = None  # (lat, lon, address)
+        base_location: Tuple[float, float, str] = None,  # (lat, lon, address)
+        entregadores_lista: List[dict] = None  # Lista de entregadores para transferência
     ) -> str:
         """
         Gera HTML do mapa interativo
@@ -45,6 +46,7 @@ class MapGenerator:
             total_distance_km: Distancia total
             total_time_min: Tempo estimado total
             base_location: (lat, lon, endereco) da base
+            entregadores_lista: Lista de dicts {name, id} para transferência
             
         Returns:
             HTML completo do mapa
@@ -362,6 +364,92 @@ class MapGenerator:
             color: #333;
             padding: 0;
         }}
+        
+        /* Pin de transferência (roxo) */
+        .pin-transfer .pin-body {{ background: linear-gradient(135deg, #9C27B0 0%, #6A1B9A 100%); }}
+        
+        /* Badge de pacotes recebidos (+N) */
+        .received-badge {{
+            position: fixed;
+            top: 80px;
+            right: 15px;
+            background: linear-gradient(135deg, #FF9800 0%, #E65100 100%);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 14px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            z-index: 1001;
+            cursor: pointer;
+            display: none;
+        }}
+        
+        /* Modal de transferência */
+        .transfer-modal {{
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }}
+        
+        .transfer-modal.visible {{
+            display: flex;
+        }}
+        
+        .transfer-content {{
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            width: 90%;
+            max-width: 350px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }}
+        
+        .transfer-title {{
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+        }}
+        
+        .entregador-btn {{
+            display: block;
+            width: 100%;
+            padding: 15px;
+            margin: 8px 0;
+            border: 2px solid #2196F3;
+            border-radius: 12px;
+            background: white;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }}
+        
+        .entregador-btn:hover {{
+            background: #2196F3;
+            color: white;
+        }}
+        
+        .cancel-transfer {{
+            display: block;
+            width: 100%;
+            padding: 12px;
+            margin-top: 15px;
+            border: none;
+            border-radius: 12px;
+            background: #f5f5f5;
+            color: #666;
+            font-size: 14px;
+            cursor: pointer;
+        }}
     </style>
 </head>
 <body>
@@ -380,6 +468,20 @@ class MapGenerator:
     </div>
     
     <div id="map"></div>
+    
+    <!-- Badge de pacotes recebidos -->
+    <div id="received-badge" class="received-badge" onclick="showReceivedPackages()">
+        📦 +<span id="received-count">0</span> recebido(s)
+    </div>
+    
+    <!-- Modal de transferência -->
+    <div id="transfer-modal" class="transfer-modal">
+        <div class="transfer-content">
+            <div class="transfer-title">↗️ Transferir para:</div>
+            <div id="entregadores-list"></div>
+            <button class="cancel-transfer" onclick="closeTransferModal()">Cancelar</button>
+        </div>
+    </div>
     
     <div id="bottom-card" class="bottom-card">
         <div class="card-header">
@@ -576,18 +678,224 @@ class MapGenerator:
             document.getElementById('progress').textContent = `${{completed}} de ${{markers.length}} paradas`;
         }}
         
-        // ➡️ Vai para próxima parada pendente
+        // ➡️ Vai para próxima parada pendente com zoom adequado
         function goToNextPending() {{
             const nextPending = markers.find(m => m.status === 'pending' || m.status === 'current');
             if (nextPending) {{
-                openCard(nextPending);
-                // Centraliza no mapa
-                map.setView([nextPending.lat, nextPending.lon], 16);
-            }} else {{
-                // Todas finalizadas!
+                // Fecha card atual primeiro
                 closeCard();
-                alert('🎉 Todas as entregas finalizadas!');
+                
+                // Anima o mapa até a próxima parada com zoom 18 (ver rua claramente)
+                map.flyTo([nextPending.lat, nextPending.lon], 18, {{
+                    duration: 1.0,  // 1 segundo de animação
+                    easeLinearity: 0.5
+                }});
+                
+                // Abre o card após a animação
+                setTimeout(() => {{
+                    openCard(nextPending);
+                }}, 1000);
+            }} else {{
+                // Todas finalizadas! Mostra visão geral
+                closeCard();
+                
+                // Volta pro zoom que mostra todas as paradas
+                const allPoints = markers.map(m => [m.lat, m.lon]);
+                if (allPoints.length > 0) {{
+                    map.flyToBounds(L.latLngBounds(allPoints), {{
+                        padding: [50, 50],
+                        duration: 1.0
+                    }});
+                }}
+                
+                setTimeout(() => {{
+                    alert('🎉 Parabéns! Todas as entregas finalizadas!');
+                }}, 500);
             }}
+        }}
+        
+        // 📦 Lista de entregadores disponíveis (injetada pelo Python)
+        const entregadoresDisponiveis = {entregadores_json};
+        
+        // Salva no localStorage para sincronizar entre mapas
+        if (entregadoresDisponiveis.length > 0) {{
+            localStorage.setItem('entregadores_lista', JSON.stringify(entregadoresDisponiveis));
+        }}
+        
+        // Carrega entregadores do localStorage (sync entre mapas)
+        function loadEntregadores() {{
+            try {{
+                const saved = localStorage.getItem('entregadores_lista');
+                if (saved) {{
+                    const lista = JSON.parse(saved);
+                    lista.forEach(e => {{
+                        if (!entregadoresDisponiveis.find(x => x.id === e.id)) {{
+                            entregadoresDisponiveis.push(e);
+                        }}
+                    }});
+                }}
+            }} catch(e) {{}}
+        }}
+        loadEntregadores();
+        
+        // 📤 Abre modal de transferência
+        function openTransferModal() {{
+            const list = document.getElementById('entregadores-list');
+            list.innerHTML = '';
+            
+            // Busca entregadores salvos
+            loadEntregadores();
+            
+            if (entregadoresDisponiveis.length === 0) {{
+                // Se não tem lista, usa input manual
+                list.innerHTML = `
+                    <input type="text" id="transfer-dest" placeholder="Nome do entregador" 
+                           style="width:100%; padding:15px; border:2px solid #ddd; border-radius:12px; font-size:16px; margin-bottom:10px;">
+                    <button class="entregador-btn" onclick="transferToManual()" style="background:#2196F3; color:white;">
+                        ✓ Confirmar Transferência
+                    </button>
+                `;
+            }} else {{
+                // Mostra lista de entregadores
+                entregadoresDisponiveis.forEach(e => {{
+                    const btn = document.createElement('button');
+                    btn.className = 'entregador-btn';
+                    btn.innerHTML = `👤 ${{e.name}}`;
+                    btn.onclick = () => transferTo(e);
+                    list.appendChild(btn);
+                }});
+            }}
+            
+            document.getElementById('transfer-modal').classList.add('visible');
+        }}
+        
+        function closeTransferModal() {{
+            document.getElementById('transfer-modal').classList.remove('visible');
+        }}
+        
+        // Transfere para entregador específico
+        function transferTo(entregador) {{
+            if (!currentMarker) return;
+            
+            const stopNum = currentMarker.number;
+            const pacote = {{
+                stop: stopNum,
+                address: currentMarker.address,
+                lat: currentMarker.lat,
+                lon: currentMarker.lon,
+                packages: currentMarker.packages,
+                from: '{entregador_nome}',
+                timestamp: Date.now()
+            }};
+            
+            // Salva pacote transferido na "caixa de entrada" do destino
+            const key = `transferidos_para_${{entregador.id || entregador.name}}`;
+            let inbox = [];
+            try {{
+                const saved = localStorage.getItem(key);
+                if (saved) inbox = JSON.parse(saved);
+            }} catch(e) {{}}
+            inbox.push(pacote);
+            localStorage.setItem(key, JSON.stringify(inbox));
+            
+            // Marca como transferido localmente
+            deliveryStatus[stopNum] = 'transfer';
+            saveStatus();
+            updatePinOnMap(stopNum, 'transfer');
+            updateProgress();
+            
+            // Tenta enviar pro Telegram
+            try {{
+                if (window.Telegram && window.Telegram.WebApp) {{
+                    window.Telegram.WebApp.sendData(JSON.stringify({{
+                        action: 'transfer',
+                        stop: stopNum,
+                        address: currentMarker.address,
+                        to_name: entregador.name,
+                        to_id: entregador.id
+                    }}));
+                }}
+            }} catch(e) {{}}
+            
+            closeTransferModal();
+            alert(`📦 Pacote transferido para ${{entregador.name}}!`);
+            goToNextPending();
+        }}
+        
+        // Transfere com nome manual
+        function transferToManual() {{
+            const dest = document.getElementById('transfer-dest').value.trim();
+            if (!dest) {{
+                alert('Digite o nome do entregador!');
+                return;
+            }}
+            transferTo({{ name: dest, id: dest.toLowerCase().replace(/\s/g, '_') }});
+        }}
+        
+        // 📥 Verifica pacotes recebidos (transferidos para mim)
+        function checkReceivedPackages() {{
+            const myId = '{entregador_nome}'.toLowerCase().replace(/\s/g, '_');
+            const key = `transferidos_para_${{myId}}`;
+            
+            try {{
+                const saved = localStorage.getItem(key);
+                if (saved) {{
+                    const pacotes = JSON.parse(saved);
+                    if (pacotes.length > 0) {{
+                        document.getElementById('received-count').textContent = pacotes.length;
+                        document.getElementById('received-badge').style.display = 'block';
+                    }}
+                }}
+            }} catch(e) {{}}
+        }}
+        checkReceivedPackages();
+        
+        // Mostra pacotes recebidos
+        function showReceivedPackages() {{
+            const myId = '{entregador_nome}'.toLowerCase().replace(/\s/g, '_');
+            const key = `transferidos_para_${{myId}}`;
+            
+            try {{
+                const saved = localStorage.getItem(key);
+                if (saved) {{
+                    const pacotes = JSON.parse(saved);
+                    let msg = '📦 PACOTES RECEBIDOS:\n\n';
+                    pacotes.forEach((p, i) => {{
+                        msg += `${{i+1}}. ${{p.address}}\n   (de: ${{p.from}})\n\n`;
+                    }});
+                    msg += 'Deseja aceitar e adicionar à sua rota?';
+                    
+                    if (confirm(msg)) {{
+                        // Adiciona os pacotes como novos markers
+                        pacotes.forEach((p, i) => {{
+                            const newNum = markers.length + i + 1;
+                            const newMarker = {{
+                                lat: p.lat,
+                                lon: p.lon,
+                                address: p.address,
+                                packages: p.packages || 1,
+                                status: 'pending',
+                                number: newNum,
+                                is_current: false
+                            }};
+                            markers.push(newMarker);
+                            
+                            // Adiciona pin no mapa
+                            const pinIcon = createShopeePin(newNum, 'pending');
+                            const leafletM = L.marker([p.lat, p.lon], {{ icon: pinIcon }}).addTo(map);
+                            leafletM.on('click', () => openCard(newMarker));
+                            leafletMarkers[newNum] = leafletM;
+                        }});
+                        
+                        // Limpa inbox
+                        localStorage.removeItem(key);
+                        document.getElementById('received-badge').style.display = 'none';
+                        
+                        alert(`✅ ${{pacotes.length}} pacote(s) adicionados à sua rota!`);
+                        updateProgress();
+                    }}
+                }}
+            }} catch(e) {{ console.error(e); }}
         }}
         // Funcoes
         function openCard(marker) {{
@@ -696,38 +1004,7 @@ class MapGenerator:
         
         function transferPackage() {{
             if (!currentMarker) return;
-            
-            // Transferir abre prompt para escolher destino
-            const destino = prompt('Para quem transferir? (nome do entregador)');
-            if (!destino) return;
-            
-            const stopNum = currentMarker.number;
-            
-            // Marca como transferido (status especial)
-            deliveryStatus[stopNum] = 'transfer';
-            saveStatus();
-            
-            // Feedback visual
-            const btn = event.target;
-            btn.textContent = '↗ Transferido!';
-            btn.style.background = '#1565C0';
-            
-            try {{
-                if (window.Telegram && window.Telegram.WebApp) {{
-                    window.Telegram.WebApp.sendData(JSON.stringify({{
-                        action: 'transfer',
-                        stop: stopNum,
-                        address: currentMarker.address,
-                        destino: destino
-                    }}));
-                }}
-            }} catch(e) {{}}
-            
-            setTimeout(() => {{
-                btn.textContent = 'Transferir';
-                btn.style.background = '#2196F3';
-                goToNextPending();
-            }}, 500);
+            openTransferModal();
         }}
         
         // Atualiza progresso inicial
@@ -745,6 +1022,12 @@ class MapGenerator:
 </html>
 """
         
+        # Prepara lista de entregadores para injetar no JS
+        if entregadores_lista:
+            entregadores_json = json.dumps(entregadores_lista)
+        else:
+            entregadores_json = '[]'
+        
         # Injeta as variáveis Python no template usando .format()
         html = html_template.format(
             entregador_nome=entregador_nome,
@@ -756,7 +1039,8 @@ class MapGenerator:
             center_lon=center_lon,
             zoom=zoom,
             markers_json=markers_json,
-            base_location_json=base_location_json
+            base_location_json=base_location_json,
+            entregadores_json=entregadores_json
         )
         
         return html

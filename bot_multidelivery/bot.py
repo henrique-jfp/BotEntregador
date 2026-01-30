@@ -1177,6 +1177,11 @@ async def cmd_fechar_rota(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Importa cores
     from .colors import get_color_for_index, get_color_name
     
+    # Busca lista de entregadores para permitir transferência nos mapas
+    from bot_multidelivery.services.deliverer_service import deliverer_service
+    all_deliverers = deliverer_service.list_deliverers()
+    entregadores_lista = [{'name': d.name, 'id': str(d.telegram_id)} for d in all_deliverers]
+    
     # Otimiza rotas
     routes = []
     for idx, cluster in enumerate(clusters):
@@ -1204,7 +1209,8 @@ async def cmd_fechar_rota(update: Update, context: ContextTypes.DEFAULT_TYPE):
             total_packages=route.total_packages,
             total_distance_km=route.total_distance_km,
             total_time_min=eta_minutes,
-            base_location=base_loc
+            base_location=base_loc,
+            entregadores_lista=entregadores_lista
         )
         map_file = f"map_{route.id}.html"
         MapGenerator.save_map(html, map_file)
@@ -2864,6 +2870,11 @@ Veja: <code>MANUAL_FUNCIONALIDADES_AVANCADAS.md</code>"""
 
 async def send_route_to_deliverer(context: ContextTypes.DEFAULT_TYPE, telegram_id: int, route: Route, session):
     """Envia rota formatada para o entregador"""
+    # Busca lista de entregadores para permitir transferência
+    from bot_multidelivery.services.deliverer_service import deliverer_service
+    all_deliverers = deliverer_service.list_deliverers()
+    entregadores_lista = [{'name': d.name, 'id': str(d.telegram_id)} for d in all_deliverers]
+    
     # Garante que existe mapa HTML
     if not route.map_file:
         stops_data = []
@@ -2881,7 +2892,8 @@ async def send_route_to_deliverer(context: ContextTypes.DEFAULT_TYPE, telegram_i
             total_packages=route.total_packages,
             total_distance_km=route.total_distance_km,
             total_time_min=eta_minutes,
-            base_location=base_loc
+            base_location=base_loc,
+            entregadores_lista=entregadores_lista
         )
         route.map_file = f"map_{route.id}.html"
         MapGenerator.save_map(html, route.map_file)
