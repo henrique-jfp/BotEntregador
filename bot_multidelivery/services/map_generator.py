@@ -307,41 +307,14 @@ class MapGenerator:
             margin-bottom: 10px;
         }}
         
-        /* MARKERS OTIMIZADOS PARA MOBILE - SEM POLUIÇÃO VISUAL */
-        .marker-icon {{
-            background: transparent !important;
-            border: none !important;
-        }}
-        
-        .marker-pin {{
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            border: 3px solid;
-            background: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        /* MARKERS OTIMIZADOS PARA MOBILE - VISÍVEIS E LEVES */
+        .marker-label {{
+            background: transparent;
+            border: none;
+            color: inherit;
             font-weight: bold;
             font-size: 14px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-        }}
-        
-        /* REMOVE COMPLETAMENTE pins/sombras do Leaflet */
-        .marker-icon::before,
-        .marker-icon::after,
-        .leaflet-marker-icon::before,
-        .leaflet-marker-icon::after,
-        .leaflet-marker-shadow {{
-            display: none !important;
-            content: none !important;
-            opacity: 0 !important;
-            visibility: hidden !important;
-        }}
-        
-        /* Remove sombra padrão dos markers */
-        .leaflet-shadow-pane {{
-            display: none !important;
+            text-shadow: 0 0 2px #fff;
         }}
     </style>
 </head>
@@ -448,26 +421,28 @@ class MapGenerator:
             console.log("⚠️ Sem base location configurada");
         }}
         
-        // Adiciona markers das entregas - OTIMIZADO PARA MOBILE
+        // Adiciona markers das entregas - usando circleMarker para garantir visibilidade
         console.log(`📌 Adicionando ${{markers.length}} markers no mapa...`);
         let markersAdded = 0;
         
         markers.forEach((m, idx) => {{
             try {{
-                const icon = L.divIcon({{
-                    className: 'marker-icon',
-                    // Usa SYMBOL (✓, ✗ ou número) em vez de sempre número
-                    html: `<div class="marker-pin" style="border-color: ${{m.color}}; color: ${{m.color}};">${{m.symbol}}</div>`,
-                    iconSize: [30, 30],  // Tamanho ideal para mobile
-                    iconAnchor: [15, 15]  // Centraliza perfeitamente
-                }});
-                
-                // SEM popup automático = menos poluição visual
-                const marker = L.marker([m.lat, m.lon], {{ 
-                    icon,
+                const marker = L.circleMarker([m.lat, m.lon], {{
+                    radius: 12,
+                    color: m.color,
+                    weight: 3,
+                    fillColor: '#ffffff',
+                    fillOpacity: 1,
                     interactive: true,
-                    keyboard: false  // Remove navegação por teclado (mobile)
+                    keyboard: false
                 }}).addTo(map);
+                
+                // Label permanente com número/símbolo
+                marker.bindTooltip(`${{m.symbol}}`, {{
+                    permanent: true,
+                    direction: 'center',
+                    className: 'marker-label'
+                }});
                 
                 marker.on('click', () => {{
                     openCard(m);
@@ -475,7 +450,7 @@ class MapGenerator:
                 
                 // Destaca marker atual
                 if (m.is_current) {{
-                    marker.setZIndexOffset(1000);
+                    marker.setStyle({{ weight: 5 }});
                 }}
                 
                 markersAdded++;
