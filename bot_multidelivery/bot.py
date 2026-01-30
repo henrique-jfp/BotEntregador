@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 🚀 BOT TELEGRAM - Handler principal
 Fluxo completo de admin + entregadores
@@ -3720,7 +3721,7 @@ async def cmd_fechar_dia(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def cmd_financeiro(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """📊 Mostra relatório financeiro (diário, semanal ou mensal)"""
+    """Mostra relatório financeiro (diário, semanal ou mensal)"""
     user_id = update.effective_user.id
     
     if user_id != BotConfig.ADMIN_TELEGRAM_ID:
