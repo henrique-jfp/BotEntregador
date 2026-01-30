@@ -389,6 +389,9 @@ class MapGenerator:
             minZoom: 12  // Evita zoom muito longe
         }}).addTo(map);
         
+        // Declara baseLocation ANTES de usar (evita ReferenceError)
+        const baseLocation = {base_location_json};
+        
         // AUTO-ZOOM: Ajusta para ver TODA a rota perfeitamente
         // Calcula bounds de TODOS os pontos (base + entregas)
         const allPoints = baseLocation ? 
@@ -405,7 +408,6 @@ class MapGenerator:
         }}
         
         // Adiciona marker da BASE se houver
-        const baseLocation = {base_location_json};
         if (baseLocation) {{
             console.log("🏠 Adicionando marker da BASE:", baseLocation);
             const baseIcon = L.divIcon({{
