@@ -452,6 +452,33 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
     # ═══════════════════════════════════════════
     # MODO ANÁLISE DE ROTA - Aceita texto direto
     # ═══════════════════════════════════════════
+    if state == "awaiting_route_value":
+        try:
+            val = float(text.replace(',', '.'))
+        except:
+            await update.message.reply_text("⚠️ Digite um número válido (ex: 120.50) ou 0.")
+            return
+
+        session_manager.save_temp_data(user_id, "route_value", val)
+        session_manager.set_admin_state(user_id, "awaiting_analysis_file")
+        
+        await update.message.reply_text(
+            "🔍 <b>ANÁLISE INTELIGENTE DE ROTA</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            "📎 <b>AGORA, OS DADOS:</b>\n\n"
+            "📄 <b>OPÇÃO 1: Arquivo Excel</b>\n"
+            "   Anexe o .xlsx da Shopee\n\n"
+            "📝 <b>OPÇÃO 2: Cole os Endereços</b>\n"
+            "   ✅ <b>Aceita QUALQUER formato:</b>\n"
+            "   • Um por linha\n"
+            "   • Separados por ; (ponto-vírgula)\n"
+            "   • Texto corrido\n"
+            "   • Com ou sem numeração\n\n"
+            "💡 <b>Pode colar direto aqui!</b>",
+            parse_mode='HTML'
+        )
+        return
+
     if state == "awaiting_analysis_file":
         # Se não começou com /, é uma lista de endereços
         if not text.startswith('/'):
@@ -1739,7 +1766,8 @@ async def process_route_analysis(update: Update, context: ContextTypes.DEFAULT_T
         # ═══════════════════════════════════════════
         # ANÁLISE COM IA
         # ═══════════════════════════════════════════
-        analysis = route_analyzer.analyze_route(deliveries_data)
+        route_value = session_manager.get_temp_data(user_id, "route_value") or 0.0
+        analysis = route_analyzer.analyze_route(deliveries_data, route_value=route_value)
         
         # ═══════════════════════════════════════════
         # GERA MAPA HTML (AGRUPA PACOTES POR ENDEREÇO)
@@ -1815,21 +1843,31 @@ async def process_route_analysis(update: Update, context: ContextTypes.DEFAULT_T
         message = (
             f"🔍 <b>ANÁLISE DE ROTA COMPLETA</b>\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"💰 <b>VALOR REAL: R$ {analysis.route_value:.2f}</b>\n"
+            f"🏘️ <b>PERFIL: {analysis.route_type}</b>\n\n"
             f"📊 <b>SCORE GERAL: {analysis.overall_score}/10</b>\n"
-            f"<code>{score_bar}</code> {analysis.recommendation}\n\n"
+            f"<code>{score_bar}</code> {analysis.recommendation}\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"📦 <b>RESUMO:</b>\n"
+            f"📝 <b>RESUMO TÉCNICO:</b>\n"
             f"• <b>{analysis.total_packages} pacotes</b> ({analysis.total_stops} paradas)\n"
-            f"• <b>{analysis.unique_addresses} paradas</b> (endereços únicos)\n"
-            f"• <b>{analysis.total_distance_km:.1f} km</b> total ({analysis.distance_to_first_km:.1f}km deslocamento + {analysis.route_distance_km:.1f}km rota)\n"
+            f"• <b>{analysis.unique_addresses} endereços únicos</b>\n"
+            f"• <b>{analysis.commercial_count} comerciais</b> | <b>{analysis.vertical_count} condomínios</b>\n"
+            f"• <b>{analysis.total_distance_km:.1f} km</b> total\n"
             f"• Bairros: {bairros_info}\n\n"
-            f"📈 <b>MÉTRICAS TÉCNICAS:</b>\n"
-            f"• Área: <b>{analysis.area_coverage_km2:.1f} km²</b>\n"
-            f"• Densidade: <b>{analysis.density_score:.1f} pacotes/km²</b>\n"
-            f"• Concentração: <b>{analysis.concentration_score:.1f}/10</b>\n"
-            f"• Tempo estimado: <b>{analysis.estimated_time_minutes:.0f} min</b>\n\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"💸 <b>FINANCEIRO ESTIMADO:</b>\n"
+            f"• Ganho/Hora: <b>R$ {analysis.hourly_earnings:.2f}</b>\n"
+            f"• Ganho/Pacote: <b>R$ {analysis.package_earnings:.2f}</b>\n"
+            f"• Tempo Total: <b>{analysis.estimated_time_minutes:.0f} min</b>\n\n"
+            f"🏆 <b>TOP DROPS (Onde você mata a rota):</b>\n"
         )
+        
+        if analysis.top_drops:
+            for idx, (name, count) in enumerate(analysis.top_drops, 1):
+                icon = "🥇" if idx == 1 else "🥈" if idx == 2 else "🥉"
+                message += f"{icon} {name} ({count} pct)\n"
+            message += "\n"
+
+        message += f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
         
         # Prós
         if analysis.pros:
@@ -1886,7 +1924,7 @@ async def process_route_analysis(update: Update, context: ContextTypes.DEFAULT_T
 async def cmd_analisar_rota(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     🔍 Analisa uma rota da Shopee ANTES de aceitar
-    Mostra mapa + IA analysis (score, prós, contras)
+    Inicia wizard financeiro -> depois pede arquivo
     """
     user_id = update.effective_user.id
     
@@ -1894,40 +1932,15 @@ async def cmd_analisar_rota(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Apenas o admin pode analisar rotas.")
         return
     
-    # Muda estado para aguardar arquivo
-    session_manager.set_admin_state(user_id, "awaiting_analysis_file")
+    # Muda estado para aguardar valor
+    session_manager.set_admin_state(user_id, "awaiting_route_value")
     
     await update.message.reply_text(
-        "🔍 <b>ANÁLISE INTELIGENTE DE ROTA</b>\n"
+        "💰 <b>QUANTO PAGA ESSA ROTA?</b>\n"
         "━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        "📎 <b>ESCOLHA UMA OPÇÃO:</b>\n\n"
-        "📄 <b>OPÇÃO 1: Arquivo Excel</b>\n"
-        "   Anexe o .xlsx da Shopee\n"
-        "   ✅ Extrai lat/long automaticamente\n\n"
-        "📝 <b>OPÇÃO 2: Cole os Endereços</b>\n"
-        "   ✅ <b>Aceita QUALQUER formato:</b>\n"
-        "   • Um por linha\n"
-        "   • Separados por ; (ponto-vírgula)\n"
-        "   • Separados por | (pipe)\n"
-        "   • Texto corrido com múltiplos endereços\n"
-        "   • Com ou sem numeração (1., 2., etc)\n"
-        "   • Com ou sem emojis 📦\n\n"
-        "   <b>Exemplos válidos:</b>\n"
-        "   <code>Rua A, 123 - Centro, RJ\n"
-        "   Av. B, 456 - Botafogo, RJ</code>\n\n"
-        "   <code>Rua A, 123; Av. B, 456; Rua C, 789</code>\n\n"
-        "   <code>1. Rua A, 123 2. Av. B, 456 3. Rua C, 789</code>\n\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        "<b>O bot vai:</b>\n"
-        "• 🗺️ Gerar mapa com todos os pontos\n"
-        "• 🤖 Analisar viabilidade com IA\n"
-        "• ⭐ Dar score (0-10)\n"
-        "• ✅❌ Listar prós e contras\n"
-        "• 💬 Comentário: vale a pena?\n\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        "💡 <b>Use para avaliar rotas do grupo</b>\n"
-        "antes de aceitar!\n\n"
-        "📎 Envie o Excel OU cole os endereços:",
+        "Para uma análise financeira real, informe o valor total ofertado.\n\n"
+        "<i>Digite 0 se não souber ou não quiser informar.</i>\n\n"
+        "💲 <b>Digite o valor (ex: 154.50):</b>",
         parse_mode='HTML'
     )
 
@@ -4687,7 +4700,7 @@ async def _execute_route_distribution(update: Update, context: ContextTypes.DEFA
             for romaneio in session.romaneios:
                 for pt in romaneio.points:
                     deliveries.append({
-                        'tracking': pt.id,
+                        'tracking': pt.package_id,
                         'address': pt.address,
                         'bairro': '', 
                         'city': '',
@@ -4743,7 +4756,7 @@ async def _execute_route_distribution(update: Update, context: ContextTypes.DEFA
         
         # Monta dicionario de entregadores
         selected = all_deliverers[:num_entregadores]
-        entregadores_info = {d['telegram_id']: d['name'] for d in selected}
+        entregadores_info = {d.telegram_id: d.name for d in selected}
         
         # Divide romaneio COM CORES
         divider = RoteoDivider()
