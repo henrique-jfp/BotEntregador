@@ -82,6 +82,7 @@ class GeocodingService:
     
     def __init__(self, google_api_key: Optional[str] = None, locationiq_key: Optional[str] = None, geoapify_key: Optional[str] = None):
         self.google_api_key = google_api_key
+        self.api_key = google_api_key  # alias para compatibilidade
         self.locationiq_key = locationiq_key  # 5.000 req/dia GRÁTIS, sem cartão
         self.geoapify_key = geoapify_key      # 3.000 req/dia GRÁTIS, sem cartão
         self.cache = GeocodingCache()

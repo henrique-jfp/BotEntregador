@@ -99,6 +99,11 @@ def parse_shopee_excel(file_path: str) -> List[Dict[str, any]]:
                         headers['address'] = col
                         if header_row is None:  # Define header_row se ainda não definido
                             header_row = row
+                    # Rua: planilhas simplificadas
+                    elif any(x in cell_lower for x in ['rua', 'street']):
+                        headers['street'] = col
+                        if header_row is None:
+                            header_row = row
                     # Bairro: neighborhood, bairro, distrito, district
                     elif any(x in cell_lower for x in ['bairro', 'distrito', 'district', 'neighborhood', 'neighbour']):
                         headers['bairro'] = col
@@ -127,8 +132,8 @@ def parse_shopee_excel(file_path: str) -> List[Dict[str, any]]:
         if not header_row:
             raise ValueError("Cabeçalhos não encontrados. Formato inválido.")
         
-        if 'tracking' not in headers and 'address' not in headers:
-            raise ValueError("Não encontrei coluna de Tracking (SPX TN) nem Endereço (Destination).")
+        if 'tracking' not in headers and 'address' not in headers and 'street' not in headers:
+            raise ValueError("Não encontrei coluna de Tracking (SPX TN), Endereço (Destination) ou Rua.")
         
         # Extrai dados
         addresses = []
@@ -142,12 +147,21 @@ def parse_shopee_excel(file_path: str) -> List[Dict[str, any]]:
                 if tracking_cell.value:
                     tracking = str(tracking_cell.value).strip()
             
-            # Pega endereço (pode ser Destination)
+            # Pega endereço (Destination) ou monta a partir de rua + bairro
             address = ""
             if 'address' in headers:
                 addr_cell = ws.cell(row, headers['address'])
                 if addr_cell.value:
                     address = str(addr_cell.value).strip()
+            if not address and 'street' in headers:
+                street_cell = ws.cell(row, headers['street'])
+                street_val = str(street_cell.value or '').strip()
+                bairro_val = ""
+                if 'bairro' in headers:
+                    bairro_cell = ws.cell(row, headers['bairro'])
+                    bairro_val = str(bairro_cell.value or '').strip()
+                if street_val:
+                    address = street_val if not bairro_val else f"{street_val}, {bairro_val}"
             
             # Se não tem tracking nem endereço, pula linha
             if not tracking and not address:

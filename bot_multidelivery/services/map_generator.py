@@ -421,26 +421,18 @@ class MapGenerator:
             console.log("⚠️ Sem base location configurada");
         }}
         
-        // Adiciona markers das entregas - usando circleMarker para garantir visibilidade
+        // Adiciona markers das entregas - usando ícone padrão do Leaflet (garantia visual)
         console.log(`📌 Adicionando ${{markers.length}} markers no mapa...`);
         let markersAdded = 0;
         
         markers.forEach((m, idx) => {{
             try {{
-                const marker = L.circleMarker([m.lat, m.lon], {{
-                    radius: 12,
-                    color: m.color,
-                    weight: 3,
-                    fillColor: '#ffffff',
-                    fillOpacity: 1,
-                    interactive: true,
-                    keyboard: false
-                }}).addTo(map);
+                const marker = L.marker([m.lat, m.lon]).addTo(map);
                 
-                // Label permanente com número/símbolo
+                // Tooltip permanente com número/símbolo
                 marker.bindTooltip(`${{m.symbol}}`, {{
                     permanent: true,
-                    direction: 'center',
+                    direction: 'top',
                     className: 'marker-label'
                 }});
                 
@@ -448,9 +440,8 @@ class MapGenerator:
                     openCard(m);
                 }});
                 
-                // Destaca marker atual
                 if (m.is_current) {{
-                    marker.setStyle({{ weight: 5 }});
+                    marker.setZIndexOffset(1000);
                 }}
                 
                 markersAdded++;
