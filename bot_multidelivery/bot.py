@@ -4507,6 +4507,116 @@ async def handle_admin_barcode_scan(update: Update, context: ContextTypes.DEFAUL
 
 # ==================== MAIN ====================
 
+async def cmd_otimizar_rotas(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    🧠 OTIMIZAÇÃO INTERATIVA para chamadas sem argumentos (Botão / Comando simples)
+    Usa os dados da sessão ativa.
+    """
+    user_id = update.effective_user.id
+    if user_id != BotConfig.ADMIN_TELEGRAM_ID:
+        return
+    
+    session = session_manager.get_current_session()
+    
+    # Validações iniciais
+    if not session:
+        msg = "❌ <b>Nenhuma sessão ativa!</b>\nUse /importar para começar."
+        if update.callback_query:
+            await update.callback_query.answer(msg)
+            await update.callback_query.edit_message_text(msg, parse_mode='HTML')
+        else:
+            await update.message.reply_text(msg, parse_mode='HTML')
+        return
+
+    if not session.romaneios and not session.routes:
+         # Se tiver routes mas nao romaneios (ex: reinicio), ok. Mas geralmente tem romaneios.
+         # Se estiver vazio tudo...
+        msg = "❌ <b>Nenhum pacote importado!</b>\nImporte romaneios antes de otimizar."
+        if update.callback_query:
+            await update.callback_query.answer(msg)
+            await update.callback_query.edit_message_text(msg, parse_mode='HTML')
+        else:
+            await update.message.reply_text(msg, parse_mode='HTML')
+        return
+
+    # Pergunta quantidade de entregadores
+    keyboard = []
+    # Cria linhas de 3 botões
+    row = []
+    for n in range(1, 7):
+        row.append(InlineKeyboardButton(f"🛵 {n}", callback_data=f"optimize_num_{n}"))
+        if len(row) == 3:
+            keyboard.append(row)
+            row = []
+    if row:
+        keyboard.append(row)
+        
+    total_packages = session.total_packages
+    
+    msg = (
+        "🧠 <b>OTIMIZAÇÃO INTELIGENTE</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"📦 Total de pacotes: <b>{total_packages}</b>\n"
+        f"📅 Sessão: {session.session_name}\n\n"
+        "🔢 <b>Quantos entregadores vão rodar?</b>"
+    )
+    
+    if update.callback_query:
+        await update.callback_query.edit_message_text(msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='HTML')
+    else:
+        await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='HTML')
+
+
+async def handle_optimization_num(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Callback: Escolheu número de entregadores -> Vai pra seleção de cor"""
+    query = update.callback_query
+    await query.answer()
+    
+    num_entregadores = int(query.data.replace("optimize_num_", ""))
+    
+    # Salva no temp_data para o fluxo de cores usar
+    if not hasattr(context.user_data, 'temp'):
+        context.user_data['temp'] = {}
+        
+    context.user_data['temp']['otimizar_num'] = num_entregadores
+    # IMPORTANTE: Marca que NÃO estamos usando Excel direto, mas sim sessão
+    context.user_data['temp']['otimizar_excel'] = None 
+    context.user_data['temp']['colors_selected'] = []
+    
+    # Chama o seletor de cores (reutiliza lógica existente)
+    # Precisamos montar o teclado aqui
+    color_buttons = [
+        [
+            InlineKeyboardButton("🔴 Vermelho", callback_data="color_vermelho"),
+            InlineKeyboardButton("🔵 Azul", callback_data="color_azul"),
+        ],
+        [
+            InlineKeyboardButton("🟢 Verde", callback_data="color_verde"),
+            InlineKeyboardButton("🟡 Amarelo", callback_data="color_amarelo"),
+        ],
+        [
+            InlineKeyboardButton("🟣 Roxo", callback_data="color_roxo"),
+            InlineKeyboardButton("🟠 Laranja", callback_data="color_laranja"),
+        ],
+        [
+            InlineKeyboardButton("✅ Confirmar Cores", callback_data="color_confirm")
+        ]
+    ]
+    
+    await query.edit_message_text(
+        "🎨 <b>ESCOLHA AS CORES DOS ADESIVOS</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"📦 Serão criadas <b>{num_entregadores} rotas</b>\n\n"
+        "🏷️ <b>Selecione as cores disponíveis:</b>\n"
+        "• Clique nas cores que você tem como adesivo\n"
+        "• Pode escolher quantas quiser\n"
+        "• Depois clique em ✅ Confirmar\n\n"
+        "<i>💡 As rotas usarão as cores selecionadas</i>",
+        parse_mode='HTML',
+        reply_markup=InlineKeyboardMarkup(color_buttons)
+    )
+
+
 async def _execute_route_distribution(update: Update, context: ContextTypes.DEFAULT_TYPE, query=None):
     """Executa a distribuição de rotas COM cores selecionadas"""
     
