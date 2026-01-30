@@ -403,15 +403,16 @@ class MapGenerator:
         
         // Dados dos markers
         let markers = [];
+        const markersJsonStr = '{markers_json}';
         try {{
-            markers = {markers_json};
-            console.log(`✅ ${markers.length} markers carregados do JSON`);
+            markers = JSON.parse(markersJsonStr);
+            console.log(`✅ ${{markers.length}} markers carregados do JSON`);
             if (markers.length === 0) {{
                 console.error("⚠️ MARKERS VAZIO! Nenhum ponto para marcar!");
             }}
         }} catch (e) {{
             console.error("❌ ERRO ao parsear markers JSON:", e);
-            console.error("JSON recebido:", {markers_json});
+            console.error("JSON recebido:", markersJsonStr);
         }}
         
         let currentMarker = null;
