@@ -164,6 +164,36 @@ class DelivererService:
             'desde': deliverer.joined_date.strftime('%d/%m/%Y')
         }
 
+    @staticmethod
+    def get_weekly_earnings(user_id: int, start_date_str: str, end_date_str: str) -> float:
+        """Calcula ganhos do entregador na semana especificada (lê reports diários)"""
+        # Hack rápido: para não criar dependência circular, vamos usar o método do FinancialService importado localmente
+        # Mas como não podemos importar aqui dentro facilmente sem bagunça, vamos ler JSON direto
+        # Melhor: O financial_service é Singleton importável
+        from .financial_service import financial_service
+        from datetime import datetime, timedelta
+        
+        total = 0.0
+        
+        current = datetime.strptime(start_date_str, '%d/%m/%Y')
+        end = datetime.strptime(end_date_str, '%d/%m/%Y')
+        
+        deliverer = DelivererService.get_deliverer(user_id)
+        if not deliverer: return 0.0
+
+        while current <= end:
+            # Tenta ler o arquivo JSON do dia
+            report = financial_service.get_daily_report(current)
+            
+            if report and hasattr(report, 'deliverer_breakdown'):
+                # deliverer_breakdown é dict {nome: valor}
+                if deliverer.name in report.deliverer_breakdown:
+                    total += report.deliverer_breakdown[deliverer.name]
+            
+            current += timedelta(days=1)
+            
+        return total
+
 
 # Singleton
 deliverer_service = DelivererService()

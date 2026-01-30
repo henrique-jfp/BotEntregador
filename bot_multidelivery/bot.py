@@ -548,80 +548,91 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
         return
     
     # Handler financeiro: fechamento de dia (input de receita)
-    if state == "closing_day":
+    if state == "closing_day_revenue":
         if text.lower() == '/cancelar':
             session_manager.clear_admin_state(user_id)
-            await update.message.reply_text("❌ Fechamento de dia cancelado.")
+            await update.message.reply_text("❌ Fechamento cancelado.")
             return
         
         try:
-            revenue = float(text.strip().replace(',', '.'))
-            if revenue < 0:
-                raise ValueError
-        except ValueError:
-            await update.message.reply_text(
-                "⚠️ Valor inválido. Digite um número válido (ex: 450.00)\n"
-                "Ou /cancelar para abortar.",
-                parse_mode='HTML'
-            )
+            val = float(text.strip().replace(',', '.'))
+            if val < 0: raise ValueError
+        except:
+            await update.message.reply_text("⚠️ Valor inválido. Tente novamente.")
             return
+
+        # Salva receita
+        data = session_manager.get_temp_data(user_id, "day_closing") or {}
+        data['revenue'] = val
+        data['expenses'] = []  # Lista vazia de despesas customizadas
         
-        # Pega dados salvos
-        data = session_manager.get_temp_data(user_id, "day_closing")
+        # Pega custos de entregadores se houver sessão (agora opcionais pois são sócios)
+        session = session_manager.get_current_session()
+        deliverer_costs = {}
+        total_pkg = 0
+        total_del = 0
         
-        # Pergunta sobre outros custos
-        data['revenue'] = revenue
+        if session:
+            for route in session.routes:
+                if route.assigned_to_telegram_id:
+                    partner = BotConfig.get_partner_by_id(route.assigned_to_telegram_id)
+                    if partner:
+                        # Se não for sócio, calcula custo
+                        cost = route.delivered_count * partner.cost_per_package if not partner.is_partner else 0.0
+                        if cost > 0:
+                            deliverer_costs[partner.name] = deliverer_costs.get(partner.name, 0) + cost
+                        total_pkg += route.total_packages
+                        total_del += route.delivered_count
+        
+        data['deliverer_costs'] = deliverer_costs
+        data['total_packages'] = total_pkg
+        data['total_deliveries'] = total_del
+        
+        # Usa data alvo (se for retroativo) ou hoje
+        if 'target_date' not in data:
+            data['date'] = datetime.now().strftime('%Y-%m-%d')
+        else:
+            data['date'] = data['target_date']
+        
         session_manager.save_temp_data(user_id, "day_closing", data)
-        session_manager.set_admin_state(user_id, "closing_day_costs")
+        session_manager.set_admin_state(user_id, "closing_day_menu")
         
-        await update.message.reply_text(
-            "💸 <b>OUTROS CUSTOS OPERACIONAIS</b>\n\n"
-            "Houve outros custos hoje? (combustível, estacionamento, etc)\n\n"
-            "Digite o valor ou <code>0</code> se não houve.\n"
-            "Ou /cancelar para abortar.",
-            parse_mode='HTML'
-        )
+        # Mostra menu de custos
+        await _show_costs_menu(update, context, val, [])
         return
-    
-    # Handler financeiro: outros custos do dia
-    if state == "closing_day_costs":
+
+    # Handler financeiro: valor de um custo específico
+    if state == "closing_day_expense_value":
         if text.lower() == '/cancelar':
-            session_manager.clear_admin_state(user_id)
-            await update.message.reply_text("❌ Fechamento de dia cancelado.")
+            # Volta pro menu
+            session_manager.set_admin_state(user_id, "closing_day_menu")
+            data = session_manager.get_temp_data(user_id, "day_closing")
+            await _show_costs_menu(update, context, data.get('revenue', 0), data.get('expenses', []))
             return
-        
+
         try:
-            other_costs = float(text.strip().replace(',', '.'))
-            if other_costs < 0:
-                raise ValueError
-        except ValueError:
-            await update.message.reply_text(
-                "⚠️ Valor inválido. Digite um número válido ou 0.",
-                parse_mode='HTML'
-            )
+            cost_val = float(text.strip().replace(',', '.'))
+            if cost_val < 0: raise ValueError
+        except:
+            await update.message.reply_text("⚠️ Valor inválido. Digite um número positivo.")
             return
-        
-        # Finaliza fechamento do dia
+            
         data = session_manager.get_temp_data(user_id, "day_closing")
+        expense_type = data.get('current_expense_type', 'Outros')
         
-        # Cria relatório
-        report = financial_service.close_day(
-            date=datetime.strptime(data['date'], '%Y-%m-%d'),
-            revenue=data['revenue'],
-            deliverer_costs=data['deliverer_costs'],
-            other_costs=other_costs,
-            total_packages=data['total_packages'],
-            total_deliveries=data['total_deliveries']
-        )
+        # Adiciona despesa
+        new_expense = {
+            'type': expense_type,
+            'value': cost_val,
+            'desc': f"Custo: {expense_type}"
+        }
+        data['expenses'].append(new_expense)
+        del data['current_expense_type'] # limpa temp
         
-        # Limpa estado
-        session_manager.clear_admin_state(user_id)
+        session_manager.save_temp_data(user_id, "day_closing", data)
+        session_manager.set_admin_state(user_id, "closing_day_menu")
         
-        # Envia relatório formatado
-        msg = financial_service.format_daily_report(report)
-        msg += "\n\n✅ <b>Fechamento salvo com sucesso!</b>"
-        
-        await update.message.reply_text(msg, parse_mode='HTML')
+        await _show_costs_menu(update, context, data['revenue'], data['expenses'])
         return
     
     # Handler financeiro: fechamento automático (com banco inter)
@@ -2019,6 +2030,58 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
     
     data = query.data
     
+    # ═══════════════════════════════════════════
+    # FECHAMENTO DO DIA (WIZARD CUSTOS)
+    # ═══════════════════════════════════════════
+    if data.startswith("add_cost_"):
+        cost_type = data.replace("add_cost_", "")
+        user_id = query.from_user.id
+        
+        # Salva tipo e pede valor
+        temp = session_manager.get_temp_data(user_id, "day_closing")
+        temp['current_expense_type'] = cost_type
+        session_manager.save_temp_data(user_id, "day_closing", temp)
+        
+        session_manager.set_admin_state(user_id, "closing_day_expense_value")
+        
+        await query.edit_message_text(
+            f"💰 <b>CUSTO: {cost_type.upper()}</b>\n\n"
+            f"Qual o valor gasto hoje?\n"
+            f"<i>Digite o valor (ex: 50.00)</i>\n\n"
+            f"Ou use /cancelar para voltar.",
+            parse_mode='HTML'
+        )
+        return
+
+    if data == "finish_day_closing":
+        user_id = query.from_user.id
+        data = session_manager.get_temp_data(user_id, "day_closing")
+        
+        # Define data do fechamento
+        closing_date = datetime.now()
+        if 'date' in data:
+            closing_date = datetime.strptime(data['date'], '%Y-%m-%d')
+            
+        # Fecha o dia pra valer!
+        report = financial_service.close_day(
+            date=closing_date,
+            revenue=data['revenue'],
+            deliverer_costs=data['deliverer_costs'],
+            other_costs=sum(e['value'] for e in data['expenses']),
+            total_packages=data['total_packages'],
+            total_deliveries=data['total_deliveries'],
+            expenses=data.get('expenses', [])  # Nova lista detalhada
+        )
+        
+        session_manager.clear_admin_state(user_id)
+        
+        # Formata relatório
+        msg = financial_service.format_daily_report(report)
+        msg += "\n\n✅ <b>Fechamento salvo e dia encerrado!</b>"
+        
+        await query.edit_message_text(msg, parse_mode='HTML')
+        return
+
     # ═══════════════════════════════════════════
     # SELECIONAR SESSÃO (NOVO)
     # ═══════════════════════════════════════════
@@ -3587,66 +3650,59 @@ async def cmd_predict_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ==================== FINANCIAL COMMANDS ====================
 
 async def cmd_fechar_dia(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """💰 Fecha o dia financeiro e pede receita"""
+    """💰 Fecha o dia financeiro: Receita -> Custos -> Lucro"""
     user_id = update.effective_user.id
+    args = context.args
     
     if user_id != BotConfig.ADMIN_TELEGRAM_ID:
         await update.message.reply_text("❌ Apenas o admin pode fechar o dia.")
         return
     
-    # Pega sessão ativa para calcular custos
+    closing_date = datetime.now()
+    date_str = "HOJE"
+    
+    # Suporte a fechamento retroativo: /fechar_dia 2023-10-25
+    if args and len(args) == 1:
+        try:
+            closing_date = datetime.strptime(args[0], "%Y-%m-%d")
+            date_str = args[0]
+        except ValueError:
+            await update.message.reply_text("❌ Data inválida! Use formato AAAA-MM-DD\nEx: /fechar_dia 2023-10-25")
+            return
+            
+    # Pega sessão ativa para calcular custos (se for hoje ou se houver sessão para a data)
     session = session_manager.get_current_session()
     
-    if not session or not session.routes:
-        await update.message.reply_text(
-            "❌ <b>NENHUMA OPERAÇÃO HOJE</b>\n\n"
-            "Não há rotas distribuídas para fechar.\n\n"
-            "Use <code>/importar</code> e <code>/otimizar</code> primeiro.",
-            parse_mode='HTML'
-        )
-        return
+    # Se for retroativo, tenta achar sessão daquele dia, ou começa zerado
+    if date_str != "HOJE":
+        # TODO: Implementar busca de sessão por data histórica se necessário
+        # Por enquanto, retroativo assume input manual de custos se não tiver sessão ativa
+        session = None 
     
-    # Prepara dados para fechamento
-    session_manager.set_admin_state(user_id, "closing_day")
-    
-    # Calcula custos automaticamente
-    deliverer_costs = {}
-    total_packages = 0
-    total_deliveries = 0
-    
-    for route in session.routes:
-        if route.assigned_to_telegram_id:
-            partner = BotConfig.get_partner_by_id(route.assigned_to_telegram_id)
-            if partner:
-                cost = route.delivered_count * partner.cost_per_package
-                deliverer_costs[partner.name] = deliverer_costs.get(partner.name, 0) + cost
-                total_packages += route.total_packages
-                total_deliveries += route.delivered_count
-    
-    # Salva dados temporários
+    # Limpa dados temporários anteriores para não misturar shutdowns
     session_manager.save_temp_data(user_id, "day_closing", {
-        'deliverer_costs': deliverer_costs,
-        'total_packages': total_packages,
-        'total_deliveries': total_deliveries,
-        'date': datetime.now().strftime('%Y-%m-%d')
+        'target_date': closing_date.strftime("%Y-%m-%d")
     })
     
-    total_costs = sum(deliverer_costs.values())
+    if not session and date_str == "HOJE":
+        await update.message.reply_text(
+            "⚠️ <b>Aviso:</b> Nenhuma sessão ativa.\n"
+            "Vou iniciar um fechamento avulso.",
+            parse_mode='HTML'
+        )
     
-    # Mostra prévia e pede receita
-    msg = f"""💰 <b>FECHAMENTO DO DIA</b>
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📅 Data: <b>{datetime.now().strftime('%d/%m/%Y')}</b>
-
-<b>📊 OPERAÇÃO DE HOJE:</b>
-
-📦 Pacotes Processados: {total_packages}
-✅ Entregas Realizadas: {total_deliveries}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-<b>💸 CUSTOS COM ENTREGADORES:</b>
+    # Prepara estado: Passo 1 - Receita
+    session_manager.set_admin_state(user_id, "closing_day_revenue")
+    
+    await update.message.reply_text(
+        f"💰 <b>FECHAMENTO FINANCEIRO ({date_str})</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "Vamos calcular o lucro real.\n\n"
+        "1️⃣ <b>PASSO 1: Faturamento</b>\n"
+        "Qual foi o valor TOTAL recebido das rotas?\n\n"
+        "<i>Digite o valor (ex: 250.00):</i>",
+        parse_mode='HTML'
+    )
 
 """
     
@@ -4825,7 +4881,7 @@ async def _execute_route_distribution(update: Update, context: ContextTypes.DEFA
             color_emoji = color_emojis.get(route_color, '⚪') if route_color else ''
             
             # Gera HTML do mapa
-            session = session_manager.get_session()
+            session = session_manager.get_current_session()
             base_loc = (session.base_lat, session.base_lng, session.base_address) if session and session.base_lat and session.base_lng else None
             html = MapGenerator.generate_interactive_map(
                 stops=stops_data,
@@ -5043,6 +5099,7 @@ def run_bot():
             app.add_handler(CommandHandler("financeiro", cmd_financeiro))
             app.add_handler(CommandHandler("fechar_semana", cmd_fechar_semana))
             app.add_handler(CommandHandler("config_socios", cmd_config_socios))
+            app.add_handler(CommandHandler("faturamento", cmd_faturamento))  # 💰 NOVO PARA ENTREGADORES
             
             # Comandos avançados
             app.add_handler(CommandHandler("exportar", cmd_exportar))
@@ -5113,3 +5170,97 @@ def run_bot():
 
 if __name__ == "__main__":
     run_bot()
+
+async def _show_costs_menu(update, context, revenue, expenses):
+    """Mostra menu interativo de custos e resumo parcial"""
+    
+    # Calcula totais parciais
+    total_expenses = sum(e['value'] for e in expenses)
+    partial_profit = revenue - total_expenses
+    
+    # Se for mensagem nova ou edição
+    msg_text = (
+        f"📊 <b>EXTRATO PARCIAL DO DIA</b>\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"💰 <b>Faturamento:</b> R$ {revenue:.2f}\n"
+        f"🔻 <b>Custos Totais:</b> R$ {total_expenses:.2f}\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"💵 <b>LUCRO LÍQUIDO: R$ {partial_profit:.2f}</b>\n\n"
+        f"📝 <b>Despesas Lançadas:</b>\n"
+    )
+    
+    if not expenses:
+        msg_text += "   <i>Nenhuma despesa lançada.</i>\n\n"
+    else:
+        for idx, exp in enumerate(expenses, 1):
+            msg_text += f"   {idx}. {exp['type']}: R$ {exp['value']:.2f}\n"
+        msg_text += "\n"
+            
+    msg_text += "👇 <b>Selecione um custo para adicionar:</b>"
+    
+    keyboard = [
+        [
+            InlineKeyboardButton("⛽ Combustível", callback_data="add_cost_Combustível"),
+            InlineKeyboardButton("🅿️ Estacionamento", callback_data="add_cost_Estacionamento")
+        ],
+        [
+            InlineKeyboardButton("🍔 Alimentação", callback_data="add_cost_Alimentação"),
+            InlineKeyboardButton("🔧 Manutenção", callback_data="add_cost_Manutenção")
+        ],
+        [
+            InlineKeyboardButton("👷 Ajudante", callback_data="add_cost_Ajudante"),
+            InlineKeyboardButton("📝 Outros", callback_data="add_cost_Outros")
+        ],
+        [
+            InlineKeyboardButton("✅ FINALIZAR DIA", callback_data="finish_day_closing")
+        ]
+    ]
+    
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    if update.callback_query:
+        await update.callback_query.edit_message_text(msg_text, parse_mode='HTML', reply_markup=reply_markup)
+    else:
+        await update.message.reply_text(msg_text, parse_mode='HTML', reply_markup=reply_markup)
+async def cmd_faturamento(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """💰 Mostra faturamento acumulado para o entregador"""
+    user_id = update.effective_user.id
+    
+    # Verifica cadastro
+    partner = BotConfig.get_partner_by_id(user_id)
+    if not partner:
+        await update.message.reply_text("❌ Você não está cadastrado como entregador.")
+        return
+        
+    start_date, end_date = financial_service.get_current_week_range()
+    
+    if partner.is_partner:
+        # Sócio vê tudo
+        share_pct = financial_service.get_partner_share(partner.name)
+        
+        # Calcula lucro semanal estimado
+        report = financial_service.get_weekly_report_preview()
+        my_share = report['distributable_profit'] * share_pct
+        
+        msg = (
+            f"🕴️ <b>ÁREA DO SÓCIO: {partner.name}</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"📅 Semana: {start_date} a {end_date}\n\n"
+            f"💰 <b>Lucro da Empresa:</b> R$ {report['distributable_profit']:.2f}\n"
+            f"〽️ <b>Sua Parte ({share_pct*100:.0f}%):</b> R$ {my_share:.2f}\n\n"
+            f"<i>💡 Valor estimativo baseados nos fechamentos da semana.</i>"
+        )
+    else:
+        # Entregador vê ganhos acumulados
+        earnings = deliverer_service.get_weekly_earnings(user_id, start_date, end_date)
+        
+        msg = (
+            f"💰 <b>SEU FATURAMENTO</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"👤 {partner.name}\n"
+            f"📅 Semana: {start_date} a {end_date}\n\n"
+            f"💵 <b>A Receber: R$ {earnings:.2f}</b>\n\n"
+            f"<i>💡 Valor acumulado das entregas realizadas.</i>"
+        )
+        
+    await update.message.reply_text(msg, parse_mode='HTML')

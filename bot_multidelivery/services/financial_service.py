@@ -27,12 +27,19 @@ class DailyFinancialReport:
     total_packages: int
     total_deliveries: int
     deliverer_breakdown: Dict[str, float]  # {nome: custo}
+    expenses: List[dict] = None  # Lista detalhada de despesas [{type, value, desc}]
     
     def to_dict(self) -> dict:
-        return asdict(self)
+        data = asdict(self)
+        if self.expenses is None:
+            data['expenses'] = []
+        return data
     
     @classmethod
     def from_dict(cls, data: dict) -> 'DailyFinancialReport':
+        # Compatibilidade com dados antigos sem expenses
+        if 'expenses' not in data:
+            data['expenses'] = []
         return cls(**data)
 
 
@@ -139,26 +146,20 @@ class FinancialService:
         deliverer_costs: Dict[str, float],
         other_costs: float = 0.0,
         total_packages: int = 0,
-        total_deliveries: int = 0
+        total_deliveries: int = 0,
+        expenses: List[dict] = None
     ) -> DailyFinancialReport:
         """
         Fecha o dia financeiro
-        
-        Args:
-            date: Data do fechamento
-            revenue: Receita bruta do dia
-            deliverer_costs: {nome_entregador: custo}
-            other_costs: Outros custos operacionais
-            total_packages: Total de pacotes processados
-            total_deliveries: Total de entregas realizadas
-        
-        Returns:
-            Relatório diário gerado
         """
         date_str = date.strftime('%Y-%m-%d')
         
         # Calcula custos totais com entregadores
         total_delivery_costs = sum(deliverer_costs.values())
+        
+        # Se other_costs for 0 mas tivermos lista detalhada, calcula da lista
+        if other_costs == 0.0 and expenses:
+            other_costs = sum(e['value'] for e in expenses)
         
         # Lucro líquido do dia
         net_profit = revenue - total_delivery_costs - other_costs
@@ -171,6 +172,9 @@ class FinancialService:
             net_profit=net_profit,
             total_packages=total_packages,
             total_deliveries=total_deliveries,
+            deliverer_breakdown=deliverer_costs,
+            expenses=expenses or []
+        )
             deliverer_breakdown=deliverer_costs
         )
         

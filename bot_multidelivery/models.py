@@ -87,6 +87,7 @@ class FinancialReport:
     net_profit: float  # Lucro líquido
     deliverer_costs: dict  # {deliverer_id: cost}
     deliverer_stats: dict  # {deliverer_id: {packages, cost, rate}}
+    expenses: List[dict] = field(default_factory=list)  # Lista de custos extras [{type, value, desc}]
     
     def to_dict(self) -> dict:
         """Exporta para dicionário"""
@@ -99,7 +100,8 @@ class FinancialReport:
             'revenue': self.revenue,
             'net_profit': self.net_profit,
             'deliverer_costs': self.deliverer_costs,
-            'deliverer_stats': self.deliverer_stats
+            'deliverer_stats': self.deliverer_stats,
+            'expenses': self.expenses
         }
 
 

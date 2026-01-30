@@ -148,7 +148,7 @@ class RouteAnalyzer:
         
         # Densidade e Cobertura
         if len(coords) > 2:
-            coverage = self._calculate_area_coverage(coords)
+            coverage = self._calculate_coverage_area(coords)
         else:
             coverage = 0.1
             
