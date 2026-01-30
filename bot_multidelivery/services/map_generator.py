@@ -460,18 +460,10 @@ class MapGenerator:
             document.getElementById('empty-warning').style.display = 'block';
         }}
         
-        // ⚠️ SCOOTER: Usa linha reta (não segue ruas de carro)
-        // Scooters podem: contramão, calçada, atalhos
-        const waypoints = markers.map(m => L.latLng(m.lat, m.lon));
-        
-        // Desenha linha reta entre pontos (modo scooter)
-        L.polyline(waypoints, {{
-            color: '#667eea',
-            weight: 4,
-            opacity: 0.8,
-            dashArray: '5, 10',  // Tracejado indica que não segue ruas
-            lineJoin: 'round'
-        }}).addTo(map);
+        // ✅ SEM POLYLINE - Mapa de análise mostra só os PONTOS
+        // A numeração nos pins já indica a sequência
+        // Linhas retas ficam feias cortando prédios
+        console.log("📍 Mapa limpo - sem linhas de rota (análise visual)");
         
         // Funcoes
         function openCard(marker) {{
