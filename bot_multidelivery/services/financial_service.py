@@ -175,8 +175,6 @@ class FinancialService:
             deliverer_breakdown=deliverer_costs,
             expenses=expenses or []
         )
-            deliverer_breakdown=deliverer_costs
-        )
         
         # Salva relatório
         filename = self.daily_dir / f"daily_{date_str}.json"
