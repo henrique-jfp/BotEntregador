@@ -124,9 +124,10 @@ class MapGenerator:
         
         logger.info(f"✅ MapGenerator: {len(markers_data)} markers preparados")
         markers_json = json.dumps(markers_data)
+        base_location_json = json.dumps(base_location) if base_location else 'null'
         
-        # HTML completo
-        html = f"""
+        # Template em string - todas as variáveis injetadas via .format() no final
+        html_template = """
 <!DOCTYPE html>
 <html>
 <head>
@@ -360,7 +361,7 @@ class MapGenerator:
     <div class="header">
         <div class="title">{entregador_nome}</div>
         <div class="stats">
-            <span id="progress">{completed_count} de {len(stops)} paradas</span> | 
+            <span id="progress">{completed_count} de {total_stops} paradas</span> | 
             <span>{total_packages} pacotes</span>
         </div>
     </div>
@@ -402,13 +403,11 @@ class MapGenerator:
         console.log("🚀 Iniciando mapa...");
         
         // Dados dos markers
-        let markers = [];
-        const markersJsonStr = '{markers_json}';
-        try {{
-            markers = JSON.parse(markersJsonStr);
-            console.log(`✅ ${{markers.length}} markers carregados do JSON`);
-            if (markers.length === 0) {{
-                console.error("⚠️ MARKERS VAZIO! Nenhum ponto para marcar!");
+        let markers = {markers_json};
+        console.log("✅ " + markers.length + " markers carregados do JSON");
+        if (markers.length === 0) {{
+            console.error("⚠️ MARKERS VAZIO! Nenhum ponto para marcar!");
+        }}
             }}
         }} catch (e) {{
             console.error("❌ ERRO ao parsear markers JSON:", e);
@@ -444,7 +443,7 @@ class MapGenerator:
         }}
         
         // Adiciona marker da BASE se houver
-        const baseLocation = {json.dumps(base_location) if base_location else 'null'};
+        const baseLocation = {base_location_json};
         if (baseLocation) {{
             console.log("🏠 Adicionando marker da BASE:", baseLocation);
             const baseIcon = L.divIcon({{
@@ -590,6 +589,20 @@ class MapGenerator:
 </body>
 </html>
 """
+        
+        # Injeta as variáveis Python no template usando .format()
+        html = html_template.format(
+            entregador_nome=entregador_nome,
+            entregador_nome_label=entregador_nome,
+            completed_count=completed_count,
+            total_stops=len(stops),
+            total_packages=total_packages,
+            center_lat=center_lat,
+            center_lon=center_lon,
+            zoom=zoom,
+            markers_json=markers_json,
+            base_location_json=base_location_json
+        )
         
         return html
     
