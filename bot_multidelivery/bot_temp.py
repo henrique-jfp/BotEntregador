@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
- BOT TELEGRAM - Handler principal
-Fluxo completo de admin + entregadores
-"""
+# docstring removed
 import os
 import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
@@ -32,26 +29,26 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if user_id == BotConfig.ADMIN_TELEGRAM_ID:
         keyboard = [
-            [KeyboardButton("[PACOTE] Nova Sessão do Dia")],
-            [KeyboardButton("[GRAFICO] Status Atual"), KeyboardButton("[DINHEIRO] Relatório Financeiro")],
-            [KeyboardButton("[PESSOAS] Entregadores"), KeyboardButton("🏆 Ranking")],
+            [KeyboardButton("📦 Nova Sessão do Dia")],
+            [KeyboardButton("📊 Status Atual"), KeyboardButton("💰 Relatório Financeiro")],
+            [KeyboardButton("👥 Entregadores"), KeyboardButton("🏆 Ranking")],
         ]
         reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
         await update.message.reply_text(
-            "[ROCKET] <b>BOT MULTI-ENTREGADOR v20/10</b>\n"
+            "🚀 <b>BOT MULTI-ENTREGADOR v20/10</b>\n"
             "---\n\n"
             "👋 E aí, <b>CHEFE</b>! Pronto pra dominar as entregas?\n\n"
-            "<b>[RAPIDO] FLUXO RÁPIDO:</b>\n"
+            "<b>⚡ FLUXO RÁPIDO:</b>\n"
             "1️⃣ <code>/importar</code> - Sobe romaneios da Shopee\n"
             "2️⃣ Seleciona entregadores disponíveis\n"
             "3️⃣ <code>/otimizar</code> - Divide + roteiriza + MANDA!\n\n"
             "<b>🛠️ GERENCIAR:</b>\n"
-            "- <code>/add_entregador</code> - Cadastra novo entregador\n"
-            "- <code>/entregadores</code> - Lista do time\n"
-            "- <code>/ranking</code> - Quem tá mandando bem\n\n"
-            "[DICA] <code>/help</code> pra ver TUDO que esse bot faz\n\n"
+            "• <code>/add_entregador</code> - Cadastra novo entregador\n"
+            "• <code>/entregadores</code> - Lista do time\n"
+            "• <code>/ranking</code> - Quem tá mandando bem\n\n"
+            "💡 <code>/help</code> pra ver TUDO que esse bot faz\n\n"
             "---\n"
-            "[FIRE] <i>Bora fazer grana!</i>",
+            "🔥 <i>Bora fazer grana!</i>",
             parse_mode='HTML',
             reply_markup=reply_markup
         )
@@ -60,28 +57,28 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         partner = BotConfig.get_partner_by_id(user_id)
         if partner:
             keyboard = [
-                [KeyboardButton("[MAPA] Minha Rota Hoje")],
-                [KeyboardButton("[OK] Marcar Entrega"), KeyboardButton("[X] Reportar Problema")]
+                [KeyboardButton("🗺️ Minha Rota Hoje")],
+                [KeyboardButton("✅ Marcar Entrega"), KeyboardButton("❌ Reportar Problema")]
             ]
             reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
             
-            tipo = "[SOCIO] PARCEIRO" if partner.is_partner else "[COLAB] COLABORADOR"
+            tipo = "🤝 PARCEIRO" if partner.is_partner else "💼 COLABORADOR"
             
             await update.message.reply_text(
                 f"🏍️ <b>E AÍ, {partner.name.upper()}!</b>\n"
                 f"---\n\n"
                 f"📛 Status: {tipo}\n"
-                f"[PACOTE] Capacidade: {partner.max_capacity} pacotes/dia\n"
-                f"[DINHEIRO] Ganho: R$ {partner.cost_per_package:.2f}/pacote\n\n"
-                f"<b>[ALVO] COMO FUNCIONA:</b>\n"
+                f"📦 Capacidade: {partner.max_capacity} pacotes/dia\n"
+                f"💰 Ganho: R$ {partner.cost_per_package:.2f}/pacote\n\n"
+                f"<b>🎯 COMO FUNCIONA:</b>\n"
                 f"1️⃣ Admin distribui as rotas\n"
                 f"2️⃣ Você recebe um mapa HTML interativo\n"
                 f"3️⃣ Abre no navegador e segue a ordem\n"
-                f"4️⃣ Marca cada entrega ([OK]/[X])\n\n"
+                f"4️⃣ Marca cada entrega (✅/❌)\n\n"
                 f"🔔 <i>Aguardando distribuição de rotas...</i>\n\n"
-                f"[DICA] <code>/help</code> - Ver todos os comandos\n\n"
+                f"💡 <code>/help</code> - Ver todos os comandos\n\n"
                 f"---\n"
-                f"[ROCKET] <i>Bora faturar!</i>",
+                f"🚀 <i>Bora faturar!</i>",
                 parse_mode='HTML',
                 reply_markup=reply_markup
             )
@@ -95,164 +92,81 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Comando /help - Lista completa de todas as funcionalidades"""
-    user_id = update.effective_user.id
-    
-    if user_id == BotConfig.ADMIN_TELEGRAM_ID:
-        # Mensagem 1 - Visão Geral + Importação
-        msg1 = """<b>[ROCKET] BOT MULTI-ENTREGADOR v5.0</b>
+    """Comando /help - Lista completa de todas as funcionalidades# docstring removed<b>🚀 BOT MULTI-ENTREGADOR v5.0</b>
 <i>Sistema Completo: Sessões + IA + Cores Automáticas</i>
 
 ---
 
-<b>[PASTA] SESSÕES PERSISTENTES 🆕</b>
+<b>📂 SESSÕES PERSISTENTES 🆕</b>
 <code>/sessoes</code> — Gerenciar sessões
 <code>/selecionar_sessao</code> — Escolher sessão ativa
-- 💾 Auto-save em JSON (nunca perde dados)
-- [LISTA] Ver todas (ativas + finalizadas)
-- [AZUL] Trocar entre sessões a qualquer momento
-- [GRAFICO] Histórico completo com timestamps
-- [COR] Cores automáticas por entregador
-- [ALERTA] Múltiplas sessões simultâneas suportadas
+• 💾 Auto-save em JSON (nunca perde dados)
+• 📋 Ver todas (ativas + finalizadas)
+• 🔵 Trocar entre sessões a qualquer momento
+• 📊 Histórico completo com timestamps
+• 🎨 Cores automáticas por entregador
+• ⚠️ Múltiplas sessões simultâneas suportadas
 
-<i>[DICA] Sistema "save game" - reinicia o bot sem medo!</i>
+<i>💡 Sistema "save game" - reinicia o bot sem medo!</i>
 
 ---
 
-<b>[PACOTE] IMPORTAÇÃO & ANÁLISE</b>
+<b>📦 IMPORTAÇÃO & ANÁLISE</b>
 <code>/importar</code> — Enviar romaneios
-- Shopee, ML, Loggi (CSV/PDF/TXT)
-- Parsing automático + validação
+• Shopee, ML, Loggi (CSV/PDF/TXT)
+• Parsing automático + validação
 
 <code>/analisar_rota</code> — IA avalia rota 🆕
-- 🌍 Geocoding automático (sem lat/lon? sem problema!)
-- 🤖 Score 0-10 + prós/contras
-- [GRAFICO] Densidade, concentração, tempo estimado
-- [MAPA] Mapa interativo + análise completa
-- [OK] Decide se vale pegar ANTES de aceitar!
+• 🌍 Geocoding automático (sem lat/lon? sem problema!)
+• 🤖 Score 0-10 + prós/contras
+• 📊 Densidade, concentração, tempo estimado
+• 🗺️ Mapa interativo + análise completa
+• ✅ Decide se vale pegar ANTES de aceitar!
 
 <code>/fechar_rota</code> — Dividir rotas
-- K-Means + Algoritmo Genético
-- [COR] Atribui COR única por entregador
-- Modo Scooter (79% menos distância)
-- Mapa HTML com rotas reais (OSRM)
+• K-Means + Algoritmo Genético
+• 🎨 Atribui COR única por entregador
+• Modo Scooter (79% menos distância)
+• Mapa HTML com rotas reais (OSRM)
 
 ---
 
-<b>[PESSOAS] GESTÃO DE EQUIPE</b>
+<b>👥 GESTÃO DE EQUIPE</b>
 <code>/add_entregador</code> — Cadastrar
-- Sócio ou Colaborador
-- Capacidade + custo/pacote
+• Sócio ou Colaborador
+• Capacidade + custo/pacote
 
 <code>/entregadores</code> — Listar time
 <code>/ranking</code> — Gamificação + XP
 
 ---
 
-<b>[COR] SEPARAÇÃO FÍSICA COM CORES</b>
+<b>🎨 SEPARAÇÃO FÍSICA COM CORES</b>
 <code>/modo_separacao</code> — Ativar
-- [PACOTE] Escaneia barcode → retorna COR DO ENTREGADOR
-- [VERMELHO][VERDE][AZUL] Usa cores atribuídas na divisão
-- [ALVO] Mostra sequência: "Entrega #5 de 23"
-- 🔢 Etiquetadora MX550 (8 dígitos)
-- [RAPIDO] ~3s por pacote (20 pacotes/min)
+• 📦 Escaneia barcode → retorna COR DO ENTREGADOR
+• 🔴🟢🔵 Usa cores atribuídas na divisão
+• 🎯 Mostra sequência: "Entrega #5 de 23"
+• 🔢 Etiquetadora MX550 (8 dígitos)
+• ⚡ ~3s por pacote (20 pacotes/min)
 
 <code>/status_separacao</code> — Progresso
 <code>/fim_separacao</code> — Relatório final
 
 ---
 
-<b>[MAPA] ROTEIRIZAÇÃO INTELIGENTE</b>
+<b>🗺️ ROTEIRIZAÇÃO INTELIGENTE</b>
 🏍️ Scooter — Contrafluxo + atalhos
 🚗 Padrão — Google Maps oficial
 🧬 Genético — TSP otimizado
-[ESTRADA] OSRM — Rotas reais pelas ruas
+🛣️ OSRM — Rotas reais pelas ruas
 
-- STOPS: múltiplos no mesmo pin
-- HTML offline + turn-by-turn
-- Leaflet Routing Machine integrado"""
+• STOPS: múltiplos no mesmo pin
+• HTML offline + turn-by-turn
+• Leaflet Routing Machine integrado"""
 
-        msg2 = """<b>[DINHEIRO] FINANCEIRO COMPLETO</b>
+        msg2 = # docstring removed
 
-<code>/fechar_dia</code> — Manual
-- Calcula custos colaboradores
-- Relatório + histórico JSON
-
-<code>/financeiro</code> — Relatórios
-- Filtro: dia/semana/mês
-- Receitas, custos, lucro
-- Gráficos + tendências
-
-<code>/fechar_semana</code> — Sócios
-- Lucro após descontar custos
-- % configurável por sócio
-
-<code>/config_socios</code> — Define %
-- Validação soma = 100%
-
----
-
-<b>🏦 BANCO INTER (Opcional)</b>
-<code>/config_banco_inter</code> — Config
-- Upload .crt + .key
-- Teste de conexão
-
-<code>/fechar_dia_auto</code> — Auto
-- Busca saldo real via API
-- Calcula receita automaticamente
-
-<code>/saldo_banco</code> — Consulta
-- Saldo + últimas movimentações
-
----
-
-<b>[GRAFICO] EXPORTAÇÃO</b>
-<code>/exportar</code> — Arquivos
-- Excel (.xlsx) multi-abas
-- PDF formatado + gráficos
-- CSV análise externa"""
-
-        msg3 = """<b>🔮 INTELIGÊNCIA ARTIFICIAL</b>
-
-<code>/projecoes</code> — Machine Learning
-- Prevê volume de entregas
-- Estima receita futura
-- Sugere dimensionamento equipe
-
-<code>/dashboard</code> — Web UI
-- Interface navegador
-- Monitoramento real-time
-- Mapa de calor + KPIs
-
----
-
-<b>📱 OUTROS</b>
-<code>/start</code> — Menu principal
-<code>/help</code> — Este guia
-<code>/status</code> — Status sessão
-<code>/fechar_rota</code> — Encerrar rota
-
----
-
-<b>[DICA] FLUXO DIÁRIO</b>
-1️⃣ /add_entregador → Cadastra
-2️⃣ /config_socios → Define %
-3️⃣ /importar → Romaneios
-4️⃣ /otimizar → Rotas IA
-5️⃣ /modo_separacao → Físico
-6️⃣ Entregadores executam
-7️⃣ /fechar_dia → Financeiro
-8️⃣ /fechar_semana → Divisão
-
----
-
-<b>🧠 TECNOLOGIA</b>
-- K-Means + Algoritmo Genético
-- Google Geocoding (cache local)
-- Python 3.12 async
-- Zero dependência APIs pagas
-
-<b>[FIRE] Deploy: Railway.app | v4.0</b>"""
+        msg3 = # docstring removed
 
         # Envia as 3 mensagens sequencialmente
         await update.message.reply_text(msg1, parse_mode='HTML')
@@ -274,17 +188,17 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
         
-        tipo_emoji = "[SOCIO]" if partner.is_partner else "[COLAB]"
+        tipo_emoji = "🤝" if partner.is_partner else "💼"
         tipo_texto = "PARCEIRO (Sócio)" if partner.is_partner else "COLABORADOR"
         
         pagamento_info = (
             "Você é <b>SÓCIO</b> do negócio\n"
-            "   - Custo: R$ 0,00/pacote\n"
-            "   - Participa dos lucros"
+            "   • Custo: R$ 0,00/pacote\n"
+            "   • Participa dos lucros"
             if partner.is_partner else
             f"Você é <b>COLABORADOR</b>\n"
-            f"   - Pagamento: <b>R$ {partner.cost_per_package:.2f}/pacote</b>\n"
-            f"   - Acerto no final do dia"
+            f"   • Pagamento: <b>R$ {partner.cost_per_package:.2f}/pacote</b>\n"
+            f"   • Acerto no final do dia"
         )
         
         help_text = f"""╔═══════════════════════════════════╗
@@ -294,15 +208,15 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 👋 Olá, <b>{partner.name}</b>!
 
-<b>[LISTA] SEU PERFIL</b>
+<b>📋 SEU PERFIL</b>
 ---
  {tipo_emoji} Tipo: <b>{tipo_texto}</b>
- [PACOTE] Capacidade: <b>{partner.max_capacity} pacotes/dia</b>
- [DINHEIRO] {pagamento_info}
+ 📦 Capacidade: <b>{partner.max_capacity} pacotes/dia</b>
+ 💰 {pagamento_info}
 
 ---
 
-<b>[ROCKET] FLUXO DE TRABALHO</b>
+<b>🚀 FLUXO DE TRABALHO</b>
 
 <b>┏--- 1. RECEBER ROTA</b>
 ┃  ▸ Admin envia sua rota otimizada
@@ -320,18 +234,18 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 ┃  ┗---▸ Siga a ordem otimizada
 ┃
 <b>┗--- 4. MARCAR ENTREGAS</b>
-   ▸ [OK] Entregue — Sucesso
-   ▸ [X] Insucesso — Não conseguiu
+   ▸ ✅ Entregue — Sucesso
+   ▸ ❌ Insucesso — Não conseguiu
    ┗---▸ 🔄 Transferir — Passar pra colega
 
 ---
 
-<b>[ALVO] CONCEITO DE STOPS</b>
+<b>🎯 CONCEITO DE STOPS</b>
 
 <b>1 STOP</b> = Múltiplas entregas no mesmo local
 
 <b>Exemplo Real:</b>
-[PIN] Edifício Solar das Palmeiras
+📍 Edifício Solar das Palmeiras
    ├─ Apto 201 (1 pacote)
    ├─ Apto 603 (2 pacotes)
    └─ Apto 903 (1 pacote)
@@ -351,13 +265,13 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
  ✓ Aglomerações de entregas próximas
 
 <b>Resultado:</b>
- - <b>79% mais eficiente</b> que rota original
- - Menos combustível gasto
- - Mais entregas por hora
+ • <b>79% mais eficiente</b> que rota original
+ • Menos combustível gasto
+ • Mais entregas por hora
 
 ---
 
-<b>[DICA] DICAS DE OURO</b>
+<b>💡 DICAS DE OURO</b>
 
  ▸ Sempre siga a ordem do mapa
     <i>→ A IA já otimizou pra você</i>
@@ -383,12 +297,12 @@ Fale diretamente com o admin!
 
 ---
 
-<b>[ROCKET] Boas entregas, parceiro(a)!</b>
-[RAPIDO] <b>v2.1</b> | Atualizado: 21/12/2025"""
+<b>🚀 Boas entregas, parceiro(a)!</b>
+⚡ <b>v2.1</b> | Atualizado: 21/12/2025"""
         
         # Botão simples para entregador
         keyboard = [[
-            InlineKeyboardButton("[DICA] Dica do Dia", callback_data="deliverer_tip")
+            InlineKeyboardButton("💡 Dica do Dia", callback_data="deliverer_tip")
         ]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         
@@ -400,7 +314,7 @@ Fale diretamente com o admin!
 
 
 async def cmd_cancelar(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Cancela qualquer operação em andamento"""
+    # docstring removed
     user_id = update.effective_user.id
     
     # Limpa estado do admin no SessionManager
@@ -418,7 +332,7 @@ async def cmd_cancelar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = ReplyKeyboardRemove()
     
     await update.message.reply_text(
-        "[PROIBIDO] <b>OPERAÇÃO CANCELADA</b>\n"
+        "🚫 <b>OPERAÇÃO CANCELADA</b>\n"
         "---\n\n"
         "Todo o fluxo atual foi interrompido e os estados limpos.\n"
         "O bot está pronto para uma nova tarefa.\n\n"
@@ -457,7 +371,7 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
         try:
             val = float(text.replace(',', '.'))
         except:
-            await update.message.reply_text("[ALERTA] Digite um número válido (ex: 120.50) ou 0.")
+            await update.message.reply_text("⚠️ Digite um número válido (ex: 120.50) ou 0.")
             return
 
         session_manager.save_temp_data(user_id, "route_value", val)
@@ -466,16 +380,16 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
         await update.message.reply_text(
             "🔍 <b>ANÁLISE INTELIGENTE DE ROTA</b>\n"
             "---\n\n"
-            "[CLIP] <b>AGORA, OS DADOS:</b>\n\n"
-            "[DOC] <b>OPÇÃO 1: Arquivo Excel</b>\n"
+            "📎 <b>AGORA, OS DADOS:</b>\n\n"
+            "📄 <b>OPÇÃO 1: Arquivo Excel</b>\n"
             "   Anexe o .xlsx da Shopee\n\n"
             "📝 <b>OPÇÃO 2: Cole os Endereços</b>\n"
-            "   [OK] <b>Aceita QUALQUER formato:</b>\n"
-            "   - Um por linha\n"
-            "   - Separados por ; (ponto-vírgula)\n"
-            "   - Texto corrido\n"
-            "   - Com ou sem numeração\n\n"
-            "[DICA] <b>Pode colar direto aqui!</b>",
+            "   ✅ <b>Aceita QUALQUER formato:</b>\n"
+            "   • Um por linha\n"
+            "   • Separados por ; (ponto-vírgula)\n"
+            "   • Texto corrido\n"
+            "   • Com ou sem numeração\n\n"
+            "💡 <b>Pode colar direto aqui!</b>",
             parse_mode='HTML'
         )
         return
@@ -494,7 +408,7 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
         session_manager.set_admin_state(user_id, "adding_deliverer_id")
 
         await update.message.reply_text(
-            "[CELULAR] Informe o <b>Telegram ID</b> do entregador (apenas números).\n\n"
+            "📲 Informe o <b>Telegram ID</b> do entregador (apenas números).\n\n"
             "Exemplo: 123456789",
             parse_mode='HTML'
         )
@@ -506,7 +420,7 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
             telegram_id = int(digits_only)
         except ValueError:
             await update.message.reply_text(
-                "[ALERTA] ID inválido. Envie só números (ex: 123456789).",
+                "⚠️ ID inválido. Envie só números (ex: 123456789).",
                 parse_mode='HTML'
             )
             return
@@ -517,8 +431,8 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
         session_manager.set_admin_state(user_id, "adding_deliverer_partner")
 
         keyboard = [[
-            InlineKeyboardButton("[SOCIO] Sim, é sócio", callback_data="add_partner_yes"),
-            InlineKeyboardButton("[COLAB] Não, é colaborador", callback_data="add_partner_no")
+            InlineKeyboardButton("🤝 Sim, é sócio", callback_data="add_partner_yes"),
+            InlineKeyboardButton("💼 Não, é colaborador", callback_data="add_partner_no")
         ]]
 
         await update.message.reply_text(
@@ -536,7 +450,7 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
                 raise ValueError
         except ValueError:
             await update.message.reply_text(
-                "[ALERTA] Valor inválido. Envie um número (ex: 1.50).",
+                "⚠️ Valor inválido. Envie um número (ex: 1.50).",
                 parse_mode='HTML'
             )
             return
@@ -552,14 +466,14 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
     if state == "closing_day_revenue":
         if text.lower() == '/cancelar':
             session_manager.clear_admin_state(user_id)
-            await update.message.reply_text("[X] Fechamento cancelado.")
+            await update.message.reply_text("❌ Fechamento cancelado.")
             return
         
         try:
             val = float(text.strip().replace(',', '.'))
             if val < 0: raise ValueError
         except:
-            await update.message.reply_text("[ALERTA] Valor inválido. Tente novamente.")
+            await update.message.reply_text("⚠️ Valor inválido. Tente novamente.")
             return
 
         # Salva receita
@@ -615,7 +529,7 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
             cost_val = float(text.strip().replace(',', '.'))
             if cost_val < 0: raise ValueError
         except:
-            await update.message.reply_text("[ALERTA] Valor inválido. Digite um número positivo.")
+            await update.message.reply_text("⚠️ Valor inválido. Digite um número positivo.")
             return
             
         data = session_manager.get_temp_data(user_id, "day_closing")
@@ -640,7 +554,7 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
     if state == "closing_day_auto_costs":
         if text.lower() == '/cancelar':
             session_manager.clear_admin_state(user_id)
-            await update.message.reply_text("[X] Fechamento automático cancelado.")
+            await update.message.reply_text("❌ Fechamento automático cancelado.")
             return
         
         try:
@@ -649,7 +563,7 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
                 raise ValueError
         except ValueError:
             await update.message.reply_text(
-                "[ALERTA] Valor inválido. Digite um número válido ou 0.",
+                "⚠️ Valor inválido. Digite um número válido ou 0.",
                 parse_mode='HTML'
             )
             return
@@ -684,7 +598,7 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
         
         # Envia relatório
         msg = financial_service.format_daily_report(report)
-        msg += "\n\n[OK] <b>Fechamento automático concluído!</b>"
+        msg += "\n\n✅ <b>Fechamento automático concluído!</b>"
         msg += "\n🏦 <i>Receita obtida do Banco Inter</i>"
         
         await update.message.reply_text(msg, parse_mode='HTML')
@@ -694,7 +608,7 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
     if state == "closing_week":
         if text.lower() == '/cancelar':
             session_manager.clear_admin_state(user_id)
-            await update.message.reply_text("[X] Fechamento de semana cancelado.")
+            await update.message.reply_text("❌ Fechamento de semana cancelado.")
             return
         
         try:
@@ -703,7 +617,7 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
                 raise ValueError
         except ValueError:
             await update.message.reply_text(
-                "[ALERTA] Valor inválido. Digite um número válido ou 0.\n"
+                "⚠️ Valor inválido. Digite um número válido ou 0.\n"
                 "Ou /cancelar para abortar.",
                 parse_mode='HTML'
             )
@@ -727,7 +641,7 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
         
         except ValueError as e:
             await update.message.reply_text(
-                f"[X] <b>ERRO AO FECHAR SEMANA</b>\n\n{str(e)}\n\n"
+                f"❌ <b>ERRO AO FECHAR SEMANA</b>\n\n{str(e)}\n\n"
                 "Certifique-se de ter fechado os dias da semana com <code>/fechar_dia</code>",
                 parse_mode='HTML'
             )
@@ -735,21 +649,21 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
         
         return
     
-    if text == "[PACOTE] Nova Sessão do Dia":
+    if text == "📦 Nova Sessão do Dia":
         # Inicia nova sessão
         today = datetime.now().strftime("%Y-%m-%d")
         session_manager.create_new_session(today)
         session_manager.set_admin_state(user_id, "awaiting_base_address")
         
         await update.message.reply_text(
-            "[VERDE] <b>NOVA SESSÃO INICIADA!</b>\n"
+            "🟢 <b>NOVA SESSÃO INICIADA!</b>\n"
             "---\n\n"
-            f"[DATA] Data: <b>{today}</b>\n\n"
-            "[ALVO] <b>PRÓXIMO PASSO:</b>\n"
+            f"📅 Data: <b>{today}</b>\n\n"
+            "🎯 <b>PRÓXIMO PASSO:</b>\n"
             "Defina a <b>LOCALIZAÇÃO DA BASE</b> (onde o carro/bike está)\n\n"
-            "[PIN] <b>OPÇÃO 1 (RECOMENDADO):</b>\n"
-            "   Use o [CLIP] anexo → [PIN] Localização do Telegram\n"
-            "   [OK] Otimiza bateria das bikes!\n\n"
+            "📍 <b>OPÇÃO 1 (RECOMENDADO):</b>\n"
+            "   Use o 📎 anexo → 📍 Localização do Telegram\n"
+            "   ✅ Otimiza bateria das bikes!\n\n"
             "📝 <b>OPÇÃO 2:</b>\n"
             "   Digite o endereço completo\n"
             "   <i>Ex: Rua das Flores, 123 - Botafogo, RJ</i>\n\n"
@@ -757,13 +671,13 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
             parse_mode='HTML'
         )
     
-    elif text == "[GRAFICO] Status Atual":
+    elif text == "📊 Status Atual":
         await show_status(update, context)
     
-    elif text == "[DINHEIRO] Relatório Financeiro":
+    elif text == "💰 Relatório Financeiro":
         await show_financial_report(update, context)
 
-    elif text == "[PESSOAS] Entregadores":
+    elif text == "👥 Entregadores":
         await cmd_list_deliverers(update, context)
 
     elif text == "🏆 Ranking":
@@ -781,8 +695,8 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
             else:
                 base_lat, base_lng = -23.5505, -46.6333  # Fallback SP
                 await update.message.reply_text(
-                    "[ALERTA] Não consegui localizar o endereço exato. Usando coordenadas aproximadas.\n"
-                    "[PIN] Use o anexo de localização do Telegram para maior precisão!",
+                    "⚠️ Não consegui localizar o endereço exato. Usando coordenadas aproximadas.\n"
+                    "📍 Use o anexo de localização do Telegram para maior precisão!",
                     parse_mode='HTML'
                 )
         except Exception as e:
@@ -793,24 +707,24 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
         session_manager.set_admin_state(user_id, "awaiting_romaneios")
         
         await update.message.reply_text(
-            f"[OK] <b>BASE CONFIGURADA!</b>\n"
+            f"✅ <b>BASE CONFIGURADA!</b>\n"
             f"---\n\n"
-            f"[PIN] Local: <b>{base_address}</b>\n"
-            f"[WEB] Coords: <code>{base_lat:.6f}, {base_lng:.6f}</code>\n\n"
+            f"📍 Local: <b>{base_address}</b>\n"
+            f"🌐 Coords: <code>{base_lat:.6f}, {base_lng:.6f}</code>\n\n"
             f"---\n\n"
-            f"[ROCKET] <b>PRÓXIMO PASSO:</b> Envie os romaneios!\n\n"
-            f"<b>[PASTA] MÉTODOS ACEITOS:</b>\n\n"
-            f"[DOC] <b>1. Arquivo Excel (.xlsx)</b>\n"
+            f"🚀 <b>PRÓXIMO PASSO:</b> Envie os romaneios!\n\n"
+            f"<b>📂 MÉTODOS ACEITOS:</b>\n\n"
+            f"📄 <b>1. Arquivo Excel (.xlsx)</b>\n"
             f"   Formato Shopee (RECOMENDADO)\n"
             f"   Usa: <code>/importar</code>\n\n"
             f"📝 <b>2. Texto Direto</b>\n"
             f"   Cole endereços (um por linha)\n\n"
-            f"[GRAFICO] <b>3. Arquivo CSV</b>\n"
+            f"📊 <b>3. Arquivo CSV</b>\n"
             f"   Formato: tracking,endereco,lat,lon\n\n"
-            f"[LIVRO] <b>4. PDF Scaneado</b>\n"
+            f"📕 <b>4. PDF Scaneado</b>\n"
             f"   OCR automático (legado)\n\n"
             f"---\n\n"
-            f"[DICA] Quando terminar: <code>/fechar_rota</code>",
+            f"💡 Quando terminar: <code>/fechar_rota</code>",
             parse_mode='HTML'
         )
     
@@ -827,20 +741,20 @@ async def handle_admin_message(update: Update, context: ContextTypes.DEFAULT_TYP
 
 
 async def handle_location_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handler para localizao do Telegram (anexo de location)"""
+    # docstring removed
     user_id = update.effective_user.id
     
     # Apenas admin pode definir localização da base
     if user_id != BotConfig.ADMIN_TELEGRAM_ID:
-        await update.message.reply_text("[X] Apenas o admin pode definir a base.")
+        await update.message.reply_text("❌ Apenas o admin pode definir a base.")
         return
     
     state = session_manager.get_admin_state(user_id)
     
     if state != "awaiting_base_address":
         await update.message.reply_text(
-            "[ALERTA] Não estou esperando uma localização agora.\n"
-            "Use [PACOTE] Nova Sessão do Dia para começar.",
+            "⚠️ Não estou esperando uma localização agora.\n"
+            "Use 📦 Nova Sessão do Dia para começar.",
             parse_mode='HTML'
         )
         return
@@ -862,31 +776,31 @@ async def handle_location_message(update: Update, context: ContextTypes.DEFAULT_
     session_manager.set_admin_state(user_id, "awaiting_romaneios")
     
     await update.message.reply_text(
-        f"[OK] <b>BASE CONFIGURADA COM LOCALIZAÇÃO EXATA!</b>\n"
+        f"✅ <b>BASE CONFIGURADA COM LOCALIZAÇÃO EXATA!</b>\n"
         f"---\n\n"
-        f"[PIN] Local: <b>{base_address}</b>\n"
-        f"[WEB] Coords: <code>{base_lat:.6f}, {base_lng:.6f}</code>\n"
+        f"📍 Local: <b>{base_address}</b>\n"
+        f"🌐 Coords: <code>{base_lat:.6f}, {base_lng:.6f}</code>\n"
         f"🚴 <b>Otimizado para economia de bateria!</b>\n\n"
         f"---\n\n"
-        f"[ROCKET] <b>PRÓXIMO PASSO:</b> Envie os romaneios!\n\n"
-        f"<b>[PASTA] MÉTODOS ACEITOS:</b>\n\n"
-        f"[DOC] <b>1. Arquivo Excel (.xlsx)</b>\n"
+        f"🚀 <b>PRÓXIMO PASSO:</b> Envie os romaneios!\n\n"
+        f"<b>📂 MÉTODOS ACEITOS:</b>\n\n"
+        f"📄 <b>1. Arquivo Excel (.xlsx)</b>\n"
         f"   Formato Shopee (RECOMENDADO)\n"
         f"   Usa: <code>/importar</code>\n\n"
         f"📝 <b>2. Texto Direto</b>\n"
         f"   Cole endereços (um por linha)\n\n"
-        f"[GRAFICO] <b>3. Arquivo CSV</b>\n"
+        f"📊 <b>3. Arquivo CSV</b>\n"
         f"   Formato: tracking,endereco,lat,lon\n\n"
-        f"[LIVRO] <b>4. PDF Scaneado</b>\n"
+        f"📕 <b>4. PDF Scaneado</b>\n"
         f"   OCR automático (legado)\n\n"
         f"---\n\n"
-        f"[DICA] Quando terminar: <code>/fechar_rota</code>",
+        f"💡 Quando terminar: <code>/fechar_rota</code>",
         parse_mode='HTML'
     )
 
 
 async def send_deliverer_summary(update: Update, user_id: int, data: dict):
-    """Mostra resumo e pede confirmao do novo entregador."""
+    # docstring removed
     name = data.get("name", "—")
     telegram_id = data.get("telegram_id", "—")
     is_partner = data.get("is_partner", False)
@@ -895,21 +809,21 @@ async def send_deliverer_summary(update: Update, user_id: int, data: dict):
 
     session_manager.set_admin_state(user_id, "confirming_deliverer")
 
-    tipo_txt = "[SOCIO] Sócio (custo R$ 0,00)" if is_partner else "[COLAB] Colaborador"
+    tipo_txt = "🤝 Sócio (custo R$ 0,00)" if is_partner else "💼 Colaborador"
 
     keyboard = [
-        [InlineKeyboardButton("[OK] Confirmar cadastro", callback_data="confirm_add_deliverer")],
-        [InlineKeyboardButton("[X] Cancelar", callback_data="cancel_add_deliverer")]
+        [InlineKeyboardButton("✅ Confirmar cadastro", callback_data="confirm_add_deliverer")],
+        [InlineKeyboardButton("❌ Cancelar", callback_data="cancel_add_deliverer")]
     ]
 
     msg = (
-        "[LISTA] <b>Confirmar entregador</b>\n"
+        "📋 <b>Confirmar entregador</b>\n"
         "---\n\n"
-        f"[PESSOA] Nome: <b>{name}</b>\n"
-        f"[ID] ID: <code>{telegram_id}</code>\n"
-        f"[TAG] Tipo: {tipo_txt}\n"
-        f"[PACOTE] Capacidade: <b>flexível</b> (define por rota)\n"
-        f"[DINHEIRO] Custo: R$ {cost:.2f}/pacote\n\n"
+        f"👤 Nome: <b>{name}</b>\n"
+        f"🆔 ID: <code>{telegram_id}</code>\n"
+        f"🏷️ Tipo: {tipo_txt}\n"
+        f"📦 Capacidade: <b>flexível</b> (define por rota)\n"
+        f"💰 Custo: R$ {cost:.2f}/pacote\n\n"
         "Confirmar cadastro?"
     )
 
@@ -924,7 +838,7 @@ async def handle_document_message(update: Update, context: ContextTypes.DEFAULT_
     
     # Apenas admin pode enviar arquivos
     if user_id != BotConfig.ADMIN_TELEGRAM_ID:
-        await update.message.reply_text("[X] Apenas o admin pode enviar arquivos.")
+        await update.message.reply_text("❌ Apenas o admin pode enviar arquivos.")
         return
     
     state = session_manager.get_admin_state(user_id)
@@ -947,13 +861,13 @@ async def handle_document_message(update: Update, context: ContextTypes.DEFAULT_
         session_manager.set_admin_state(user_id, "awaiting_base_address")
         
         await update.message.reply_text(
-            "[VERDE] <b>Sessão criada automaticamente!</b>\n"
+            "🟢 <b>Sessão criada automaticamente!</b>\n"
             "---\n\n"
-            f"[DATA] Data: <b>{today}</b>\n\n"
-            "[ALVO] Antes de importar, defina a <b>LOCALIZAÇÃO DA BASE</b>:\n\n"
-            "[PIN] <b>OPÇÃO 1 (RECOMENDADO):</b>\n"
-            "   Use o [CLIP] anexo → [PIN] Localização do Telegram\n"
-            "   [OK] Otimiza bateria das bikes!\n\n"
+            f"📅 Data: <b>{today}</b>\n\n"
+            "🎯 Antes de importar, defina a <b>LOCALIZAÇÃO DA BASE</b>:\n\n"
+            "📍 <b>OPÇÃO 1 (RECOMENDADO):</b>\n"
+            "   Use o 📎 anexo → 📍 Localização do Telegram\n"
+            "   ✅ Otimiza bateria das bikes!\n\n"
             "📝 <b>OPÇÃO 2:</b>\n"
             "   Digite o endereço completo\n"
             "   <i>Ex: Rua das Flores, 123 - Botafogo, RJ</i>",
@@ -963,7 +877,7 @@ async def handle_document_message(update: Update, context: ContextTypes.DEFAULT_
     
     if state != "awaiting_romaneios":
         await update.message.reply_text(
-            "[ALERTA] <b>Configure a base primeiro!</b>\n\n"
+            "⚠️ <b>Configure a base primeiro!</b>\n\n"
             "Envie o endereço da base (onde o carro está) para continuar.",
             parse_mode='HTML'
         )
@@ -971,11 +885,11 @@ async def handle_document_message(update: Update, context: ContextTypes.DEFAULT_
     
     document = update.message.document
     
-    # [RAPIDO] VALIDAÇÃO: Impede crash se document vier None
+    # ⚡ VALIDAÇÃO: Impede crash se document vier None
     if not document or not document.file_name:
         await update.message.reply_text(
-            "[X] <b>Nenhum arquivo detectado!</b>\n\n"
-            "[CLIP] Anexe o arquivo e envie direto (sem comandos).",
+            "❌ <b>Nenhum arquivo detectado!</b>\n\n"
+            "📎 Anexe o arquivo e envie direto (sem comandos).",
             parse_mode='HTML'
         )
         return
@@ -995,10 +909,10 @@ async def handle_document_message(update: Update, context: ContextTypes.DEFAULT_
         if file_name.endswith('.xlsx') or file_name.endswith('.xls'):
             import os  # Garantindo import para uso posterior
             await update.message.reply_text(
-                "[GRAFICO] <b>PROCESSANDO EXCEL SHOPEE...</b>\n\n"
-                "- Lendo planilha\n"
-                "- Extraindo lat/long embutidos\n"
-                "- Validando dados\n\n"
+                "📊 <b>PROCESSANDO EXCEL SHOPEE...</b>\n\n"
+                "• Lendo planilha\n"
+                "• Extraindo lat/long embutidos\n"
+                "• Validando dados\n\n"
                 "⏳ <i>Aguarde...</i>",
                 parse_mode='HTML'
             )
@@ -1049,10 +963,10 @@ async def handle_document_message(update: Update, context: ContextTypes.DEFAULT_
 
         elif file_name.endswith('.csv'):
             await update.message.reply_text(
-                "[DOC] <b>PROCESSANDO CSV...</b>\n\n"
-                "- Lendo linhas do arquivo\n"
-                "- Validando formato\n"
-                "- Extraíndo endereços\n\n"
+                "📄 <b>PROCESSANDO CSV...</b>\n\n"
+                "• Lendo linhas do arquivo\n"
+                "• Validando formato\n"
+                "• Extraíndo endereços\n\n"
                 "⏳ <i>Aguarde...</i>",
                 parse_mode='HTML'
             )
@@ -1060,10 +974,10 @@ async def handle_document_message(update: Update, context: ContextTypes.DEFAULT_
         
         elif file_name.endswith('.pdf'):
             await update.message.reply_text(
-                "[LIVRO] <b>PROCESSANDO PDF...</b>\n\n"
-                "- Extraindo texto (OCR)\n"
-                "- Identificando endereços\n"
-                "- Validando dados\n\n"
+                "📕 <b>PROCESSANDO PDF...</b>\n\n"
+                "• Extraindo texto (OCR)\n"
+                "• Identificando endereços\n"
+                "• Validando dados\n\n"
                 "⏳ <i>Isso pode demorar 10-20 segundos...</i>",
                 parse_mode='HTML'
             )
@@ -1071,12 +985,12 @@ async def handle_document_message(update: Update, context: ContextTypes.DEFAULT_
         
         else:
             await update.message.reply_text(
-                "[X] <b>FORMATO NÃO SUPORTADO!</b>\n\n"
-                "[PASTA] <b>Formatos aceitos:</b>\n"
-                "- <b>.xlsx</b> - Excel Shopee (RECOMENDADO)\n"
-                "- <b>.csv</b> - CSV genérico\n"
-                "- <b>.pdf</b> - PDF scaneado (OCR)\n\n"
-                "[DICA] Dica: Use o formato Excel da Shopee!",
+                "❌ <b>FORMATO NÃO SUPORTADO!</b>\n\n"
+                "📂 <b>Formatos aceitos:</b>\n"
+                "• <b>.xlsx</b> - Excel Shopee (RECOMENDADO)\n"
+                "• <b>.csv</b> - CSV genérico\n"
+                "• <b>.pdf</b> - PDF scaneado (OCR)\n\n"
+                "💡 Dica: Use o formato Excel da Shopee!",
                 parse_mode='HTML'
             )
             return
@@ -1087,11 +1001,11 @@ async def handle_document_message(update: Update, context: ContextTypes.DEFAULT_
     except Exception as e:
         logger.error(f"Erro ao processar arquivo: {e}")
         await update.message.reply_text(
-            f"[X] <b>ERRO NO PROCESSAMENTO!</b>\n"
+            f"❌ <b>ERRO NO PROCESSAMENTO!</b>\n"
             f"---\n\n"
-            f"[PROIBIDO] Detalhes do erro:\n"
+            f"🚫 Detalhes do erro:\n"
             f"<code>{str(e)[:200]}</code>\n\n"
-            f"[DICA] <b>ALTERNATIVAS:</b>\n\n"
+            f"💡 <b>ALTERNATIVAS:</b>\n\n"
             f"1️⃣ Cole os endereços manualmente\n"
             f"   (um por linha)\n\n"
             f"2️⃣ Use arquivo Excel da Shopee\n"
@@ -1108,15 +1022,15 @@ async def process_text_romaneio(update: Update, context: ContextTypes.DEFAULT_TY
     
     if not addresses:
         await update.message.reply_text(
-            "[X] <b>NENHUM ENDEREÇO IDENTIFICADO</b>\n\n"
+            "❌ <b>NENHUM ENDEREÇO IDENTIFICADO</b>\n\n"
             "Não consegui encontrar endereços válidos no texto!\n\n"
             "<b>📝 FORMATO ESPERADO:</b>\n"
             "Rua Exemplo, 123 - Bairro, Cidade\n"
             "Av. Principal, 456 - Outro Bairro\n\n"
-            "<b>[DICA] DICAS:</b>\n"
-            "- Um endereço por linha\n"
-            "- Inclua rua, número e bairro\n"
-            "- Evite abreviações demais",
+            "<b>💡 DICAS:</b>\n"
+            "• Um endereço por linha\n"
+            "• Inclua rua, número e bairro\n"
+            "• Evite abreviações demais",
             parse_mode='HTML'
         )
         return
@@ -1125,9 +1039,9 @@ async def process_text_romaneio(update: Update, context: ContextTypes.DEFAULT_TY
 
 
 async def create_romaneio_from_addresses(update: Update, context: ContextTypes.DEFAULT_TYPE, addresses: list):
-    """Cria romaneio a partir de lista de endereos"""
+    # docstring removed
     if not addresses:
-        await update.message.reply_text("[X] Nenhum endereço válido encontrado.")
+        await update.message.reply_text("❌ Nenhum endereço válido encontrado.")
         return
     
     # Cria pontos de entrega (com geocoding simulado)
@@ -1184,14 +1098,14 @@ async def create_romaneio_from_addresses(update: Update, context: ContextTypes.D
     session = session_manager.get_current_session()
     
     await update.message.reply_text(
-        f"[OK] Romaneio <b>#{romaneio.id}</b> adicionado!\n"
-        f"[PACOTE] {len(points)} pacotes\n\n"
+        f"✅ Romaneio <b>#{romaneio.id}</b> adicionado!\n"
+        f"📦 {len(points)} pacotes\n\n"
         f"Total acumulado: <b>{session.total_packages} pacotes</b>\n\n"
         "⏳ <b>Gerando minimapa...</b>",
         parse_mode='HTML'
     )
     
-    # [MAPA] GERA E ENVIA MINIMAPA COMPLETO (todos os pontos, sem dividir)
+    # 🗺️ GERA E ENVIA MINIMAPA COMPLETO (todos os pontos, sem dividir)
     try:
         all_session_points = []
         for rom in session.romaneios:
@@ -1227,10 +1141,10 @@ async def create_romaneio_from_addresses(update: Update, context: ContextTypes.D
                     document=f,
                     filename=f"Minimapa_{session.total_packages}pacotes.html",
                     caption=(
-                        f"[MAPA] <b>MINIMAPA COMPLETO</b>\n\n"
-                        f"[PACOTE] Total: {session.total_packages} pacotes\n"
-                        f"[LISTA] Romaneios: {len(session.romaneios)}\n\n"
-                        f"[DICA] <i>Este mapa mostra TODOS os pontos acumulados.\n"
+                        f"🗺️ <b>MINIMAPA COMPLETO</b>\n\n"
+                        f"📦 Total: {session.total_packages} pacotes\n"
+                        f"📋 Romaneios: {len(session.romaneios)}\n\n"
+                        f"💡 <i>Este mapa mostra TODOS os pontos acumulados.\n"
                         f"Use /fechar_rota para dividir entre entregadores.</i>"
                     ),
                     parse_mode='HTML'
@@ -1239,12 +1153,12 @@ async def create_romaneio_from_addresses(update: Update, context: ContextTypes.D
             # Limpa arquivo temporário
             import os
             os.unlink(minimap_file)
-            logger.info(f"[OK] Minimapa enviado com {session.total_packages} pontos")
+            logger.info(f"✅ Minimapa enviado com {session.total_packages} pontos")
     
     except Exception as e:
-        logger.error(f"[X] Erro ao gerar minimapa: {e}")
+        logger.error(f"❌ Erro ao gerar minimapa: {e}")
         await update.message.reply_text(
-            f"[ALERTA] Minimapa não pôde ser gerado (erro: {e}).\n\n"
+            f"⚠️ Minimapa não pôde ser gerado (erro: {e}).\n\n"
             "Envie mais romaneios ou digite <code>/fechar_rota</code> para dividir.",
             parse_mode='HTML'
         )
@@ -1255,12 +1169,12 @@ async def cmd_fechar_rota(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     
     if user_id != BotConfig.ADMIN_TELEGRAM_ID:
-        await update.message.reply_text("[X] Apenas o admin pode fechar rotas.")
+        await update.message.reply_text("❌ Apenas o admin pode fechar rotas.")
         return
     
     session = session_manager.get_current_session()
     if not session or not session.romaneios:
-        await update.message.reply_text("[X] Nenhuma sessão ativa ou romaneios carregados.")
+        await update.message.reply_text("❌ Nenhuma sessão ativa ou romaneios carregados.")
         return
     
     # Consolida todos os pontos
@@ -1321,14 +1235,14 @@ async def cmd_fechar_rota(update: Update, context: ContextTypes.DEFAULT_TYPE):
     session_manager.set_admin_state(user_id, "awaiting_assignment")
     
     # Mostra resumo
-    summary = f"[ALVO] <b>Rotas Divididas!</b>\n\n"
-    summary += f"[PIN] Base: {session.base_address}\n"
-    summary += f"[PACOTE] Total: {len(all_points)} pacotes\n\n"
+    summary = f"🎯 <b>Rotas Divididas!</b>\n\n"
+    summary += f"📍 Base: {session.base_address}\n"
+    summary += f"📦 Total: {len(all_points)} pacotes\n\n"
     
     for route in routes:
         summary += f"<b>{route.id}</b>: {route.total_packages} pacotes\n"
     
-    summary += "\n[ROCKET] Agora atribua as rotas aos entregadores (pré-visualize os mapas abaixo):"
+    summary += "\n🚀 Agora atribua as rotas aos entregadores (pré-visualize os mapas abaixo):"
     await update.message.reply_text(summary, parse_mode='HTML')
 
     # Envia mapas para o admin pré-visualizar e escolher entregador
@@ -1337,10 +1251,10 @@ async def cmd_fechar_rota(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     for route in routes:
         caption = (
-            f"[MAPA] <b>Preview {route.id}</b>\n"
-            f"[PACOTE] Pacotes: {route.total_packages}\n"
-            f"[ESTRADA] Distância: {route.total_distance_km:.1f} km\n"
-            f"[TEMPO] ETA: ~{max(10, route.total_distance_km/25*60 + len(route.optimized_order)*3):.0f} min\n\n"
+            f"🗺️ <b>Preview {route.id}</b>\n"
+            f"📦 Pacotes: {route.total_packages}\n"
+            f"🛣️ Distância: {route.total_distance_km:.1f} km\n"
+            f"⏱️ ETA: ~{max(10, route.total_distance_km/25*60 + len(route.optimized_order)*3):.0f} min\n\n"
             "Selecione o entregador:" )
 
         keyboard = [[InlineKeyboardButton("Escolher entregador", callback_data=f"assign_route_{route.id}")]]
@@ -1370,7 +1284,7 @@ async def cmd_fechar_rota(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         ),
                         timeout=45.0
                     )
-                    logger.info(f"[OK] Mapa {route.id} enviado com sucesso")
+                    logger.info(f"✅ Mapa {route.id} enviado com sucesso")
                     
                     # Envia botão em mensagem separada (melhor UX)
                     await context.bot.send_message(
@@ -1381,10 +1295,10 @@ async def cmd_fechar_rota(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     )
                     
             except (asyncio.TimeoutError, NetworkError, TimedOut, ValueError) as e:
-                logger.warning(f"[ALERTA] Timeout/erro ao enviar mapa {route.id}: {e}. Enviando só texto...")
+                logger.warning(f"⚠️ Timeout/erro ao enviar mapa {route.id}: {e}. Enviando só texto...")
                 await context.bot.send_message(
                     chat_id=BotConfig.ADMIN_TELEGRAM_ID,
-                    text=caption + f"\n\n[ALERTA] Mapa disponível em: {route.map_file}",
+                    text=caption + f"\n\n⚠️ Mapa disponível em: {route.map_file}",
                     parse_mode='HTML'
                 )
                 # Botão separado
@@ -1395,10 +1309,10 @@ async def cmd_fechar_rota(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     reply_markup=InlineKeyboardMarkup(keyboard)
                 )
             except Exception as e:
-                logger.error(f"[X] Falha ao enviar mapa {route.id} para admin: {e}")
+                logger.error(f"❌ Falha ao enviar mapa {route.id} para admin: {e}")
                 await context.bot.send_message(
                     chat_id=BotConfig.ADMIN_TELEGRAM_ID,
-                    text=caption + "\n\n[X] Erro ao enviar mapa",
+                    text=caption + "\n\n❌ Erro ao enviar mapa",
                     parse_mode='HTML'
                 )
                 # Botão separado
@@ -1421,17 +1335,15 @@ async def cmd_fechar_rota(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def process_route_analysis_text(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str):
-    """
-    Processa lista de endereos (texto) e gera anlise inteligente com IA
-    """
+    # docstring removed
     user_id = update.effective_user.id
     
     await update.message.reply_text(
         "⏳ <b>PROCESSANDO ENDEREÇOS...</b>\n\n"
-        "- Parsing lista de endereços\n"
-        "- Geocodificando (Google Maps)\n"
-        "- Analisando com IA\n"
-        "- Gerando mapa\n\n"
+        "• Parsing lista de endereços\n"
+        "• Geocodificando (Google Maps)\n"
+        "• Analisando com IA\n"
+        "• Gerando mapa\n\n"
         "<i>Aguarde ~15-30 segundos...</i>",
         parse_mode='HTML'
     )
@@ -1445,19 +1357,19 @@ async def process_route_analysis_text(update: Update, context: ContextTypes.DEFA
         
         if not addresses_raw or len(addresses_raw) == 0:
             await update.message.reply_text(
-                "[X] <b>NENHUM ENDEREÇO ENCONTRADO</b>\n\n"
+                "❌ <b>NENHUM ENDEREÇO ENCONTRADO</b>\n\n"
                 "Envie uma lista com <b>um endereço por linha</b>:\n\n"
                 "<code>Rua A, 123 - Centro, RJ\n"
                 "Av. B, 456 - Botafogo, RJ\n"
                 "Travessa C, 789 - Copacabana, RJ</code>\n\n"
-                "[DICA] Pode incluir numeração (1., 2.) ou emojis [PACOTE]",
+                "💡 Pode incluir numeração (1., 2.) ou emojis 📦",
                 parse_mode='HTML'
             )
             session_manager.clear_admin_state(user_id)
             return
         
         await update.message.reply_text(
-            f"[OK] {len(addresses_raw)} endereços detectados!\n\n"
+            f"✅ {len(addresses_raw)} endereços detectados!\n\n"
             f"🌍 Geocodificando em paralelo...",
             parse_mode='HTML'
         )
@@ -1481,25 +1393,25 @@ async def process_route_analysis_text(update: Update, context: ContextTypes.DEFA
                 })
             else:
                 failed += 1
-                logger.warning(f"[X] Falhou geocoding: {result['address'][:60]}")
+                logger.warning(f"❌ Falhou geocoding: {result['address'][:60]}")
         
         if failed > 0:
             await update.message.reply_text(
-                f"[ALERTA] <b>AVISO:</b> {failed}/{len(addresses_raw)} endereços não geocodificados\n\n"
-                f"[OK] {len(deliveries_data)} prontos para análise\n\n"
-                f"[DICA] Verifique se os endereços estão completos (rua, número, bairro, cidade)",
+                f"⚠️ <b>AVISO:</b> {failed}/{len(addresses_raw)} endereços não geocodificados\n\n"
+                f"✅ {len(deliveries_data)} prontos para análise\n\n"
+                f"💡 Verifique se os endereços estão completos (rua, número, bairro, cidade)",
                 parse_mode='HTML'
             )
         
         if not deliveries_data or len(deliveries_data) < 3:
             await update.message.reply_text(
-                "[X] <b>ENDEREÇOS INSUFICIENTES</b>\n\n"
+                "❌ <b>ENDEREÇOS INSUFICIENTES</b>\n\n"
                 f"Apenas {len(deliveries_data)} endereços geocodificados.\n"
                 "Mínimo: 3 endereços válidos.\n\n"
-                "[DICA] Certifique-se de incluir:\n"
-                "- Rua/Avenida + número\n"
-                "- Bairro\n"
-                "- Cidade (Rio de Janeiro, RJ)\n\n"
+                "💡 Certifique-se de incluir:\n"
+                "• Rua/Avenida + número\n"
+                "• Bairro\n"
+                "• Cidade (Rio de Janeiro, RJ)\n\n"
                 "Exemplo:\n"
                 "<code>Av. Atlântica, 1234 - Copacabana, Rio de Janeiro, RJ</code>",
                 parse_mode='HTML'
@@ -1538,9 +1450,9 @@ async def process_route_analysis_text(update: Update, context: ContextTypes.DEFA
                 num_packages,  # Número real de pacotes
                 'pending'
             ))
-            logger.info(f"[PIN] Stop {len(stops_data)}: {address[:50]} - {num_packages} pacote(s)")
+            logger.info(f"📍 Stop {len(stops_data)}: {address[:50]} - {num_packages} pacote(s)")
         
-        logger.info(f"[MAPA] {len(stops_data)} paradas únicas de {len(deliveries_data)} endereços")
+        logger.info(f"🗺️ {len(stops_data)} paradas únicas de {len(deliveries_data)} endereços")
         
         # Gera mapa HTML
         html = MapGenerator.generate_interactive_map(
@@ -1563,33 +1475,33 @@ async def process_route_analysis_text(update: Update, context: ContextTypes.DEFA
         # ENVIA ANÁLISE + MAPA
         # ═══════════════════════════════════════════
         score = analysis.get('score', 0)
-        score_emoji = "[VERDE]" if score >= 7 else "[AMARELO]" if score >= 5 else "[VERMELHO]"
+        score_emoji = "🟢" if score >= 7 else "🟡" if score >= 5 else "🔴"
         
         msg = (
             f"{score_emoji} <b>ANÁLISE DE ROTA - TEXTO</b>\n"
             f"---\n\n"
-            f"[ESTRELA] <b>Score Viabilidade: {score}/10</b>\n\n"
-            f"[GRAFICO] <b>ESTATÍSTICAS</b>\n"
-            f"[PACOTE] {analysis.get('total_stops', 0)} pontos de entrega\n"
+            f"⭐ <b>Score Viabilidade: {score}/10</b>\n\n"
+            f"📊 <b>ESTATÍSTICAS</b>\n"
+            f"📦 {analysis.get('total_stops', 0)} pontos de entrega\n"
             f"📏 {analysis.get('total_distance_km', 0):.1f} km (estimado)\n"
-            f"[TEMPO] {analysis.get('estimated_time_min', 0)} min (estimado)\n"
-            f"[DINHEIRO] Receita estimada: R$ {analysis.get('estimated_revenue', 0):.2f}\n\n"
+            f"⏱️ {analysis.get('estimated_time_min', 0)} min (estimado)\n"
+            f"💰 Receita estimada: R$ {analysis.get('estimated_revenue', 0):.2f}\n\n"
         )
         
         # Prós
         pros = analysis.get('pros', [])
         if pros:
-            msg += "[OK] <b>PONTOS POSITIVOS</b>\n"
+            msg += "✅ <b>PONTOS POSITIVOS</b>\n"
             for pro in pros:
-                msg += f"- {pro}\n"
+                msg += f"• {pro}\n"
             msg += "\n"
         
         # Contras
         cons = analysis.get('cons', [])
         if cons:
-            msg += "[X] <b>PONTOS NEGATIVOS</b>\n"
+            msg += "❌ <b>PONTOS NEGATIVOS</b>\n"
             for con in cons:
-                msg += f"- {con}\n"
+                msg += f"• {con}\n"
             msg += "\n"
         
         # Comentário
@@ -1598,7 +1510,7 @@ async def process_route_analysis_text(update: Update, context: ContextTypes.DEFA
             msg += f"💬 <b>CONCLUSÃO</b>\n{comment}\n\n"
         
         msg += "---\n"
-        msg += "[PIN] Veja o mapa abaixo ↓"
+        msg += "📍 Veja o mapa abaixo ↓"
         
         await update.message.reply_text(msg, parse_mode='HTML')
         
@@ -1607,39 +1519,37 @@ async def process_route_analysis_text(update: Update, context: ContextTypes.DEFA
             await update.message.reply_document(
                 document=map_file,
                 filename=f"analise_texto_{datetime.now().strftime('%d%m_%H%M')}.html",
-                caption="[MAPA] <b>Mapa Interativo</b>\nAbra no navegador para visualizar a rota",
+                caption="🗺️ <b>Mapa Interativo</b>\nAbra no navegador para visualizar a rota",
                 parse_mode='HTML'
             )
         
         # Limpa estado
         session_manager.clear_admin_state(user_id)
         
-        logger.info(f"[OK] Análise de rota (texto) concluída: {len(deliveries_data)} endereços, score {score}/10")
+        logger.info(f"✅ Análise de rota (texto) concluída: {len(deliveries_data)} endereços, score {score}/10")
     
     except Exception as e:
-        logger.error(f"[X] Erro ao analisar rota (texto): {e}")
+        logger.error(f"❌ Erro ao analisar rota (texto): {e}")
         import traceback
         traceback.print_exc()
         
         await update.message.reply_text(
-            f"[X] <b>ERRO AO PROCESSAR</b>\n\n"
+            f"❌ <b>ERRO AO PROCESSAR</b>\n\n"
             f"Detalhes: {str(e)}\n\n"
-            f"[DICA] Certifique-se de enviar endereços completos (rua, número, bairro, cidade)",
+            f"💡 Certifique-se de enviar endereços completos (rua, número, bairro, cidade)",
             parse_mode='HTML'
         )
         session_manager.clear_admin_state(user_id)
 
 
 async def process_route_analysis(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Processa Excel da Shopee e gera anlise inteligente com IA
-    """
+    # docstring removed
     user_id = update.effective_user.id
     document = update.message.document
     
     if not document or not document.file_name:
         await update.message.reply_text(
-            "[X] Nenhum arquivo detectado. Envie o Excel da Shopee.",
+            "❌ Nenhum arquivo detectado. Envie o Excel da Shopee.",
             parse_mode='HTML'
         )
         return
@@ -1648,7 +1558,7 @@ async def process_route_analysis(update: Update, context: ContextTypes.DEFAULT_T
     
     if not (file_name.endswith('.xlsx') or file_name.endswith('.xls')):
         await update.message.reply_text(
-            "[X] <b>Formato inválido!</b>\n\n"
+            "❌ <b>Formato inválido!</b>\n\n"
             "Envie um arquivo <b>.xlsx</b> da Shopee.",
             parse_mode='HTML'
         )
@@ -1657,10 +1567,10 @@ async def process_route_analysis(update: Update, context: ContextTypes.DEFAULT_T
     # Download e processa
     await update.message.reply_text(
         "⏳ <b>PROCESSANDO ROTA...</b>\n\n"
-        "- Lendo Excel\n"
-        "- Extraindo coordenadas\n"
-        "- Analisando com IA\n"
-        "- Gerando mapa\n\n"
+        "• Lendo Excel\n"
+        "• Extraindo coordenadas\n"
+        "• Analisando com IA\n"
+        "• Gerando mapa\n\n"
         "<i>Aguarde uns 10 segundos...</i>",
         parse_mode='HTML'
     )
@@ -1683,7 +1593,7 @@ async def process_route_analysis(update: Update, context: ContextTypes.DEFAULT_T
         
         if not deliveries:
             await update.message.reply_text(
-                "[X] Nenhuma entrega encontrada no arquivo!",
+                "❌ Nenhuma entrega encontrada no arquivo!",
                 parse_mode='HTML'
             )
             session_manager.clear_admin_state(user_id)
@@ -1699,7 +1609,7 @@ async def process_route_analysis(update: Update, context: ContextTypes.DEFAULT_T
         if missing_coords > 0:
             await update.message.reply_text(
                 f"🌍 <b>GEOCODIFICANDO ENDEREÇOS...</b>\n\n"
-                f"[PIN] {missing_coords} endereços sem coordenadas\n"
+                f"📍 {missing_coords} endereços sem coordenadas\n"
                 f"⏳ Processando em paralelo (Google Maps API)...\n\n"
                 f"<i>Aguarde ~{max(10, missing_coords // 5)}s</i>",
                 parse_mode='HTML'
@@ -1735,16 +1645,16 @@ async def process_route_analysis(update: Update, context: ContextTypes.DEFAULT_T
                     delivery.latitude = result['lat']
                     delivery.longitude = result['lon']
                     geocoded += 1
-                    logger.info(f"[OK] Geocoded: {result['address'][:60]} -> ({result['lat']}, {result['lon']})")
+                    logger.info(f"✅ Geocoded: {result['address'][:60]} -> ({result['lat']}, {result['lon']})")
                 else:
                     failed += 1
-                    logger.warning(f"[X] Falhou: {result['address'][:60]}")
+                    logger.warning(f"❌ Falhou: {result['address'][:60]}")
             
             if failed > 0:
                 await update.message.reply_text(
-                    f"[ALERTA] <b>AVISO:</b> {failed} endereços não geocodificados\n\n"
-                    f"[OK] {geocoded} geocodificados com sucesso\n\n"
-                    f"[DICA] Análise pode ser imprecisa para endereços sem coordenadas",
+                    f"⚠️ <b>AVISO:</b> {failed} endereços não geocodificados\n\n"
+                    f"✅ {geocoded} geocodificados com sucesso\n\n"
+                    f"💡 Análise pode ser imprecisa para endereços sem coordenadas",
                     parse_mode='HTML'
                 )
         
@@ -1761,15 +1671,15 @@ async def process_route_analysis(update: Update, context: ContextTypes.DEFAULT_T
                     'stop': d.stop
                 })
         
-        logger.info(f"[PACOTE] {len(deliveries_data)} entregas com coordenadas válidas de {len(deliveries)} totais")
+        logger.info(f"📦 {len(deliveries_data)} entregas com coordenadas válidas de {len(deliveries)} totais")
         
         if not deliveries_data:
             await update.message.reply_text(
-                "[X] <b>NENHUMA COORDENADA VÁLIDA!</b>\n\n"
+                "❌ <b>NENHUMA COORDENADA VÁLIDA!</b>\n\n"
                 "O arquivo não contém:\n"
-                "- Colunas Latitude/Longitude OU\n"
-                "- Endereços geocodificáveis\n\n"
-                "[DICA] Verifique o formato do Excel",
+                "• Colunas Latitude/Longitude OU\n"
+                "• Endereços geocodificáveis\n\n"
+                "💡 Verifique o formato do Excel",
                 parse_mode='HTML'
             )
             session_manager.clear_admin_state(user_id)
@@ -1810,19 +1720,19 @@ async def process_route_analysis(update: Update, context: ContextTypes.DEFAULT_T
                 num_packages,  # Número real de pacotes neste endereço
                 'pending'
             ))
-            logger.info(f"[PIN] Stop {len(stops_data)}: {address[:50]} - {num_packages} pacote(s)")
+            logger.info(f"📍 Stop {len(stops_data)}: {address[:50]} - {num_packages} pacote(s)")
         
-        logger.info(f"[MAPA] Total de {len(stops_data)} paradas únicas para {len(deliveries_data)} pacotes")
+        logger.info(f"🗺️ Total de {len(stops_data)} paradas únicas para {len(deliveries_data)} pacotes")
         
         # DEBUG: Log coordenadas
-        logger.info(f"[MAPA] Gerando mapa: {len(stops_data)} pontos com coordenadas")
+        logger.info(f"🗺️ Gerando mapa: {len(stops_data)} pontos com coordenadas")
         if failed_geocoding:
-            logger.warning(f"[ALERTA] {len(failed_geocoding)} endereços sem coordenadas:")
+            logger.warning(f"⚠️ {len(failed_geocoding)} endereços sem coordenadas:")
             for addr in failed_geocoding[:5]:  # Max 5
                 logger.warning(f"   - {addr}")
         
         if not stops_data:
-            logger.error("[X] NENHUM PONTO COM COORDENADAS! Mapa ficará em branco.")
+            logger.error("❌ NENHUM PONTO COM COORDENADAS! Mapa ficará em branco.")
         
         html = MapGenerator.generate_interactive_map(
             stops=stops_data,
@@ -1855,21 +1765,21 @@ async def process_route_analysis(update: Update, context: ContextTypes.DEFAULT_T
         message = (
             f"🔍 <b>ANÁLISE DE ROTA COMPLETA</b>\n"
             f"---\n\n"
-            f"[DINHEIRO] <b>VALOR REAL: R$ {analysis.route_value:.2f}</b>\n"
+            f"💰 <b>VALOR REAL: R$ {analysis.route_value:.2f}</b>\n"
             f"🏘️ <b>PERFIL: {analysis.route_type}</b>\n\n"
-            f"[GRAFICO] <b>SCORE GERAL: {analysis.overall_score}/10</b>\n"
+            f"📊 <b>SCORE GERAL: {analysis.overall_score}/10</b>\n"
             f"<code>{score_bar}</code> {analysis.recommendation}\n"
             f"---\n\n"
             f"📝 <b>RESUMO TÉCNICO:</b>\n"
-            f"- <b>{analysis.total_packages} pacotes</b> ({analysis.total_stops} paradas)\n"
-            f"- <b>{analysis.unique_addresses} endereços únicos</b>\n"
-            f"- <b>{analysis.commercial_count} comerciais</b> | <b>{analysis.vertical_count} condomínios</b>\n"
-            f"- <b>{analysis.total_distance_km:.1f} km</b> total\n"
-            f"- Bairros: {bairros_info}\n\n"
-            f"[CUSTO] <b>FINANCEIRO ESTIMADO:</b>\n"
-            f"- Ganho/Hora: <b>R$ {analysis.hourly_earnings:.2f}</b>\n"
-            f"- Ganho/Pacote: <b>R$ {analysis.package_earnings:.2f}</b>\n"
-            f"- Tempo Total: <b>{analysis.estimated_time_minutes:.0f} min</b>\n\n"
+            f"• <b>{analysis.total_packages} pacotes</b> ({analysis.total_stops} paradas)\n"
+            f"• <b>{analysis.unique_addresses} endereços únicos</b>\n"
+            f"• <b>{analysis.commercial_count} comerciais</b> | <b>{analysis.vertical_count} condomínios</b>\n"
+            f"• <b>{analysis.total_distance_km:.1f} km</b> total\n"
+            f"• Bairros: {bairros_info}\n\n"
+            f"💸 <b>FINANCEIRO ESTIMADO:</b>\n"
+            f"• Ganho/Hora: <b>R$ {analysis.hourly_earnings:.2f}</b>\n"
+            f"• Ganho/Pacote: <b>R$ {analysis.package_earnings:.2f}</b>\n"
+            f"• Tempo Total: <b>{analysis.estimated_time_minutes:.0f} min</b>\n\n"
             f"🏆 <b>TOP DROPS (Onde você mata a rota):</b>\n"
         )
         
@@ -1883,22 +1793,22 @@ async def process_route_analysis(update: Update, context: ContextTypes.DEFAULT_T
         
         # Prós
         if analysis.pros:
-            message += "[OK] <b>PRÓS:</b>\n"
+            message += "✅ <b>PRÓS:</b>\n"
             for pro in analysis.pros:
-                message += f"  - {pro}\n"
+                message += f"  • {pro}\n"
             message += "\n"
         
         # Contras
         if analysis.cons:
-            message += "[X] <b>CONTRAS:</b>\n"
+            message += "❌ <b>CONTRAS:</b>\n"
             for con in analysis.cons:
-                message += f"  - {con}\n"
+                message += f"  • {con}\n"
             message += "\n"
         
         message += f"---\n\n"
         message += f"🤖 <b>ANÁLISE DA IA:</b>\n\n{analysis.ai_comment}\n\n"
         message += f"---\n\n"
-        message += f"[MAPA] <b>Mapa interativo em anexo!</b>"
+        message += f"🗺️ <b>Mapa interativo em anexo!</b>"
         
         await update.message.reply_text(message, parse_mode='HTML')
         
@@ -1909,13 +1819,13 @@ async def process_route_analysis(update: Update, context: ContextTypes.DEFAULT_T
                     chat_id=user_id,
                     document=f,
                     filename=f"rota_analise_{datetime.now().strftime('%H%M')}.html",
-                    caption="[MAPA] Abra no navegador para visualizar!",
+                    caption="🗺️ Abra no navegador para visualizar!",
                     parse_mode='HTML'
                 )
         except Exception as e:
             logger.error(f"Erro ao enviar mapa: {e}")
             await update.message.reply_text(
-                f"[ALERTA] Mapa salvo em: {map_file}",
+                f"⚠️ Mapa salvo em: {map_file}",
                 parse_mode='HTML'
             )
         
@@ -1925,7 +1835,7 @@ async def process_route_analysis(update: Update, context: ContextTypes.DEFAULT_T
     except Exception as e:
         logger.error(f"Erro na análise de rota: {e}")
         await update.message.reply_text(
-            f"[X] <b>ERRO NO PROCESSAMENTO</b>\n\n"
+            f"❌ <b>ERRO NO PROCESSAMENTO</b>\n\n"
             f"<code>{str(e)[:200]}</code>\n\n"
             f"Tente novamente com outro arquivo.",
             parse_mode='HTML'
@@ -1934,21 +1844,18 @@ async def process_route_analysis(update: Update, context: ContextTypes.DEFAULT_T
 
 
 async def cmd_analisar_rota(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-     Analisa uma rota da Shopee ANTES de aceitar
-    Inicia wizard financeiro -> depois pede arquivo
-    """
+    # docstring removed
     user_id = update.effective_user.id
     
     if user_id != BotConfig.ADMIN_TELEGRAM_ID:
-        await update.message.reply_text("[X] Apenas o admin pode analisar rotas.")
+        await update.message.reply_text("❌ Apenas o admin pode analisar rotas.")
         return
     
     # Muda estado para aguardar valor
     session_manager.set_admin_state(user_id, "awaiting_route_value")
     
     await update.message.reply_text(
-        "[DINHEIRO] <b>QUANTO PAGA ESSA ROTA?</b>\n"
+        "💰 <b>QUANTO PAGA ESSA ROTA?</b>\n"
         "---\n\n"
         "Para uma análise financeira real, informe o valor total ofertado.\n\n"
         "<i>Digite 0 se não souber ou não quiser informar.</i>\n\n"
@@ -1958,13 +1865,11 @@ async def cmd_analisar_rota(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def cmd_sessoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-     Lista todas as sesses ativas com botes de Ver Detalhes e Excluir
-    """
+    # docstring removed
     user_id = update.effective_user.id
     
     if user_id != BotConfig.ADMIN_TELEGRAM_ID:
-        await update.message.reply_text("[X] Apenas o admin pode gerenciar sessões.")
+        await update.message.reply_text("❌ Apenas o admin pode gerenciar sessões.")
         return
     
     sessions = session_manager.list_sessions()
@@ -1972,27 +1877,27 @@ async def cmd_sessoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if not sessions:
         await update.message.reply_text(
-            "[PASTA] <b>NENHUMA SESSÃO ENCONTRADA</b>\n\n"
-            "Use o botão <b>[PACOTE] Nova Sessão do Dia</b> para começar!",
+            "📂 <b>NENHUMA SESSÃO ENCONTRADA</b>\n\n"
+            "Use o botão <b>📦 Nova Sessão do Dia</b> para começar!",
             parse_mode='HTML'
         )
         return
     
     # Monta lista de sessões ATIVAS
-    msg = "[PASTA] <b>SESSÕES ATIVAS</b>\n---\n\n"
+    msg = "📂 <b>SESSÕES ATIVAS</b>\n---\n\n"
     
     keyboard = []
     
     for i, session in enumerate(sessions[:10], 1):  # Limita a 10
         # Indicador visual
         if current_session and session.session_id == current_session.session_id:
-            indicator = "[AZUL]"
+            indicator = "🔵"
             status_text = "ATIVA"
         elif session.is_finalized:
-            indicator = "[OK]"
+            indicator = "✅"
             status_text = "Finalizada"
         else:
-            indicator = "[BRANCO]"
+            indicator = "⚪"
             status_text = "Em andamento"
         
         # Conta entregas feitas
@@ -2002,8 +1907,8 @@ async def cmd_sessoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
         session_name = session.session_name or f"Sessão {session.session_id[:8]}"
         
         msg += f"{indicator} <b>{i}. {session_name}</b> ({status_text})\n"
-        msg += f"   [DATA] {session.date} | [PACOTE] {session.total_packages} pacotes\n"
-        msg += f"   [OK] {total_delivered} entregas | [MAPA] {len(session.routes)} rotas\n\n"
+        msg += f"   📅 {session.date} | 📦 {session.total_packages} pacotes\n"
+        msg += f"   ✅ {total_delivered} entregas | 🗺️ {len(session.routes)} rotas\n\n"
         
         # Botões: Ver Detalhes + Excluir
         keyboard.append([
@@ -2018,14 +1923,14 @@ async def cmd_sessoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ])
     
     msg += "---\n"
-    msg += "[DICA] <i>Clique para ver detalhes ou excluir</i>"
+    msg += "💡 <i>Clique para ver detalhes ou excluir</i>"
     
     reply_markup = InlineKeyboardMarkup(keyboard) if keyboard else None
     await update.message.reply_text(msg, parse_mode='HTML', reply_markup=reply_markup)
 
 
 async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handler de botes inline"""
+    # docstring removed
     query = update.callback_query
     await query.answer()
     
@@ -2046,7 +1951,7 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
         session_manager.set_admin_state(user_id, "closing_day_expense_value")
         
         await query.edit_message_text(
-            f"[DINHEIRO] <b>CUSTO: {cost_type.upper()}</b>\n\n"
+            f"💰 <b>CUSTO: {cost_type.upper()}</b>\n\n"
             f"Qual o valor gasto hoje?\n"
             f"<i>Digite o valor (ex: 50.00)</i>\n\n"
             f"Ou use /cancelar para voltar.",
@@ -2078,7 +1983,7 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
         
         # Formata relatório
         msg = financial_service.format_daily_report(report)
-        msg += "\n\n[OK] <b>Fechamento salvo e dia encerrado!</b>"
+        msg += "\n\n✅ <b>Fechamento salvo e dia encerrado!</b>"
         
         await query.edit_message_text(msg, parse_mode='HTML')
         return
@@ -2092,7 +1997,7 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
         
         if not session:
             await query.edit_message_text(
-                f"[X] Sessão {session_id} não encontrada!",
+                f"❌ Sessão {session_id} não encontrada!",
                 parse_mode='HTML'
             )
             return
@@ -2100,7 +2005,7 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
         # Define como sessão atual
         session_manager.set_current_session(session_id)
         
-        status_icon = "[VERMELHO]" if session.is_finalized else "[VERDE]"
+        status_icon = "🔴" if session.is_finalized else "🟢"
         status_text = "Finalizada" if session.is_finalized else "ATIVA"
         
         pending = session.total_pending
@@ -2112,25 +2017,25 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
         if not session.romaneios:
             next_step = "📥 <b>Nenhum pacote importado!</b> Use /importar."
         elif not session.routes:
-            next_step = "[CONFIG] <b>Pacotes prontos!</b> Use o botão abaixo para criar rotas."
-            buttons.append([InlineKeyboardButton("[ROCKET] Otimizar Agora", callback_data="shortcut_optimize")])
+            next_step = "⚙️ <b>Pacotes prontos!</b> Use o botão abaixo para criar rotas."
+            buttons.append([InlineKeyboardButton("🚀 Otimizar Agora", callback_data="shortcut_optimize")])
         elif pending > 0:
-            next_step = f"[ROCKET] <b>Em andamento!</b> Restam {pending} pacotes."
-            buttons.append([InlineKeyboardButton("[COR] Separação", callback_data="shortcut_separacao")])
-            buttons.append([InlineKeyboardButton("[GRAFICO] Status", callback_data="shortcut_status")])
+            next_step = f"🚀 <b>Em andamento!</b> Restam {pending} pacotes."
+            buttons.append([InlineKeyboardButton("🎨 Separação", callback_data="shortcut_separacao")])
+            buttons.append([InlineKeyboardButton("📊 Status", callback_data="shortcut_status")])
         else:
-            next_step = "[OK] <b>Tudo entregue!</b> Feche o dia."
+            next_step = "✅ <b>Tudo entregue!</b> Feche o dia."
             
         markup = InlineKeyboardMarkup(buttons) if buttons else None
         
         await query.edit_message_text(
-            f"[OK] <b>SESSÃO RESGATADA!</b>\n"
+            f"✅ <b>SESSÃO RESGATADA!</b>\n"
             f"---\n\n"
             f"📝 Nome: <b>{session.session_name}</b>\n"
-            f"[DATA] Data: {session.date}\n"
+            f"📅 Data: {session.date}\n"
             f"{status_icon} Status: <b>{status_text}</b>\n\n"
-            f"[PACOTE] Romaneios: {len(session.romaneios)}\n"
-            f"[ESTRADA] Rotas: {len(session.routes)}\n"
+            f"📦 Romaneios: {len(session.romaneios)}\n"
+            f"🛣️ Rotas: {len(session.routes)}\n"
             f"⏳ Pendentes: {pending}\n\n"
             f"{next_step}",
             parse_mode='HTML',
@@ -2142,7 +2047,7 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
     # ATALHOS INTELIGENTES (SHORTCUTS)
     # ═══════════════════════════════════════════
     if data == "shortcut_optimize":
-        await query.answer("[ROCKET] Iniciando otimização...")
+        await query.answer("🚀 Iniciando otimização...")
         await cmd_otimizar_rotas(update, context) # Agora existe!
         return
         
@@ -2151,12 +2056,12 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
         return
 
     if data == "shortcut_separacao":
-        await query.answer("[COR] Abrindo modo separação...")
+        await query.answer("🎨 Abrindo modo separação...")
         await cmd_modo_separacao(update, context)
         return
 
     if data == "shortcut_status":
-        await query.answer("[GRAFICO] Carregando status...")
+        await query.answer("📊 Carregando status...")
         await cmd_status_sessao(update, context)
         return
     
@@ -2169,7 +2074,7 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
         
         if not session:
             await query.edit_message_text(
-                f"[X] Sessão {session_id} não encontrada!",
+                f"❌ Sessão {session_id} não encontrada!",
                 parse_mode='HTML'
             )
             return
@@ -2182,12 +2087,12 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
             session_manager.set_current_session(session_id)
         
         # Monta resumo detalhado
-        finalized_text = "[OK] Finalizada" if session.is_finalized else "[BRANCO] Em andamento"
+        finalized_text = "✅ Finalizada" if session.is_finalized else "⚪ Em andamento"
         
         # Detalhe das rotas
         routes_info = ""
         if session.routes:
-            routes_info += "\n\n<b>[ESTRADA] ROTAS:</b>\n"
+            routes_info += "\n\n<b>🛣️ ROTAS:</b>\n"
             for i, route in enumerate(session.routes[:5], 1):  # Max 5 rotas
                 color_name = get_color_name(route.color)
                 deliverer = route.assigned_to_name or "Não atribuído"
@@ -2196,19 +2101,19 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
             if len(session.routes) > 5:
                 routes_info += f"...e mais {len(session.routes) - 5} rotas\n"
         
-        title = "[AZUL] <b>SESSÃO ATIVA</b>" if is_already_active else "[AZUL] <b>SESSÃO TROCADA!</b>"
+        title = "🔵 <b>SESSÃO ATIVA</b>" if is_already_active else "🔵 <b>SESSÃO TROCADA!</b>"
         
         await query.edit_message_text(
             f"{title}\n"
             f"---\n\n"
             f"<b>{session.session_id}</b>\n"
-            f"[DATA] {session.date}\n"
-            f"[PACOTE] {session.total_packages} pacotes · {len(session.routes)} rotas\n"
-            f"[PIN] {session.base_address[:50] if session.base_address else 'Sem base definida'}\n"
+            f"📅 {session.date}\n"
+            f"📦 {session.total_packages} pacotes · {len(session.routes)} rotas\n"
+            f"📍 {session.base_address[:50] if session.base_address else 'Sem base definida'}\n"
             f"Status: {finalized_text}"
             f"{routes_info}\n\n"
             f"---\n\n"
-            f"{'[PIN] Você já está nesta sessão!' if is_already_active else '[OK] Agora você está trabalhando nesta sessão!'}",
+            f"{'📍 Você já está nesta sessão!' if is_already_active else '✅ Agora você está trabalhando nesta sessão!'}",
             parse_mode='HTML'
         )
         return
@@ -2221,7 +2126,7 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
         session = session_manager.get_session(session_id)
         
         if not session:
-            await query.edit_message_text(f"[X] Sessão {session_id} não encontrada!", parse_mode='HTML')
+            await query.edit_message_text(f"❌ Sessão {session_id} não encontrada!", parse_mode='HTML')
             return
         
         # Conta estatísticas
@@ -2229,39 +2134,39 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
         total_pending = session.total_packages - total_delivered
         
         # Monta mensagem detalhada
-        msg = f"[GRAFICO] <b>DETALHES DA SESSÃO</b>\n"
+        msg = f"📊 <b>DETALHES DA SESSÃO</b>\n"
         msg += f"---\n\n"
-        msg += f"[ID] ID: <code>{session.session_id}</code>\n"
+        msg += f"🆔 ID: <code>{session.session_id}</code>\n"
         msg += f"📛 Nome: <b>{session.session_name or 'Sem nome'}</b>\n"
-        msg += f"[DATA] Data: {session.date}\n"
+        msg += f"📅 Data: {session.date}\n"
         msg += f"⏰ Período: {session.period or 'Não definido'}\n"
-        msg += f"[PIN] Base: {session.base_address or 'Não definida'}\n\n"
+        msg += f"📍 Base: {session.base_address or 'Não definida'}\n\n"
         
-        msg += f"<b>[PACOTE] PACOTES:</b>\n"
+        msg += f"<b>📦 PACOTES:</b>\n"
         msg += f"   Total: {session.total_packages}\n"
-        msg += f"   [OK] Entregues: {total_delivered}\n"
+        msg += f"   ✅ Entregues: {total_delivered}\n"
         msg += f"   ⏳ Pendentes: {total_pending}\n\n"
         
-        msg += f"<b>[MAPA] ROTAS ({len(session.routes)}):</b>\n"
+        msg += f"<b>🗺️ ROTAS ({len(session.routes)}):</b>\n"
         
         # Botões para cada rota (baixar mapa)
         keyboard = []
         
         for route in session.routes:
-            color_name = get_color_name(route.color) if hasattr(route, 'color') and route.color else "[BRANCO]"
+            color_name = get_color_name(route.color) if hasattr(route, 'color') and route.color else "⚪"
             delivered = len(route.delivered_packages)
             total = route.total_packages
             entregador = route.assigned_to_name or "Não atribuído"
             
             msg += f"\n{color_name} <b>{route.id}</b> - {entregador}\n"
-            msg += f"   [PACOTE] {delivered}/{total} entregas | "
-            msg += f"{'[OK] Completa' if delivered >= total else '⏳ Em andamento'}\n"
+            msg += f"   📦 {delivered}/{total} entregas | "
+            msg += f"{'✅ Completa' if delivered >= total else '⏳ Em andamento'}\n"
             
             # Botão para baixar mapa da rota
             if route.map_file:
                 keyboard.append([
                     InlineKeyboardButton(
-                        f"[MAPA] Mapa {route.id}",
+                        f"🗺️ Mapa {route.id}",
                         callback_data=f"download_map_{session_id}_{route.id}"
                     )
                 ])
@@ -2285,22 +2190,22 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
         session = session_manager.get_session(session_id)
         
         if not session:
-            await query.edit_message_text(f"[X] Sessão {session_id} não encontrada!", parse_mode='HTML')
+            await query.edit_message_text(f"❌ Sessão {session_id} não encontrada!", parse_mode='HTML')
             return
         
         # Confirmação antes de excluir
-        msg = f"[ALERTA] <b>CONFIRMAR EXCLUSÃO?</b>\n\n"
+        msg = f"⚠️ <b>CONFIRMAR EXCLUSÃO?</b>\n\n"
         msg += f"Sessão: <b>{session.session_name or session.session_id}</b>\n"
-        msg += f"[DATA] {session.date}\n"
-        msg += f"[PACOTE] {session.total_packages} pacotes\n"
-        msg += f"[MAPA] {len(session.routes)} rotas\n\n"
-        msg += f"<b>[ALERTA] Esta ação não pode ser desfeita!</b>\n"
+        msg += f"📅 {session.date}\n"
+        msg += f"📦 {session.total_packages} pacotes\n"
+        msg += f"🗺️ {len(session.routes)} rotas\n\n"
+        msg += f"<b>⚠️ Esta ação não pode ser desfeita!</b>\n"
         msg += f"Todas as rotas e dados serão perdidos."
         
         keyboard = [
             [
-                InlineKeyboardButton("[OK] Sim, excluir", callback_data=f"session_confirm_delete_{session_id}"),
-                InlineKeyboardButton("[X] Cancelar", callback_data="back_to_sessions")
+                InlineKeyboardButton("✅ Sim, excluir", callback_data=f"session_confirm_delete_{session_id}"),
+                InlineKeyboardButton("❌ Cancelar", callback_data="back_to_sessions")
             ]
         ]
         
@@ -2308,7 +2213,7 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
         return
     
     # ═══════════════════════════════════════════
-    # [OK] CONFIRMAR EXCLUSÃO DA SESSÃO
+    # ✅ CONFIRMAR EXCLUSÃO DA SESSÃO
     # ═══════════════════════════════════════════
     if data.startswith("session_confirm_delete_"):
         session_id = data.replace("session_confirm_delete_", "")
@@ -2325,7 +2230,7 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
             )
         else:
             await query.edit_message_text(
-                f"[X] <b>ERRO AO EXCLUIR</b>\n\n"
+                f"❌ <b>ERRO AO EXCLUIR</b>\n\n"
                 f"Sessão <code>{session_id}</code> não encontrada.",
                 parse_mode='HTML'
             )
@@ -2341,31 +2246,31 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
         
         if not sessions:
             await query.edit_message_text(
-                "[PASTA] <b>NENHUMA SESSÃO ENCONTRADA</b>",
+                "📂 <b>NENHUMA SESSÃO ENCONTRADA</b>",
                 parse_mode='HTML'
             )
             return
         
-        msg = "[PASTA] <b>SESSÕES ATIVAS</b>\n---\n\n"
+        msg = "📂 <b>SESSÕES ATIVAS</b>\n---\n\n"
         keyboard = []
         
         for i, session in enumerate(sessions[:10], 1):
             if current_session and session.session_id == current_session.session_id:
-                indicator = "[AZUL]"
+                indicator = "🔵"
                 status_text = "ATIVA"
             elif session.is_finalized:
-                indicator = "[OK]"
+                indicator = "✅"
                 status_text = "Finalizada"
             else:
-                indicator = "[BRANCO]"
+                indicator = "⚪"
                 status_text = "Em andamento"
             
             total_delivered = sum(len(r.delivered_packages) for r in session.routes)
             session_name = session.session_name or f"Sessão {session.session_id[:8]}"
             
             msg += f"{indicator} <b>{i}. {session_name}</b> ({status_text})\n"
-            msg += f"   [DATA] {session.date} | [PACOTE] {session.total_packages} pacotes\n"
-            msg += f"   [OK] {total_delivered} entregas | [MAPA] {len(session.routes)} rotas\n\n"
+            msg += f"   📅 {session.date} | 📦 {session.total_packages} pacotes\n"
+            msg += f"   ✅ {total_delivered} entregas | 🗺️ {len(session.routes)} rotas\n\n"
             
             keyboard.append([
                 InlineKeyboardButton(f"👁️ Detalhes", callback_data=f"session_details_{session.session_id}"),
@@ -2373,7 +2278,7 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
             ])
         
         msg += "---\n"
-        msg += "[DICA] <i>Clique para ver detalhes ou excluir</i>"
+        msg += "💡 <i>Clique para ver detalhes ou excluir</i>"
         
         await query.edit_message_text(msg, parse_mode='HTML', reply_markup=InlineKeyboardMarkup(keyboard))
         return
@@ -2407,36 +2312,36 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
         color_buttons = [
             [
                 InlineKeyboardButton(
-                    f"{'[OK] ' if 'vermelho' in colors_selected else ''}[VERMELHO] Vermelho", 
+                    f"{'✅ ' if 'vermelho' in colors_selected else ''}🔴 Vermelho", 
                     callback_data="color_vermelho"
                 ),
                 InlineKeyboardButton(
-                    f"{'[OK] ' if 'azul' in colors_selected else ''}[AZUL] Azul", 
+                    f"{'✅ ' if 'azul' in colors_selected else ''}🔵 Azul", 
                     callback_data="color_azul"
                 ),
             ],
             [
                 InlineKeyboardButton(
-                    f"{'[OK] ' if 'verde' in colors_selected else ''}[VERDE] Verde", 
+                    f"{'✅ ' if 'verde' in colors_selected else ''}🟢 Verde", 
                     callback_data="color_verde"
                 ),
                 InlineKeyboardButton(
-                    f"{'[OK] ' if 'amarelo' in colors_selected else ''}[AMARELO] Amarelo", 
+                    f"{'✅ ' if 'amarelo' in colors_selected else ''}🟡 Amarelo", 
                     callback_data="color_amarelo"
                 ),
             ],
             [
                 InlineKeyboardButton(
-                    f"{'[OK] ' if 'roxo' in colors_selected else ''}[ROXO] Roxo", 
+                    f"{'✅ ' if 'roxo' in colors_selected else ''}🟣 Roxo", 
                     callback_data="color_roxo"
                 ),
                 InlineKeyboardButton(
-                    f"{'[OK] ' if 'laranja' in colors_selected else ''}[LARANJA] Laranja", 
+                    f"{'✅ ' if 'laranja' in colors_selected else ''}🟠 Laranja", 
                     callback_data="color_laranja"
                 ),
             ],
             [
-                InlineKeyboardButton("[OK] Confirmar Cores", callback_data="color_confirm")
+                InlineKeyboardButton("✅ Confirmar Cores", callback_data="color_confirm")
             ]
         ]
         
@@ -2446,14 +2351,14 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
         color_list = ", ".join(colors_selected) if colors_selected else "nenhuma"
         
         await query.edit_message_text(
-            "[COR] <b>ESCOLHA AS CORES DOS ADESIVOS</b>\n"
+            "🎨 <b>ESCOLHA AS CORES DOS ADESIVOS</b>\n"
             "---\n\n"
-            f"[FIXAR] <b>Selecionadas ({num_colors}):</b> {color_list}\n\n"
-            "[TAG] <b>Selecione as cores disponíveis:</b>\n"
-            "- Clique nas cores que você tem como adesivo\n"
-            "- Pode escolher quantas quiser\n"
-            "- Depois clique em [OK] Confirmar\n\n"
-            "<i>[DICA] As rotas usarão as cores selecionadas</i>",
+            f"📌 <b>Selecionadas ({num_colors}):</b> {color_list}\n\n"
+            "🏷️ <b>Selecione as cores disponíveis:</b>\n"
+            "• Clique nas cores que você tem como adesivo\n"
+            "• Pode escolher quantas quiser\n"
+            "• Depois clique em ✅ Confirmar\n\n"
+            "<i>💡 As rotas usarão as cores selecionadas</i>",
             parse_mode='HTML',
             reply_markup=keyboard
         )
@@ -2468,10 +2373,10 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
         
         if not deliverers:
             await query.edit_message_text(
-                f"[X] <b>NENHUM ENTREGADOR CADASTRADO!</b>\n\n"
+                f"❌ <b>NENHUM ENTREGADOR CADASTRADO!</b>\n\n"
                 f"Rota: <b>{route_id}</b>\n\n"
                 f"Use <code>/add_entregador</code> para cadastrar entregadores primeiro.\n\n"
-                f"[DICA] Você precisa ter pelo menos 1 entregador ativo no sistema.",
+                f"💡 Você precisa ter pelo menos 1 entregador ativo no sistema.",
                 parse_mode='HTML'
             )
             return
@@ -2485,7 +2390,7 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
         
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(
-            f"[PESSOA] Escolha o entregador para <b>{route_id}</b>:",
+            f"👤 Escolha o entregador para <b>{route_id}</b>:",
             parse_mode='HTML',
             reply_markup=reply_markup
         )
@@ -2503,7 +2408,7 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
             deliverer = deliverer_service.get_deliverer(deliverer_id)
             if not deliverer:
                 await query.edit_message_text(
-                    f"[X] Entregador ID {deliverer_id} não encontrado no sistema!",
+                    f"❌ Entregador ID {deliverer_id} não encontrado no sistema!",
                     parse_mode='HTML'
                 )
                 return
@@ -2516,14 +2421,14 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
                 await send_route_to_deliverer(context, deliverer_id, route, session)
                 
                 await query.edit_message_text(
-                    f"[OK] <b>{route_id}</b> atribuída a <b>{deliverer.name}</b>!\n\n"
+                    f"✅ <b>{route_id}</b> atribuída a <b>{deliverer.name}</b>!\n\n"
                     f"📨 Rota enviada no chat privado do entregador.",
                     parse_mode='HTML'
                 )
             except Exception as e:
                 await query.edit_message_text(
-                    f"[OK] <b>{route_id}</b> atribuída a <b>{deliverer.name}</b> (localmente)!\n\n"
-                    f"[ALERTA] Erro ao enviar DM: {str(e)}",
+                    f"✅ <b>{route_id}</b> atribuída a <b>{deliverer.name}</b> (localmente)!\n\n"
+                    f"⚠️ Erro ao enviar DM: {str(e)}",
                     parse_mode='HTML'
                 )
             
@@ -2532,7 +2437,7 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
             if all_assigned:
                 await context.bot.send_message(
                     chat_id=BotConfig.ADMIN_TELEGRAM_ID,
-                    text="[FESTA] <b>Todas as rotas foram distribuídas!</b>\n\nBoa entrega!",
+                    text="🎉 <b>Todas as rotas foram distribuídas!</b>\n\nBoa entrega!",
                     parse_mode='HTML'
                 )
 
@@ -2549,7 +2454,7 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
             session_manager.save_temp_data(query.from_user.id, "new_deliverer", temp)
             session_manager.set_admin_state(query.from_user.id, "adding_deliverer_cost")
             await query.edit_message_text(
-                "[DINHEIRO] Qual o <b>custo por pacote</b>? (ex: 1.50)",
+                "💰 Qual o <b>custo por pacote</b>? (ex: 1.50)",
                 parse_mode='HTML'
             )
 
@@ -2558,7 +2463,7 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
         required = ["name", "telegram_id", "is_partner"]
         if not all(key in temp for key in required):
             await query.edit_message_text(
-                "[ALERTA] Dados incompletos. Refaça o cadastro com /add_entregador.",
+                "⚠️ Dados incompletos. Refaça o cadastro com /add_entregador.",
                 parse_mode='HTML'
             )
             session_manager.clear_admin_state(query.from_user.id)
@@ -2568,7 +2473,7 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
         existing = deliverer_service.get_deliverer(temp["telegram_id"])
         if existing:
             await query.edit_message_text(
-                "[X] Já existe um entregador com esse ID.",
+                "❌ Já existe um entregador com esse ID.",
                 parse_mode='HTML'
             )
             session_manager.clear_admin_state(query.from_user.id)
@@ -2591,16 +2496,16 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
         from .persistence import data_store
         data_store.add_deliverer(deliverer)
 
-        tipo_emoji = "[SOCIO]" if deliverer.is_partner else "[COLAB]"
+        tipo_emoji = "🤝" if deliverer.is_partner else "💼"
         custo = deliverer.cost_per_package
 
         await query.edit_message_text(
-            f"[OK] <b>Entregador cadastrado!</b>\n"
+            f"✅ <b>Entregador cadastrado!</b>\n"
             f"---\n\n"
             f"{tipo_emoji} <b>{deliverer.name}</b>\n"
-            f"[ID] ID: <code>{deliverer.telegram_id}</code>\n"
-            f"[PACOTE] Capacidade: {deliverer.max_capacity} pacotes/dia\n"
-            f"[DINHEIRO] Custo: R$ {custo:.2f}/pacote\n\n"
+            f"🆔 ID: <code>{deliverer.telegram_id}</code>\n"
+            f"📦 Capacidade: {deliverer.max_capacity} pacotes/dia\n"
+            f"💰 Custo: R$ {custo:.2f}/pacote\n\n"
             f"<i>Dados salvos com sucesso em deliverers.json</i>",
             parse_mode='HTML'
         )
@@ -2619,22 +2524,22 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
     # ═══════════════════════════════════════════════
     
     elif data == "help_start_operation":
-        operation_text = """<b>[ROCKET] GUIA: INICIAR OPERAÇÃO DO DIA</b>
+        operation_text = """<b>🚀 GUIA: INICIAR OPERAÇÃO DO DIA</b>
 ---
 
-<b>[LISTA] FLUXO COMPLETO (3 ETAPAS)</b>
+<b>📋 FLUXO COMPLETO (3 ETAPAS)</b>
 
 <b>1️⃣ IMPORTAR ROMANEIOS</b>
 
 Digite <code>/importar</code> ou envie arquivos diretamente.
 
 <b>O que enviar:</b>
-- Romaneios da Shopee (.xlsx)
-- CSVs de outras plataformas
-- PDFs escaneados
-- Lista manual de endereços
+• Romaneios da Shopee (.xlsx)
+• CSVs de outras plataformas
+• PDFs escaneados
+• Lista manual de endereços
 
-<b>[DICA] Pode enviar vários arquivos!</b>
+<b>💡 Pode enviar vários arquivos!</b>
 O sistema consolida automaticamente.
 
 ---
@@ -2645,9 +2550,9 @@ Após importar, o bot pergunta:
 <i>"Quem vai trabalhar hoje?"</i>
 
 <b>Selecione:</b>
-- Marque os entregadores disponíveis
-- Sistema mostra capacidade total
-- Valida se é suficiente para os pacotes
+• Marque os entregadores disponíveis
+• Sistema mostra capacidade total
+• Valida se é suficiente para os pacotes
 
 ---
 
@@ -2664,18 +2569,18 @@ Digite <code>/otimizar</code> (ou <code>/distribuir</code>)
 
 ---
 
-<b>[OK] PRONTO!</b>
+<b>✅ PRONTO!</b>
 
 Cada entregador recebe:
-- Mapa HTML com rota numerada
-- Lista de pacotes e endereços
-- Botões de navegação Google Maps
-- Sistema para marcar entregas
+• Mapa HTML com rota numerada
+• Lista de pacotes e endereços
+• Botões de navegação Google Maps
+• Sistema para marcar entregas
 
 ---
 
 <b>⏱ Tempo total: ~3 minutos</b>
-<b>[ALVO] Economia: 79% vs manual</b>"""
+<b>🎯 Economia: 79% vs manual</b>"""
 
         await query.edit_message_text(
             operation_text,
@@ -2686,67 +2591,7 @@ Cada entregador recebe:
         )
     
     elif data == "help_team_management":
-        team_text = """<b> GERENCIAR EQUIPE</b>
----
-
-<b>CADASTRAR NOVO ENTREGADOR</b>
-
-Use: <code>/add_entregador</code>
-
-<b>Formato:</b>
-<code>/add_entregador [ID] [Nome] [tipo] [capacidade] [custo]</code>
-
-<b>Parmetros:</b>
- <b>ID</b>: Telegram ID do entregador
- <b>Nome</b>: Nome ou apelido
- <b>Tipo</b>: <code>parceiro</code> ou <code>terceiro</code>
- <b>Capacidade</b>: Pacotes por dia (ex: 50)
- <b>Custo</b>: R$ por pacote (0 para parceiro)
-
----
-
-<b> EXEMPLOS PRTICOS</b>
-
-<b>Cadastrar scio:</b>
-<code>/add_entregador 123456 Joo parceiro 60 0</code>
-
-<b>Cadastrar colaborador:</b>
-<code>/add_entregador 789012 Maria terceiro 40 1.5</code>
-
----
-
-<b>TIPOS DE ENTREGADOR</b>
-
- <b>PARCEIRO</b> (Scio)
-    Custo: R$ 0,00/pacote
-    Participa dos lucros
-   
- <b>COLABORADOR</b> (Terceiro)
-    Custo: R$ 1,00~2,50/pacote
-    Pagamento por produo
-
----
-
-<b>VER EQUIPE COMPLETA</b>
-
-Use: <code>/entregadores</code>
-
-Mostra lista com:
- Nome e tipo de cada um
- Status (ativo/inativo)
- Capacidade diria
- Estatsticas de entregas
-
----
-
-<b>GAMIFICAO</b>
-
-Use: <code>/ranking</code>
-
-Veja quem est mandando bem!
- Top entregadores do ms
- Nveis e conquistas
- Taxa de sucesso"""
+        team_text = # docstring removed
 
         await query.edit_message_text(
             team_text,
@@ -2757,50 +2602,7 @@ Veja quem est mandando bem!
         )
     
     elif data == "help_monitoring":
-        monitoring_text = """<b> MONITORAMENTO EM TEMPO REAL</b>
----
-
-<b>COMANDOS DISPONVEIS</b>
-
-<b> Status Geral</b>
-<code>/status</code>
-
-Mostra:
- Sesso ativa do dia
- Total de pacotes processados
- Rotas criadas e distribudas
- Progresso de cada entregador
-
----
-
-<b> Predio com IA</b>
-<code>/prever</code>
-
-Calcula antes de distribuir:
- Tempo estimado de entrega
- Custo total da operao
- Melhor diviso de rotas
- Alertas de sobrecarga
-
----
-
-<b> Ranking de Performance</b>
-<code>/ranking</code>
-
-Gamificao da equipe:
- Top entregadores
- Nveis e XP
- Conquistas desbloqueadas
- Comparativo de eficincia
-
----
-
-<b> Relatrio Financeiro</b>
-
-Em desenvolvimento:
- Custo por entregador
- Lucro vs despesas
- Projees mensais"""
+        monitoring_text = # docstring removed
 
         await query.edit_message_text(
             monitoring_text,
@@ -2811,56 +2613,7 @@ Em desenvolvimento:
         )
     
     elif data == "help_file_formats":
-        formats_text = """<b> FORMATOS DE ARQUIVO ACEITOS</b>
----
-
-<b> EXCEL SHOPEE (.xlsx)</b>  <i>Recomendado</i>
-
-<b>Por que usar:</b>
- Lat/lon j inclusos
- Deteco automtica de colunas
- Sem necessidade de geocoding
- Processamento instantneo
-
----
-
-<b> CSV GENRICO (.csv)</b>
-
-<b>Formato esperado:</b>
-<code>tracking,endereco,lat,lon,prioridade</code>
-
-<b>Exemplo:</b>
-<code>BR123,Rua A 100,-23.5,-46.6,normal</code>
-
----
-
-<b> PDF ROMANEIO (.pdf)</b>
-
-<b>Suporta:</b>
- PDFs com texto extravel
- PDFs escaneados (OCR automtico)
- Geocodificao Google Maps
-
-<b> Limite:</b> 50 endereos por PDF
-
----
-
-<b> TEXTO MANUAL (.txt)</b>
-
-<b>Formato:</b>
-Um endereo completo por linha
-
-<b>Exemplo:</b>
-<code>Av Paulista 1000, So Paulo - SP
-Rua Oscar Freire 500, So Paulo - SP</code>
-
-Sistema faz geocoding automaticamente.
-
----
-
-<b> DICA:</b>
-Pode enviar mltiplos arquivos!
-Sistema consolida tudo."""
+        formats_text = # docstring removed
 
         await query.edit_message_text(
             formats_text,
@@ -2871,60 +2624,7 @@ Sistema consolida tudo."""
         )
     
     elif data == "help_technology":
-        tech_text = """<b> TECNOLOGIA SCOOTER MODE</b>
----
-
-<b>ALGORITMOS APLICADOS</b>
-
-<b>1 Agrupamento por STOP</b>
-Entregas no mesmo endereo = 1 parada
- Detecta edifcios e prdios
- Agrupa apartamentos/salas
- Economiza tempo de navegao
-
----
-
-<b>2 Diviso Geogrfica</b>
-<b>K-means Clustering</b>
- Divide cidade em territrios
- Equilibra carga entre entregadores
- Minimiza sobreposio de rotas
-
----
-
-<b>3 Otimizao de Rota</b>
-<b>Algoritmo Gentico</b>
- Calcula melhor sequncia
- Distncia euclidiana otimizada
- Considera contrafluxo quando seguro
-
----
-
-<b>4 Modo Scooter</b>
-<b>Atalhos Permitidos:</b>
- Caladas largas
- Vielas e becos
- Contrafluxo em ruas locais
- Aglomeraes prximas
-
----
-
-<b> RESULTADOS COMPROVADOS</b>
-
- <b>79% economia</b> vs rota original
- <b>40% menos tempo</b> por entrega
- <b>60% mais capacidade</b> diria
- <b>95% taxa de sucesso</b>
-
----
-
-<b> IA PREDITIVA</b>
-
-Sistema aprende com cada entrega:
- Tempo mdio por regio
- Dificuldade de acesso
- Horrios de pico
- Perfil de cada entregador"""
+        tech_text = # docstring removed
 
         await query.edit_message_text(
             tech_text,
@@ -2935,48 +2635,7 @@ Sistema aprende com cada entrega:
         )
     
     elif data == "help_financial":
-        financial_text = """<b> SISTEMA FINANCEIRO</b>
----
-
-<b> COMANDOS BSICOS</b>
-
-<code>/fechar_dia</code>
-Fecha o dia manualmente
- Informa receita do dia
- Sistema calcula custos automaticamente
- Gera relatrio com lucro lquido
-
-<code>/financeiro [periodo]</code>
-Consulta relatrios financeiros
- <code>dia</code>  Fechamento de hoje
- <code>semana</code>  ltimos 7 dias
- <code>mes</code>  Ms atual completo
-
-<code>/fechar_semana</code>
-Fechamento semanal com diviso
- 10% vai para reserva empresa
- 70/30 dividido entre scios
- Relatrio completo gerado
-
-<code>/config_socios</code>
-Configura percentuais dos scios
-Exemplo: <code>/config_socios Joo 70 Maria 30 10</code>
-
----
-
-<b> FLUXO DIRIO RECOMENDADO</b>
-
-1 Fim do dia  <code>/fechar_dia</code>
-2 Informa receita total
-3 Informa outros custos (gasolina, etc)
-4 Sistema calcula e salva automaticamente
-
-<b> FLUXO SEMANAL</b>
-
-Domingo/Segunda  <code>/fechar_semana</code>
- Revisa todos os dias da semana
- Confirma diviso de lucros
- Gera relatrio para contabilidade"""
+        financial_text = # docstring removed
 
         await query.edit_message_text(
             financial_text,
@@ -2987,72 +2646,7 @@ Domingo/Segunda  <code>/fechar_semana</code>
         )
     
     elif data == "help_advanced_features":
-        advanced_text = """<b> FUNCIONALIDADES AVANADAS</b>
----
-
-<b> DASHBOARD WEB</b>
-
-<code>/dashboard</code>
-Inicia interface web em <code>http://localhost:5000</code>
-
-<b>Recursos:</b>
- Grficos interativos (Chart.js)
- Evoluo de receitas e lucros
- Distribuio de custos (pizza)
- Diviso semanal entre scios
- Auto-refresh a cada 5 minutos
-
----
-
-<b> EXPORTAO PROFISSIONAL</b>
-
-<code>/exportar [formato] [dias]</code>
-
-<b>Exemplos:</b>
- <code>/exportar excel 30</code>  Excel 30 dias
- <code>/exportar pdf 7</code>  PDF ltima semana
-
-<b>Formato Excel:</b> Tabelas formatadas, cores, totais
-<b>Formato PDF:</b> Layout A4 landscape, diviso scios
-
----
-
-<b> INTEGRAO BANCO INTER</b>
-
-<code>/config_banco_inter</code>
-Configura API do Banco Inter
-Requer: Client ID, Secret, Certificados
-
-<code>/fechar_dia_auto</code>
-Fechamento automtico com receita do banco
- Busca extrato do dia
- Calcula receita automaticamente
- Solicita apenas outros custos
-
-<code>/saldo_banco</code>
-Consulta saldo em tempo real
-
----
-
-<b> PROJEES COM IA</b>
-
-<code>/projecoes [dias]</code>
-
-<b>Exemplos:</b>
- <code>/projecoes 7</code>  Prxima semana
- <code>/projecoes 30</code>  Prximo ms
-
-<b>Algoritmo usa:</b>
- Regresso linear
- Anlise de sazonalidade
- Taxa de crescimento
- Confiana (alta/mdia/baixa)
-
----
-
-<b> DOCUMENTAO COMPLETA</b>
-
-Veja: <code>MANUAL_FUNCIONALIDADES_AVANCADAS.md</code>"""
+        advanced_text = # docstring removed
 
         await query.edit_message_text(
             advanced_text,
@@ -3064,44 +2658,19 @@ Veja: <code>MANUAL_FUNCIONALIDADES_AVANCADAS.md</code>"""
     
     elif data == "help_main":
         # Volta para o /help principal - recriar a mensagem
-        help_text = """<b> BOT MULTI-ENTREGADOR v3.0</b>
-<i>Sistema Inteligente com IA + Dashboard</i>
-
----
-
-<b> COMANDOS PRINCIPAIS</b>
-
-<b> OPERACIONAL:</b>
-<code>/add_entregador</code>  Cadastrar equipe
-<code>/importar</code>  Enviar romaneios
-<code>/otimizar</code>  Distribuir rotas IA
-
-<b> FINANCEIRO:</b>
-<code>/fechar_dia</code>  Fechamento manual
-<code>/financeiro</code>  Relatrios completos
-<code>/fechar_semana</code>  Diviso scios
-
-<b> AVANADO:</b>
-<code>/dashboard</code>  Interface web grfica
-<code>/exportar</code>  Excel/PDF profissional
-<code>/projecoes</code>  Previses IA
-<code>/fechar_dia_auto</code>  Banco Inter
-
----
-
- <b>Clique nos botes</b> para guias detalhados"""
+        help_text = # docstring removed
 
         keyboard = [
-            [InlineKeyboardButton("[ROCKET] Iniciar Operação", callback_data="help_start_operation")],
+            [InlineKeyboardButton("🚀 Iniciar Operação", callback_data="help_start_operation")],
             [
-                InlineKeyboardButton("[PESSOAS] Gerenciar Equipe", callback_data="help_team_management"),
-                InlineKeyboardButton("[DINHEIRO] Financeiro", callback_data="help_financial")
+                InlineKeyboardButton("👥 Gerenciar Equipe", callback_data="help_team_management"),
+                InlineKeyboardButton("💰 Financeiro", callback_data="help_financial")
             ],
             [
                 InlineKeyboardButton("🔮 Funcionalidades Avançadas", callback_data="help_advanced_features")
             ],
             [
-                InlineKeyboardButton("[PASTA] Formatos de Arquivo", callback_data="help_file_formats"),
+                InlineKeyboardButton("📂 Formatos de Arquivo", callback_data="help_file_formats"),
                 InlineKeyboardButton("🧠 Tecnologia", callback_data="help_technology")
             ]
         ]
@@ -3120,44 +2689,19 @@ Veja: <code>MANUAL_FUNCIONALIDADES_AVANCADAS.md</code>"""
         # Volta para o menu principal
         data = "help_main"
         # Reprocessa
-        help_text = """<b> BOT MULTI-ENTREGADOR v3.0</b>
-<i>Sistema Inteligente com IA + Dashboard</i>
-
----
-
-<b> COMANDOS PRINCIPAIS</b>
-
-<b> OPERACIONAL:</b>
-<code>/add_entregador</code>  Cadastrar equipe
-<code>/importar</code>  Enviar romaneios
-<code>/otimizar</code>  Distribuir rotas IA
-
-<b> FINANCEIRO:</b>
-<code>/fechar_dia</code>  Fechamento manual
-<code>/financeiro</code>  Relatrios completos
-<code>/fechar_semana</code>  Diviso scios
-
-<b> AVANADO:</b>
-<code>/dashboard</code>  Interface web grfica
-<code>/exportar</code>  Excel/PDF profissional
-<code>/projecoes</code>  Previses IA
-<code>/fechar_dia_auto</code>  Banco Inter
-
----
-
- <b>Clique nos botes</b> para guias detalhados"""
+        help_text = # docstring removed
 
         keyboard = [
-            [InlineKeyboardButton("[ROCKET] Iniciar Operação", callback_data="help_start_operation")],
+            [InlineKeyboardButton("🚀 Iniciar Operação", callback_data="help_start_operation")],
             [
-                InlineKeyboardButton("[PESSOAS] Gerenciar Equipe", callback_data="help_team_management"),
-                InlineKeyboardButton("[DINHEIRO] Financeiro", callback_data="help_financial")
+                InlineKeyboardButton("👥 Gerenciar Equipe", callback_data="help_team_management"),
+                InlineKeyboardButton("💰 Financeiro", callback_data="help_financial")
             ],
             [
                 InlineKeyboardButton("🔮 Funcionalidades Avançadas", callback_data="help_advanced_features")
             ],
             [
-                InlineKeyboardButton("[PASTA] Formatos de Arquivo", callback_data="help_file_formats"),
+                InlineKeyboardButton("📂 Formatos de Arquivo", callback_data="help_file_formats"),
                 InlineKeyboardButton("🧠 Tecnologia", callback_data="help_technology")
             ]
         ]
@@ -3171,11 +2715,11 @@ Veja: <code>MANUAL_FUNCIONALIDADES_AVANCADAS.md</code>"""
     
     elif data == "deliverer_tip":
         tips = [
-            "[DICA] <b>Dica do Dia:</b>\n\nSempre siga a ordem do mapa. A IA já otimizou a melhor rota para economizar tempo e combustível!",
-            "[DICA] <b>Dica do Dia:</b>\n\nMarque as entregas imediatamente após concluir. Isso ajuda o admin a monitorar em tempo real!",
-            "[DICA] <b>Dica do Dia:</b>\n\nAgrupe entregas do mesmo STOP (mesmo endereço). Você ganha tempo e aumenta sua eficiência!",
-            "[DICA] <b>Dica do Dia:</b>\n\nUse o botão 'Google Maps' em cada pin do mapa. A navegação já vem configurada!",
-            "[DICA] <b>Dica do Dia:</b>\n\nComunique problemas rapidamente ao admin. Quanto antes ele souber, mais rápido pode ajudar!"
+            "💡 <b>Dica do Dia:</b>\n\nSempre siga a ordem do mapa. A IA já otimizou a melhor rota para economizar tempo e combustível!",
+            "💡 <b>Dica do Dia:</b>\n\nMarque as entregas imediatamente após concluir. Isso ajuda o admin a monitorar em tempo real!",
+            "💡 <b>Dica do Dia:</b>\n\nAgrupe entregas do mesmo STOP (mesmo endereço). Você ganha tempo e aumenta sua eficiência!",
+            "💡 <b>Dica do Dia:</b>\n\nUse o botão 'Google Maps' em cada pin do mapa. A navegação já vem configurada!",
+            "💡 <b>Dica do Dia:</b>\n\nComunique problemas rapidamente ao admin. Quanto antes ele souber, mais rápido pode ajudar!"
         ]
         
         import random
@@ -3201,12 +2745,12 @@ Veja: <code>MANUAL_FUNCIONALIDADES_AVANCADAS.md</code>"""
                 logger.warning(f"Falha ao atualizar stats do entregador: {e}")
 
             await query.edit_message_text(
-                f"[OK] Pacote <code>{package_id}</code> marcado como entregue!",
+                f"✅ Pacote <code>{package_id}</code> marcado como entregue!",
                 parse_mode='HTML'
             )
         else:
             await query.edit_message_text(
-                "[X] Pacote não encontrado na sua rota ativa.",
+                "❌ Pacote não encontrado na sua rota ativa.",
                 parse_mode='HTML'
             )
 
@@ -3243,10 +2787,10 @@ async def send_route_to_deliverer(context: ContextTypes.DEFAULT_TYPE, telegram_i
         route.map_file = f"map_{route.id}.html"
         MapGenerator.save_map(html, route.map_file)
 
-    message = f"[MAPA] <b>SUA ROTA - {route.id}</b>\n\n"
-    message += f"[PIN] Base: {session.base_address}\n"
-    message += f"[PACOTE] Total: {route.total_packages} pacotes\n\n"
-    message += "[LISTA] <b>Ordem de entrega:</b>\n\n"
+    message = f"🗺️ <b>SUA ROTA - {route.id}</b>\n\n"
+    message += f"📍 Base: {session.base_address}\n"
+    message += f"📦 Total: {route.total_packages} pacotes\n\n"
+    message += "📋 <b>Ordem de entrega:</b>\n\n"
     
     # CORREÇÃO: Renumera para sequência limpa 1, 2, 3... (não mostra PKG IDs globais que pulam)
     for i, point in enumerate(route.optimized_order, 1):
@@ -3254,7 +2798,7 @@ async def send_route_to_deliverer(context: ContextTypes.DEFAULT_TYPE, telegram_i
         # Mostra package_id original apenas como referência (entre parênteses)
         message += f"    <i>Código: {point.package_id}</i>\n\n"
     
-    message += "\n[OK] Marque entregas usando o botão 'Marcar Entrega'"
+    message += "\n✅ Marque entregas usando o botão 'Marcar Entrega'"
     
     await context.bot.send_message(
         chat_id=telegram_id,
@@ -3273,7 +2817,7 @@ async def send_route_to_deliverer(context: ContextTypes.DEFAULT_TYPE, telegram_i
                 logger.warning(f"Arquivo {route.map_file} muito grande para entregador {telegram_id}")
                 await context.bot.send_message(
                     chat_id=telegram_id,
-                    text=f"[ALERTA] Mapa muito grande. Disponível em: {route.map_file}"
+                    text=f"⚠️ Mapa muito grande. Disponível em: {route.map_file}"
                 )
             else:
                 with open(route.map_file, 'rb') as f:
@@ -3282,24 +2826,24 @@ async def send_route_to_deliverer(context: ContextTypes.DEFAULT_TYPE, telegram_i
                             chat_id=telegram_id,
                             document=f,
                             filename=route.map_file,
-                            caption="[MAPA] Abra o mapa HTML para navegar a rota.",
+                            caption="🗺️ Abra o mapa HTML para navegar a rota.",
                             read_timeout=30,
                             write_timeout=30
                         ),
                         timeout=45.0
                     )
-                    logger.info(f"[OK] Mapa enviado para entregador {telegram_id}")
+                    logger.info(f"✅ Mapa enviado para entregador {telegram_id}")
         except (asyncio.TimeoutError, NetworkError, TimedOut) as e:
-            logger.warning(f"[ALERTA] Timeout ao enviar mapa para entregador {telegram_id}: {e}")
+            logger.warning(f"⚠️ Timeout ao enviar mapa para entregador {telegram_id}: {e}")
             await context.bot.send_message(
                 chat_id=telegram_id,
-                text=f"[ALERTA] Não foi possível enviar o mapa. Disponível em: {route.map_file}"
+                text=f"⚠️ Não foi possível enviar o mapa. Disponível em: {route.map_file}"
             )
         except Exception as e:
-            logger.error(f"[X] Falha ao enviar mapa para entregador {telegram_id}: {e}")
+            logger.error(f"❌ Falha ao enviar mapa para entregador {telegram_id}: {e}")
             await context.bot.send_message(
                 chat_id=telegram_id,
-                text="[X] Erro ao enviar mapa. Contate o administrador."
+                text="❌ Erro ao enviar mapa. Contate o administrador."
             )
 
 
@@ -3309,46 +2853,46 @@ async def handle_deliverer_message(update: Update, context: ContextTypes.DEFAULT
     """Fluxo do entregador"""
     user_id = update.effective_user.id
     
-    if text == "[MAPA] Minha Rota Hoje":
+    if text == "🗺️ Minha Rota Hoje":
         route = session_manager.get_route_for_deliverer(user_id)
         
         if not route:
-            await update.message.reply_text("[X] Você não tem rota atribuída hoje.")
+            await update.message.reply_text("❌ Você não tem rota atribuída hoje.")
             return
         
         session = session_manager.get_current_session()
         await send_route_to_deliverer(context, user_id, route, session)
     
-    elif text == "[OK] Marcar Entrega":
+    elif text == "✅ Marcar Entrega":
         route = session_manager.get_route_for_deliverer(user_id)
         
         if not route:
-            await update.message.reply_text("[X] Você não tem rota ativa.")
+            await update.message.reply_text("❌ Você não tem rota ativa.")
             return
         
         # Lista pacotes pendentes
         pending = [p for p in route.optimized_order if p.package_id not in route.delivered_packages]
         
         if not pending:
-            await update.message.reply_text("[FESTA] Todas as suas entregas foram concluídas!")
+            await update.message.reply_text("🎉 Todas as suas entregas foram concluídas!")
             return
         
         keyboard = []
         for p in pending[:10]:  # Limite 10 por vez
             keyboard.append([InlineKeyboardButton(
-                f"[PACOTE] {p.address[:40]}... (ID: {p.package_id})",
+                f"📦 {p.address[:40]}... (ID: {p.package_id})",
                 callback_data=f"deliver_{p.package_id}"
             )])
         
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text(
-            "[LISTA] Selecione o pacote entregue:",
+            "📋 Selecione o pacote entregue:",
             reply_markup=reply_markup
         )
 
 
 async def show_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Mostra status atual da sesso"""
+    # docstring removed
     session = session_manager.get_current_session()
     
     if not session:
@@ -3367,15 +2911,15 @@ async def show_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     filled = int(bar_length * percent / 100)
     bar = "█" * filled + "░" * (bar_length - filled)
     
-    msg = f"[GRAFICO] <b>STATUS DA OPERAÇÃO</b>\n"
+    msg = f"📊 <b>STATUS DA OPERAÇÃO</b>\n"
     msg += f"---\n\n"
-    msg += f"[DATA] Data: <b>{session.date}</b>\n"
-    msg += f"[PIN] Base: {session.base_address}\n\n"
-    msg += f"<b>[PACOTE] ENTREGAS:</b>\n"
+    msg += f"📅 Data: <b>{session.date}</b>\n"
+    msg += f"📍 Base: {session.base_address}\n\n"
+    msg += f"<b>📦 ENTREGAS:</b>\n"
     msg += f"{bar} {percent:.0f}%\n\n"
-    msg += f"[OK] Entregues: <b>{entregues}</b>\n"
+    msg += f"✅ Entregues: <b>{entregues}</b>\n"
     msg += f"⏳ Pendentes: <b>{session.total_pending}</b>\n"
-    msg += f"[GRAFICO] Total: <b>{total}</b> pacotes\n\n"
+    msg += f"📊 Total: <b>{total}</b> pacotes\n\n"
     
     if session.routes:
         msg += "<b>🚚 ROTAS ATIVAS:</b>\n\n"
@@ -3384,10 +2928,10 @@ async def show_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
             progresso = f"{route.delivered_count}/{route.total_packages}"
             percent_rota = route.completion_rate
             
-            emoji_status = "[VERDE]" if percent_rota == 100 else "[AMARELO]" if percent_rota > 50 else "[VERMELHO]"
+            emoji_status = "🟢" if percent_rota == 100 else "🟡" if percent_rota > 50 else "🔴"
             
             msg += f"{emoji_status} <b>Rota {i}</b> - {entregador}\n"
-            msg += f"   [PACOTE] {progresso} ({percent_rota:.0f}%) | [ESTRADA] {route.total_distance_km:.1f}km\n\n"
+            msg += f"   📦 {progresso} ({percent_rota:.0f}%) | 🛣️ {route.total_distance_km:.1f}km\n\n"
     
     msg += "---"
     
@@ -3395,7 +2939,7 @@ async def show_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def show_financial_report(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Relatrio financeiro"""
+    # docstring removed
     session = session_manager.get_current_session()
     
     if not session:
@@ -3406,9 +2950,9 @@ async def show_financial_report(update: Update, context: ContextTypes.DEFAULT_TY
         )
         return
     
-    msg = f"[DINHEIRO] <b>RELATÓRIO FINANCEIRO</b>\n"
+    msg = f"💰 <b>RELATÓRIO FINANCEIRO</b>\n"
     msg += f"---\n\n"
-    msg += f"[DATA] Data: <b>{session.date}</b>\n\n"
+    msg += f"📅 Data: <b>{session.date}</b>\n\n"
     
     costs_by_deliverer = {}
     deliveries_by_deliverer = {}
@@ -3422,26 +2966,26 @@ async def show_financial_report(update: Update, context: ContextTypes.DEFAULT_TY
                 deliveries_by_deliverer[partner.name] = deliveries_by_deliverer.get(partner.name, 0) + route.delivered_count
     
     if costs_by_deliverer:
-        msg += "<b>[CUSTO] CUSTOS POR ENTREGADOR:</b>\n\n"
+        msg += "<b>💸 CUSTOS POR ENTREGADOR:</b>\n\n"
         for name in sorted(costs_by_deliverer.keys()):
             cost = costs_by_deliverer[name]
             deliveries = deliveries_by_deliverer[name]
-            emoji = "[SOCIO]" if cost == 0 else "[COLAB]"
+            emoji = "🤝" if cost == 0 else "💼"
             msg += f"{emoji} <b>{name}</b>\n"
-            msg += f"   [PACOTE] {deliveries} entregas\n"
-            msg += f"   [R$] R$ {cost:.2f}\n\n"
+            msg += f"   📦 {deliveries} entregas\n"
+            msg += f"   💵 R$ {cost:.2f}\n\n"
     
     total_cost = sum(costs_by_deliverer.values())
     total_deliveries = sum(deliveries_by_deliverer.values())
     
     msg += "---\n\n"
-    msg += f"<b>[GRAFICO] TOTAIS:</b>\n"
-    msg += f"[PACOTE] Entregas: <b>{total_deliveries}</b>\n"
-    msg += f"[DINHEIRO] Custo Total: <b>R$ {total_cost:.2f}</b>\n\n"
+    msg += f"<b>📊 TOTAIS:</b>\n"
+    msg += f"📦 Entregas: <b>{total_deliveries}</b>\n"
+    msg += f"💰 Custo Total: <b>R$ {total_cost:.2f}</b>\n\n"
     
     if total_deliveries > 0:
         avg_cost = total_cost / total_deliveries
-        msg += f"[SUBINDO] Custo Médio: R$ {avg_cost:.2f}/entrega\n\n"
+        msg += f"📈 Custo Médio: R$ {avg_cost:.2f}/entrega\n\n"
     
     msg += "---"
     
@@ -3455,7 +2999,7 @@ async def cmd_add_deliverer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     
     if user_id != BotConfig.ADMIN_TELEGRAM_ID:
-        await update.message.reply_text("[X] Comando exclusivo para admin.")
+        await update.message.reply_text("❌ Comando exclusivo para admin.")
         return
 
     # Inicia wizard guiado
@@ -3464,7 +3008,7 @@ async def cmd_add_deliverer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     session_manager.save_temp_data(user_id, "new_deliverer", {})
 
     await update.message.reply_text(
-        "🧑‍[COLAB] <b>Cadastro de Entregador</b>\n"
+        "🧑‍💼 <b>Cadastro de Entregador</b>\n"
         "---\n\n"
         "Vamos cadastrar em 4 passos rápidos.\n\n"
         "1️⃣ Nome completo do entregador?",
@@ -3477,7 +3021,7 @@ async def cmd_list_deliverers(update: Update, context: ContextTypes.DEFAULT_TYPE
     user_id = update.effective_user.id
     
     if user_id != BotConfig.ADMIN_TELEGRAM_ID:
-        await update.message.reply_text("[X] Comando exclusivo para admin.")
+        await update.message.reply_text("❌ Comando exclusivo para admin.")
         return
     
     deliverers = deliverer_service.get_all_deliverers()
@@ -3494,35 +3038,35 @@ async def cmd_list_deliverers(update: Update, context: ContextTypes.DEFAULT_TYPE
     active = [d for d in deliverers if d.is_active]
     inactive = [d for d in deliverers if not d.is_active]
     
-    msg = "[PESSOAS] <b>TIME DE ENTREGADORES</b>\n"
+    msg = "👥 <b>TIME DE ENTREGADORES</b>\n"
     msg += "---\n\n"
     
     if active:
-        msg += f"[OK] <b>ATIVOS</b> ({len(active)})\n\n"
+        msg += f"✅ <b>ATIVOS</b> ({len(active)})\n\n"
         for i, d in enumerate(active, 1):
-            tipo_emoji = "[SOCIO]" if d.is_partner else "[COLAB]"
+            tipo_emoji = "🤝" if d.is_partner else "💼"
             tipo_texto = "Parceiro" if d.is_partner else "Terceiro"
             
             # Status baseado na taxa de sucesso
             if d.success_rate >= 95:
-                status_emoji = "[BRILHO]"
+                status_emoji = "🌟"
             elif d.success_rate >= 80:
-                status_emoji = "[VERDE]"
+                status_emoji = "🟢"
             elif d.success_rate >= 60:
-                status_emoji = "[AMARELO]"
+                status_emoji = "🟡"
             else:
-                status_emoji = "[VERMELHO]"
+                status_emoji = "🔴"
             
             msg += f"{status_emoji} <b>{i}. {d.name}</b> ({tipo_emoji} {tipo_texto})\n"
-            msg += f"   [ID] ID: <code>{d.telegram_id}</code>\n"
-            msg += f"   [PACOTE] Capacidade: {d.max_capacity} pacotes/dia\n"
-            msg += f"   [DINHEIRO] Custo: R$ {d.cost_per_package:.2f}/pacote\n"
-            msg += f"   [GRAFICO] Stats: {d.total_deliveries} entregas | {d.success_rate:.0f}% sucesso\n\n"
+            msg += f"   🆔 ID: <code>{d.telegram_id}</code>\n"
+            msg += f"   📦 Capacidade: {d.max_capacity} pacotes/dia\n"
+            msg += f"   💰 Custo: R$ {d.cost_per_package:.2f}/pacote\n"
+            msg += f"   📊 Stats: {d.total_deliveries} entregas | {d.success_rate:.0f}% sucesso\n\n"
     
     if inactive:
-        msg += f"\n[X] <b>INATIVOS</b> ({len(inactive)})\n\n"
+        msg += f"\n❌ <b>INATIVOS</b> ({len(inactive)})\n\n"
         for d in inactive:
-            msg += f"- {d.name} (ID: {d.telegram_id})\n"
+            msg += f"• {d.name} (ID: {d.telegram_id})\n"
     
     msg += "\n---"
     
@@ -3530,7 +3074,7 @@ async def cmd_list_deliverers(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 
 async def cmd_ranking(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Ranking de entregadores com gamificação"""
+    # docstring removed
     user_id = update.effective_user.id
     
     # Qualquer um pode ver ranking
@@ -3540,7 +3084,7 @@ async def cmd_ranking(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             "🎮 <b>RANKING VAZIO</b>\n\n"
             "Ninguém fez entregas ainda!\n"
-            "Comece a trabalhar e domine a parada! [FIRE]",
+            "Comece a trabalhar e domine a parada! 🔥",
             parse_mode='HTML'
         )
         return
@@ -3565,21 +3109,21 @@ async def cmd_ranking(update: Update, context: ContextTypes.DEFAULT_TYPE):
             badge_icons = "—"
         
         # Streak
-        streak_text = f"[FIRE] {entry.streak_days}d" if entry.streak_days > 0 else ""
+        streak_text = f"🔥 {entry.streak_days}d" if entry.streak_days > 0 else ""
         
         msg += f"{medal} <b>{entry.name}</b>\n"
-        msg += f"   [ESTRELA] {entry.score} pts | {badge_icons} {streak_text}\n\n"
+        msg += f"   ⭐ {entry.score} pts | {badge_icons} {streak_text}\n\n"
     
     # Stats pessoais (se é entregador)
     personal_stats = gamification_service.get_deliverer_stats(user_id)
     if personal_stats:
-        msg += f"\n[GRAFICO] <b>SUAS STATS:</b>\n"
+        msg += f"\n📊 <b>SUAS STATS:</b>\n"
         msg += f"Rank: #{personal_stats['rank']} | Score: {personal_stats['score']}\n"
         msg += f"Entregas: {personal_stats['total_deliveries']} | "
         msg += f"Sucesso: {personal_stats['success_rate']:.1f}%\n"
         
         if personal_stats['streak_days'] > 0:
-            msg += f"[FIRE] Streak: {personal_stats['streak_days']} dias\n"
+            msg += f"🔥 Streak: {personal_stats['streak_days']} dias\n"
         
         if personal_stats['badges']:
             msg += f"\n🏅 Badges: {len(personal_stats['badges'])}\n"
@@ -3590,7 +3134,7 @@ async def cmd_ranking(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def cmd_predict_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Previsão de tempo de entrega com IA - MODO SCOOTER"""
+    # docstring removed
     user_id = update.effective_user.id
     
     if not context.args or len(context.args) < 1:
@@ -3602,7 +3146,7 @@ async def cmd_predict_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "<code>/prever 5.2 high</code>\n"
             "<code>/prever 3.0</code>\n\n"
             "Prioridades: low, normal, high, urgent\n\n"
-            "[DICA] <b>Modo Scooter:</b> Pode usar contramão, calçadas e atalhos!",
+            "💡 <b>Modo Scooter:</b> Pode usar contramão, calçadas e atalhos!",
             parse_mode='HTML'
         )
         return
@@ -3643,20 +3187,20 @@ async def cmd_predict_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(msg, parse_mode='HTML')
     
     except ValueError:
-        await update.message.reply_text("[X] Distância inválida. Use números (ex: 5.2)")
+        await update.message.reply_text("❌ Distância inválida. Use números (ex: 5.2)")
     except Exception as e:
-        await update.message.reply_text(f"[X] Erro: {e}")
+        await update.message.reply_text(f"❌ Erro: {e}")
 
 
 # ==================== FINANCIAL COMMANDS ====================
 
 async def cmd_fechar_dia(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Fecha o dia financeiro: Receita -> Custos -> Lucro"""
+    # docstring removed
     user_id = update.effective_user.id
     args = context.args
     
     if user_id != BotConfig.ADMIN_TELEGRAM_ID:
-        await update.message.reply_text("[X] Apenas o admin pode fechar o dia.")
+        await update.message.reply_text("❌ Apenas o admin pode fechar o dia.")
         return
     
     closing_date = datetime.now()
@@ -3668,7 +3212,7 @@ async def cmd_fechar_dia(update: Update, context: ContextTypes.DEFAULT_TYPE):
             closing_date = datetime.strptime(args[0], "%Y-%m-%d")
             date_str = args[0]
         except ValueError:
-            await update.message.reply_text("[X] Data inválida! Use formato AAAA-MM-DD\nEx: /fechar_dia 2023-10-25")
+            await update.message.reply_text("❌ Data inválida! Use formato AAAA-MM-DD\nEx: /fechar_dia 2023-10-25")
             return
             
     # Pega sessão ativa para calcular custos (se for hoje ou se houver sessão para a data)
@@ -3687,7 +3231,7 @@ async def cmd_fechar_dia(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if not session and date_str == "HOJE":
         await update.message.reply_text(
-            "[ALERTA] <b>Aviso:</b> Nenhuma sessão ativa.\n"
+            "⚠️ <b>Aviso:</b> Nenhuma sessão ativa.\n"
             "Vou iniciar um fechamento avulso.",
             parse_mode='HTML'
         )
@@ -3696,7 +3240,7 @@ async def cmd_fechar_dia(update: Update, context: ContextTypes.DEFAULT_TYPE):
     session_manager.set_admin_state(user_id, "closing_day_revenue")
     
     await update.message.reply_text(
-        f"[DINHEIRO] <b>FECHAMENTO FINANCEIRO ({date_str})</b>\n"
+        f"💰 <b>FECHAMENTO FINANCEIRO ({date_str})</b>\n"
         "---\n\n"
         "Vamos calcular o lucro real.\n\n"
         "1️⃣ <b>PASSO 1: Faturamento</b>\n"
@@ -3705,13 +3249,27 @@ async def cmd_fechar_dia(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode='HTML'
     )
 
+"""
+    
+    for name, cost in sorted(deliverer_costs.items()):
+        emoji = "🤝" if cost == 0 else "💼"
+        msg += f"{emoji} {name}: R$ {cost:.2f}\n"
+    
+    msg += f"\n<b>Total Custos: R$ {total_costs:.2f}</b>\n"
+    msg += "\\n-------------------------------\\n\\n"
+    msg += "<b>Qual foi a RECEITA BRUTA de hoje?</b>\\n\\n"
+    msg += "Digite o valor em reais (ex: 450.00)\\n"
+    msg += "Ou digite /cancelar para abortar."
+    
+    await update.message.reply_text(msg, parse_mode='HTML')
+
 
 async def cmd_financeiro(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Mostra relatorio financeiro (diario, semanal ou mensal)
     user_id = update.effective_user.id
     
     if user_id != BotConfig.ADMIN_TELEGRAM_ID:
-        await update.message.reply_text("[X] Apenas o admin pode ver relatórios financeiros.")
+        await update.message.reply_text("❌ Apenas o admin pode ver relatórios financeiros.")
         return
     
     # Sem argumentos = relatório de hoje
@@ -3721,11 +3279,11 @@ async def cmd_financeiro(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         if not report:
             await update.message.reply_text(
-                "[X] <b>SEM DADOS PARA HOJE</b>\n\n"
+                "❌ <b>SEM DADOS PARA HOJE</b>\n\n"
                 "Use <code>/fechar_dia</code> para registrar o fechamento.\n\n"
-                "[DICA] Ou use:\n"
-                "- <code>/financeiro semana</code> - Últimos 7 dias\n"
-                "- <code>/financeiro mes</code> - Mês atual",
+                "💡 Ou use:\n"
+                "• <code>/financeiro semana</code> - Últimos 7 dias\n"
+                "• <code>/financeiro mes</code> - Mês atual",
                 parse_mode='HTML'
             )
             return
@@ -3746,7 +3304,7 @@ async def cmd_financeiro(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         if not reports:
             await update.message.reply_text(
-                "[X] Nenhum dado encontrado nos últimos 7 dias.",
+                "❌ Nenhum dado encontrado nos últimos 7 dias.",
                 parse_mode='HTML'
             )
             return
@@ -3785,11 +3343,11 @@ async def cmd_financeiro(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     else:
         await update.message.reply_text(
-            "[X] Período inválido.\n\n"
+            "❌ Período inválido.\n\n"
             "<b>Use:</b>\n"
-            "- <code>/financeiro</code> - Hoje\n"
-            "- <code>/financeiro semana</code> - Últimos 7 dias\n"
-            "- <code>/financeiro mes</code> - Mês atual",
+            "• <code>/financeiro</code> - Hoje\n"
+            "• <code>/financeiro semana</code> - Últimos 7 dias\n"
+            "• <code>/financeiro mes</code> - Mês atual",
             parse_mode='HTML'
         )
 
@@ -3799,7 +3357,7 @@ async def cmd_fechar_semana(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     
     if user_id != BotConfig.ADMIN_TELEGRAM_ID:
-        await update.message.reply_text("[X] Apenas o admin pode fechar a semana.")
+        await update.message.reply_text("❌ Apenas o admin pode fechar a semana.")
         return
     
     # Pede custos operacionais da semana
@@ -3835,48 +3393,26 @@ async def cmd_fechar_semana(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def cmd_config_socios(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Configura nomes e percentuais dos socios"""
+    # docstring removed
     user_id = update.effective_user.id
     
     if user_id != BotConfig.ADMIN_TELEGRAM_ID:
-        await update.message.reply_text("[X] Apenas o admin pode configurar socios.")
+        await update.message.reply_text("❌ Apenas o admin pode configurar sócios.")
         return
     
     if not context.args:
-        # Mostra configuracao atual
+        # Mostra configuração atual
         cfg = financial_service.partner_config
         
-        p1_pct = int(cfg.partner_1_share * 100)
-        p2_pct = int(cfg.partner_2_share * 100)
-        res_pct = int(cfg.reserve_percentage * 100)
-        
-        msg = (
-            "<b>CONFIGURACAO DOS SOCIOS</b>\n"
-            "---\n\n"
-            "<b>SOCIOS:</b>\n\n"
-            f"<b>{cfg.partner_1_name}</b>: {p1_pct}%\n"
-            f"<b>{cfg.partner_2_name}</b>: {p2_pct}%\n\n"
-            f"<b>RESERVA EMPRESA:</b> {res_pct}%\n\n"
-            "---\n\n"
-            "<b>PARA ALTERAR:</b>\n\n"
-            "<code>/config_socios Nome1 70 Nome2 30 10</code>\n\n"
-            "<b>Parametros:</b>\n"
-            "1. Nome do socio 1\n"
-            "2. Percentual do socio 1\n"
-            "3. Nome do socio 2\n"
-            "4. Percentual do socio 2\n"
-            "5. Percentual de reserva\n\n"
-            "<b>Exemplo:</b>\n"
-            "<code>/config_socios Joao 70 Maria 30 10</code>"
-        )
+        msg = f# docstring removed
         
         await update.message.reply_text(msg, parse_mode='HTML')
         return
     
-    # Atualiza configuracao
+    # Atualiza configuração
     if len(context.args) != 5:
         await update.message.reply_text(
-            "[X] Formato invalido.\n\n"
+            "❌ Formato inválido.\n\n"
             "<b>Use:</b>\n"
             "<code>/config_socios Nome1 % Nome2 % Reserva%</code>",
             parse_mode='HTML'
@@ -3893,8 +3429,8 @@ async def cmd_config_socios(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Valida
         if p1_share + p2_share != 1.0:
             await update.message.reply_text(
-                f"[X] Os percentuais dos socios devem somar 100%\n"
-                f"Voce informou: {p1_share*100:.0f}% + {p2_share*100:.0f}% = {(p1_share+p2_share)*100:.0f}%",
+                f"❌ Os percentuais dos sócios devem somar 100%\n"
+                f"Você informou: {p1_share*100:.0f}% + {p2_share*100:.0f}% = {(p1_share+p2_share)*100:.0f}%",
                 parse_mode='HTML'
             )
             return
@@ -3908,27 +3444,20 @@ async def cmd_config_socios(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reserve_percentage=reserve
         )
         
-        p1_pct = int(p1_share * 100)
-        p2_pct = int(p2_share * 100)
-        res_pct = int(reserve * 100)
-        
         await update.message.reply_text(
-            "<b>CONFIGURACAO ATUALIZADA!</b>\n\n"
-            f"{p1_name}: {p1_pct}%\n"
-            f"{p2_name}: {p2_pct}%\n"
-            f"Reserva: {res_pct}%",
+            f# docstring removed,
             parse_mode='HTML'
         )
     
     except ValueError:
         await update.message.reply_text(
-            "[X] Valores invalidos. Use numeros para os percentuais.",
+            "❌ Valores inválidos. Use números para os percentuais.",
             parse_mode='HTML'
         )
 
 
 async def cmd_exportar(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Comando /exportar [excel|pdf] [dias] - Exporta relatorios"""
+    # docstring removed
     user_id = update.effective_user.id
     
     if user_id != BotConfig.ADMIN_TELEGRAM_ID:
@@ -3941,7 +3470,7 @@ async def cmd_exportar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     formato = context.args[0] if len(context.args) > 0 else 'excel'
     days = int(context.args[1]) if len(context.args) > 1 else 30
     
-    await update.message.reply_text("[GRAFICO] Gerando exportação, aguarde...")
+    await update.message.reply_text("📊 Gerando exportação, aguarde...")
     
     try:
         # Busca dados
@@ -3964,7 +3493,7 @@ async def cmd_exportar(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 })
         
         if not reports:
-            await update.message.reply_text("[X] Sem dados para exportar")
+            await update.message.reply_text("❌ Sem dados para exportar")
             return
         
         # Exporta
@@ -4007,20 +3536,20 @@ async def cmd_exportar(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Envia arquivo
         await update.message.reply_document(
             document=open(filepath, 'rb'),
-            caption=f"[GRAFICO] Relatório de {days} dias - {formato.upper()}"
+            caption=f"📊 Relatório de {days} dias - {formato.upper()}"
         )
         
         logger.info(f"Relatório exportado: {filepath}")
     
     except ImportError as e:
         await update.message.reply_text(
-            f"[X] Biblioteca não instalada: {str(e)}\n\n"
+            f"❌ Biblioteca não instalada: {str(e)}\n\n"
             f"Instale com:\n<code>pip install openpyxl reportlab</code>",
             parse_mode='HTML'
         )
     except Exception as e:
         logger.error(f"Erro ao exportar: {e}")
-        await update.message.reply_text(f"[X] Erro ao exportar: {e}")
+        await update.message.reply_text(f"❌ Erro ao exportar: {e}")
 
 
 async def cmd_config_banco_inter(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -4035,27 +3564,10 @@ async def cmd_config_banco_inter(update: Update, context: ContextTypes.DEFAULT_T
     
     if len(context.args) == 0:
         # Mostra status
-        status = "[OK] Configurado" if bank_inter_service.is_configured() else "[X] Não configurado"
+        status = "✅ Configurado" if bank_inter_service.is_configured() else "❌ Não configurado"
         
         await update.message.reply_text(
-            f"<b>BANCO INTER - API</b>\n"
-            f"\n"
-            f"<b>Status:</b> {status}\n"
-            f"\n"
-            f"<b>CONFIGURAR:</b>\n"
-            f"<code>/config_banco_inter CLIENT_ID CLIENT_SECRET CERT_PATH KEY_PATH CONTA</code>\n"
-            f"\n"
-            f"<b>Como obter:</b>\n"
-            f"1. Acesse: https://developers.bancointer.com.br\n"
-            f"2. Crie uma aplicação\n"
-            f"3. Gere certificado digital\n"
-            f"4. Anote Client ID e Secret\n"
-            f"5. Use este comando com os dados\n"
-            f"\n"
-            f"<b>IMPORTANTE:</b>\n"
-            f"- Mantenha as credenciais seguras\n"
-            f"- Certificados devem estar no servidor\n"
-            f"- Conta deve ser formato: 12345678",
+            f# docstring removed,
             parse_mode='HTML'
         )
         return
@@ -4063,7 +3575,7 @@ async def cmd_config_banco_inter(update: Update, context: ContextTypes.DEFAULT_T
     # Configura
     if len(context.args) != 5:
         await update.message.reply_text(
-            "[X] Formato inválido\n\n"
+            "❌ Formato inválido\n\n"
             "<b>Use:</b>\n"
             "<code>/config_banco_inter CLIENT_ID CLIENT_SECRET CERT_PATH KEY_PATH CONTA</code>",
             parse_mode='HTML'
@@ -4086,16 +3598,16 @@ async def cmd_config_banco_inter(update: Update, context: ContextTypes.DEFAULT_T
         )
         
         await update.message.reply_text(
-            "[OK] <b>BANCO INTER CONFIGURADO!</b>\n\n"
+            "✅ <b>BANCO INTER CONFIGURADO!</b>\n\n"
             "Agora você pode usar:\n"
-            "- <code>/fechar_dia_auto</code> - Fecha dia com receita do banco\n"
-            "- <code>/saldo_banco</code> - Consulta saldo atual",
+            "• <code>/fechar_dia_auto</code> - Fecha dia com receita do banco\n"
+            "• <code>/saldo_banco</code> - Consulta saldo atual",
             parse_mode='HTML'
         )
     
     except Exception as e:
         logger.error(f"Erro ao configurar Banco Inter: {e}")
-        await update.message.reply_text(f"[X] Erro: {e}")
+        await update.message.reply_text(f"❌ Erro: {e}")
 
 
 async def cmd_fechar_dia_auto(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -4110,7 +3622,7 @@ async def cmd_fechar_dia_auto(update: Update, context: ContextTypes.DEFAULT_TYPE
     
     if not bank_inter_service.is_configured():
         await update.message.reply_text(
-            "[X] Banco Inter não configurado\n\n"
+            "❌ Banco Inter não configurado\n\n"
             "Use <code>/config_banco_inter</code>",
             parse_mode='HTML'
         )
@@ -4141,23 +3653,18 @@ async def cmd_fechar_dia_auto(update: Update, context: ContextTypes.DEFAULT_TYPE
         }
         
         await update.message.reply_text(
-            "<b>FECHAMENTO AUTOMATICO</b>\n\n"
-            f"<b>Receita do Banco:</b> R$ {receita:.2f}\n"
-            f"<b>Custos Entregadores:</b> R$ {delivery_costs:.2f}\n\n"
-            "<b>Outros custos operacionais?</b>\n"
-            "(Gasolina, manutencao, etc)\n\n"
-            "Digite o valor ou 0:",
+            f# docstring removed,
             parse_mode='HTML'
         )
     
     except Exception as e:
         logger.error(f"Erro ao fechar dia automático: {e}")
         await update.message.reply_text(
-            f"[X] Erro ao buscar dados do banco:\n{e}\n\n"
+            f"❌ Erro ao buscar dados do banco:\n{e}\n\n"
             f"Verifique:\n"
-            f"- Credenciais corretas\n"
-            f"- Certificados válidos\n"
-            f"- Conexão com a internet",
+            f"• Credenciais corretas\n"
+            f"• Certificados válidos\n"
+            f"• Conexão com a internet",
             parse_mode='HTML'
         )
 
@@ -4174,7 +3681,7 @@ async def cmd_saldo_banco(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if not bank_inter_service.is_configured():
         await update.message.reply_text(
-            "[X] Banco Inter não configurado\n\n"
+            "❌ Banco Inter não configurado\n\n"
             "Use <code>/config_banco_inter</code>",
             parse_mode='HTML'
         )
@@ -4189,23 +3696,17 @@ async def cmd_saldo_banco(update: Update, context: ContextTypes.DEFAULT_TYPE):
         bloqueado = saldo_data.get('bloqueado', 0)
         
         await update.message.reply_text(
-            f"🏦 <b>BANCO INTER - SALDO</b>\n"
-            f"---\n\n"
-            f"💰 <b>Disponível:</b> R$ {disponivel:,.2f}\n"
-            f"🔒 <b>Bloqueado:</b> R$ {bloqueado:,.2f}\n"
-            f"---\n"
-            f"💵 <b>Total:</b> R$ {(disponivel + bloqueado):,.2f}\n\n"
-            f"<i>Atualizado em: {datetime.now().strftime('%d/%m/%Y %H:%M')}</i>",
+            f# docstring removed,
             parse_mode='HTML'
         )
     
     except Exception as e:
         logger.error(f"Erro ao consultar saldo: {e}")
-        await update.message.reply_text(f"[X] Erro ao consultar saldo:\n{e}")
+        await update.message.reply_text(f"❌ Erro ao consultar saldo:\n{e}")
 
 
 async def cmd_projecoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Comando /projecoes [dias] - Mostra projecoes de lucro"""
+    # docstring removed
     user_id = update.effective_user.id
     
     if user_id != BotConfig.ADMIN_TELEGRAM_ID:
@@ -4227,20 +3728,13 @@ async def cmd_projecoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         if not predictions:
             await update.message.reply_text(
-                "[X] Dados insuficientes para projeções\n\n"
+                "❌ Dados insuficientes para projeções\n\n"
                 "São necessários pelo menos 7 dias de histórico"
             )
             return
         
         # Formata mensagem
-        msg = (
-            f"🔮 <b>PROJEÇÕES DE LUCRO</b>\n"
-            f"---\n\n"
-            f"<b>Taxa de Crescimento:</b> {growth['growth_rate']:.1f}%\n"
-            f"<b>Tendência:</b> {growth['trend']}\n\n"
-            f"---\n"
-            f"<b>PRÓXIMOS {days} DIAS:</b>\n\n"
-        )
+        msg = f# docstring removed
         
         total_predicted = 0
         
@@ -4249,23 +3743,23 @@ async def cmd_projecoes(update: Update, context: ContextTypes.DEFAULT_TYPE):
             date_fmt = date_obj.strftime('%d/%m')
             weekday = pred['weekday'][:3]
             
-            confidence_emoji = "[VERDE]" if pred['confidence'] == 'alta' else "[AMARELO]" if pred['confidence'] == 'média' else "[VERMELHO]"
+            confidence_emoji = "🟢" if pred['confidence'] == 'alta' else "🟡" if pred['confidence'] == 'média' else "🔴"
             
             msg += f"\n{confidence_emoji} <b>{date_fmt} ({weekday})</b>\n"
-            msg += f"   [DINHEIRO] Lucro: R$ {pred['predicted_profit']:,.2f}\n"
-            msg += f"   [SUBINDO] Receita: R$ {pred['predicted_revenue']:,.2f}\n"
+            msg += f"   💰 Lucro: R$ {pred['predicted_profit']:,.2f}\n"
+            msg += f"   📈 Receita: R$ {pred['predicted_revenue']:,.2f}\n"
             
             total_predicted += pred['predicted_profit']
         
         msg += f"\n---"
-        msg += f"\n[R$] <b>TOTAL PREVISTO:</b> R$ {total_predicted:,.2f}"
-        msg += f"\n[GRAFICO] <b>MÉDIA DIÁRIA:</b> R$ {total_predicted/days:,.2f}"
+        msg += f"\n💵 <b>TOTAL PREVISTO:</b> R$ {total_predicted:,.2f}"
+        msg += f"\n📊 <b>MÉDIA DIÁRIA:</b> R$ {total_predicted/days:,.2f}"
         
         await update.message.reply_text(msg, parse_mode='HTML')
     
     except Exception as e:
         logger.error(f"Erro ao gerar projeções: {e}")
-        await update.message.reply_text(f"[X] Erro: {e}")
+        await update.message.reply_text(f"❌ Erro: {e}")
 
 
 async def cmd_dashboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -4284,36 +3778,19 @@ async def cmd_dashboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
         start_dashboard_thread(host='0.0.0.0', port=port)
         
         await update.message.reply_text(
-            f"🚀 <b>DASHBOARD WEB INICIADO!</b>\n"
-            f"\n"
-            f"📊 <b>Acesse:</b>\n"
-            f"<code>http://localhost:{port}</code>\n"
-            f"\n"
-            f"✨ <b>RECURSOS:</b>\n"
-            f"📈 Gráficos interativos em tempo real\n"
-            f"📊 Evolução de receitas e lucros\n"
-            f"💰 Distribuição de custos\n"
-            f"🔮 Projeções futuras\n"
-            f"📄 Exportação Excel/PDF\n"
-            f"\n"
-            f"💡 <b>DICA:</b>\n"
-            f"Para acesso externo, use o IP público do servidor:\n"
-            f"<code>http://SEU_IP:{port}</code>\n"
-            f"\n"
-            f"---\n"
-            f"<i>Dashboard rodando em background...</i>",
+            f# docstring removed,
             parse_mode='HTML'
         )
     
     except Exception as e:
         logger.error(f"Erro ao iniciar dashboard: {e}")
-        await update.message.reply_text(f"[X] Erro ao iniciar dashboard:\n{e}")
+        await update.message.reply_text(f"❌ Erro ao iniciar dashboard:\n{e}")
 
 
 # ==================== MODO SEPARAÇÃO POR COR ====================
 
 async def cmd_selecionar_sessao(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Seleciona qual sessão usar (quando há múltiplas ativas)"""
+    # docstring removed
     user_id = update.effective_user.id
     
     if user_id != BotConfig.ADMIN_TELEGRAM_ID:
@@ -4324,7 +3801,7 @@ async def cmd_selecionar_sessao(update: Update, context: ContextTypes.DEFAULT_TY
     
     if not sessions:
         await update.message.reply_text(
-            "[X] <b>NENHUMA SESSÃO ATIVA</b>\n\n"
+            "❌ <b>NENHUMA SESSÃO ATIVA</b>\n\n"
             "Use <code>/importar</code> para criar uma nova sessão.",
             parse_mode='HTML'
         )
@@ -4336,12 +3813,12 @@ async def cmd_selecionar_sessao(update: Update, context: ContextTypes.DEFAULT_TY
     # Cria botões para cada sessão
     keyboard = []
     for session in sessions:
-        is_current = "[OK] " if session.session_id == current_id else ""
-        status = "🔒 Finalizada" if session.is_finalized else "[VERDE] Ativa"
+        is_current = "✅ " if session.session_id == current_id else ""
+        status = "🔒 Finalizada" if session.is_finalized else "🟢 Ativa"
         
         label = (
             f"{is_current}{session.date} ({session.session_id[:6]})\n"
-            f"{status} - {len(session.romaneios)} romaneios - {len(session.routes)} rotas"
+            f"{status} • {len(session.romaneios)} romaneios • {len(session.routes)} rotas"
         )
         
         keyboard.append([
@@ -4354,20 +3831,20 @@ async def cmd_selecionar_sessao(update: Update, context: ContextTypes.DEFAULT_TY
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     await update.message.reply_text(
-        "[PASTA] <b>SELECIONAR SESSÃO</b>\n"
+        "📂 <b>SELECIONAR SESSÃO</b>\n"
         "---\n\n"
         "Escolha qual sessão usar para:\n"
-        "- <code>/modo_separacao</code>\n"
-        "- <code>/analisar_rota</code>\n"
-        "- Outros comandos\n\n"
-        "[OK] = Sessão atual em uso",
+        "• <code>/modo_separacao</code>\n"
+        "• <code>/analisar_rota</code>\n"
+        "• Outros comandos\n\n"
+        "✅ = Sessão atual em uso",
         parse_mode='HTML',
         reply_markup=reply_markup
     )
 
 
 async def cmd_modo_separacao(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Inicia modo separação - bipar códigos de barras"""
+    # docstring removed
     user_id = update.effective_user.id
     
     if user_id != BotConfig.ADMIN_TELEGRAM_ID:
@@ -4382,15 +3859,15 @@ async def cmd_modo_separacao(update: Update, context: ContextTypes.DEFAULT_TYPE)
     
     # Se há múltiplas sessões ativas, avisa o usuário
     if len(active_sessions) > 1:
-        session_info = f"[DATA] Usando sessão: <b>{session.date}</b> (<code>{session.session_id[:6]}</code>)\n\n"
-        session_info += f"[ALERTA] Você tem <b>{len(active_sessions)} sessões ativas</b>!\n"
+        session_info = f"📅 Usando sessão: <b>{session.date}</b> (<code>{session.session_id[:6]}</code>)\n\n"
+        session_info += f"⚠️ Você tem <b>{len(active_sessions)} sessões ativas</b>!\n"
         session_info += f"Use <code>/selecionar_sessao</code> se quiser trocar.\n\n"
     else:
         session_info = ""
     
     if not session or not session.routes:
         msg = (
-            "[X] <b>NENHUMA ROTA DIVIDIDA!</b>\n\n"
+            "❌ <b>NENHUMA ROTA DIVIDIDA!</b>\n\n"
             f"{session_info}"
             "Fluxo correto:\n"
             "1️⃣ <code>/fechar_rota</code> - Divide rotas\n"
@@ -4399,9 +3876,9 @@ async def cmd_modo_separacao(update: Update, context: ContextTypes.DEFAULT_TYPE)
         )
         
         if len(active_sessions) > 1:
-            msg += "[DICA] <i>Ou use /selecionar_sessao para escolher outra sessão</i>"
+            msg += "💡 <i>Ou use /selecionar_sessao para escolher outra sessão</i>"
         else:
-            msg += "[DICA] <i>Divida as rotas primeiro!</i>"
+            msg += "💡 <i>Divida as rotas primeiro!</i>"
         
         await update.message.reply_text(msg, parse_mode='HTML')
         return
@@ -4410,10 +3887,10 @@ async def cmd_modo_separacao(update: Update, context: ContextTypes.DEFAULT_TYPE)
     rotas_sem_entregador = [r for r in session.routes if not r.assigned_to_name]
     if rotas_sem_entregador:
         await update.message.reply_text(
-            f"[ALERTA] <b>ROTAS SEM ENTREGADOR!</b>\n\n"
-            f"[X] {len(rotas_sem_entregador)} rotas não atribuídas:\n"
-            + "\n".join([f"- {r.id}" for r in rotas_sem_entregador]) +
-            "\n\n[DICA] Atribua todos os entregadores antes de separar!",
+            f"⚠️ <b>ROTAS SEM ENTREGADOR!</b>\n\n"
+            f"❌ {len(rotas_sem_entregador)} rotas não atribuídas:\n"
+            + "\n".join([f"• {r.id}" for r in rotas_sem_entregador]) +
+            "\n\n💡 Atribua todos os entregadores antes de separar!",
             parse_mode='HTML'
         )
         return
@@ -4422,7 +3899,7 @@ async def cmd_modo_separacao(update: Update, context: ContextTypes.DEFAULT_TYPE)
     from .colors import get_color_name
     
     # Prepara mensagem visual com as cores
-    mensagem_cores = "[COR] <b>CORES DAS ROTAS:</b>\n\n"
+    mensagem_cores = "🎨 <b>CORES DAS ROTAS:</b>\n\n"
     
     for route in session.routes:
         color_name = get_color_name(route.color)
@@ -4430,7 +3907,7 @@ async def cmd_modo_separacao(update: Update, context: ContextTypes.DEFAULT_TYPE)
         entregador = route.assigned_to_name
         
         mensagem_cores += f"{emoji} <b>{color_name}</b> → {entregador}\n"
-        mensagem_cores += f"   [PACOTE] {len(route.optimized_order)} pacotes\n\n"
+        mensagem_cores += f"   📦 {len(route.optimized_order)} pacotes\n\n"
     
     # Ativa modo separação com sessão
     result = barcode_separator.start_separation_mode(session)
@@ -4438,7 +3915,7 @@ async def cmd_modo_separacao(update: Update, context: ContextTypes.DEFAULT_TYPE)
     # Info sobre múltiplas sessões
     session_warning = ""
     if len(active_sessions) > 1:
-        session_warning = f"\n[ALERTA] Usando sessão: <b>{session.date}</b> (<code>{session.session_id[:6]}</code>)\n"
+        session_warning = f"\n⚠️ Usando sessão: <b>{session.date}</b> (<code>{session.session_id[:6]}</code>)\n"
     
     # Gera link do scanner web (Railway)
     scanner_link = ""
@@ -4447,53 +3924,13 @@ async def cmd_modo_separacao(update: Update, context: ContextTypes.DEFAULT_TYPE)
         scanner_url = f"https://{railway_domain}/scanner"
         scanner_link = f"\n📱 <b>SCANNER WEB (celular):</b>\n<a href='{scanner_url}'>{scanner_url}</a>\n"
     
-    mensagem = (
-        f"🎨 <b>MODO SEPARACAO ATIVADO!</b>\n"
-        f"---\n"
-        f"{session_warning}"
-        f"{mensagem_cores}"
-        f"\n"
-        f"---\n"
-        f"{scanner_link}"
-        f"<b>COMO USAR:</b>\n"
-        f"\n"
-        f"<b>OPCAO 1: Scanner Web (celular)</b>\n"
-        f"- Abra o link acima no celular\n"
-        f"- Aponte a camera para o codigo de barras\n"
-        f"- Bot responde automaticamente com a COR\n"
-        f"\n"
-        f"<b>OPCAO 2: Leitor USB (computador)</b>\n"
-        f"- Conecte o leitor USB\n"
-        f"- Bipe o codigo\n"
-        f"- Codigo aparece no chat automaticamente\n"
-        f"\n"
-        f"---\n"
-        f"\n"
-        f"1. Pegue um pacote da pilha\n"
-        f"2. Bipe/Scaneie o codigo de barras\n"
-        f"3. Bot responde com a COR\n"
-        f"4. Cole a etiqueta colorida\n"
-        f"5. Proximo pacote!\n"
-        f"\n"
-        f"<b>VELOCIDADE:</b>\n"
-        f"~3 segundos por pacote = 20 pacotes/minuto\n"
-        f"\n"
-        f"<b>PROGRESSO:</b>\n"
-        f"Use <code>/status_separacao</code> para ver quantos faltam\n"
-        f"\n"
-        f"<b>FINALIZAR:</b>\n"
-        f"Quando terminar: <code>/fim_separacao</code>\n"
-        f"\n"
-        f"---\n"
-        f"\n"
-        f"🚀 <b>BORA SEPARAR!</b>"
-    )
+    mensagem = f# docstring removed
     
     await update.message.reply_text(mensagem, parse_mode='HTML')
 
 
 async def cmd_fim_separacao(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Finaliza modo separação e mostra relatório"""
+    # docstring removed
     user_id = update.effective_user.id
     
     if user_id != BotConfig.ADMIN_TELEGRAM_ID:
@@ -4502,7 +3939,7 @@ async def cmd_fim_separacao(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if not barcode_separator.active:
         await update.message.reply_text(
-            "[ALERTA] <b>MODO SEPARAÇÃO INATIVO</b>\n\n"
+            "⚠️ <b>MODO SEPARAÇÃO INATIVO</b>\n\n"
             "Use <code>/modo_separacao</code> para começar.",
             parse_mode='HTML'
         )
@@ -4515,7 +3952,7 @@ async def cmd_fim_separacao(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def cmd_status_separacao(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Mostra status atual da separação"""
+    # docstring removed
     user_id = update.effective_user.id
     
     if user_id != BotConfig.ADMIN_TELEGRAM_ID:
@@ -4528,7 +3965,7 @@ async def cmd_status_separacao(update: Update, context: ContextTypes.DEFAULT_TYP
 
 # Intercept barcode scans in text messages (admin only)
 async def handle_admin_barcode_scan(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str):
-    """Detecta e processa cdigos de barras escaneados"""
+    # docstring removed
     user_id = update.effective_user.id
     
     # Só processa se modo separação estiver ativo
@@ -4551,10 +3988,7 @@ async def handle_admin_barcode_scan(update: Update, context: ContextTypes.DEFAUL
 # ==================== MAIN ====================
 
 async def cmd_otimizar_rotas(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-     OTIMIZAO INTERATIVA para chamadas sem argumentos (Boto / Comando simples)
-    Usa os dados da sesso ativa.
-    """
+    # docstring removed
     user_id = update.effective_user.id
     if user_id != BotConfig.ADMIN_TELEGRAM_ID:
         return
@@ -4563,7 +3997,7 @@ async def cmd_otimizar_rotas(update: Update, context: ContextTypes.DEFAULT_TYPE)
     
     # Validações iniciais
     if not session:
-        msg = "[X] <b>Nenhuma sessão ativa!</b>\nUse /importar para começar."
+        msg = "❌ <b>Nenhuma sessão ativa!</b>\nUse /importar para começar."
         if update.callback_query:
             await update.callback_query.answer(msg)
             await update.callback_query.edit_message_text(msg, parse_mode='HTML')
@@ -4574,7 +4008,7 @@ async def cmd_otimizar_rotas(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if not session.romaneios and not session.routes:
          # Se tiver routes mas nao romaneios (ex: reinicio), ok. Mas geralmente tem romaneios.
          # Se estiver vazio tudo...
-        msg = "[X] <b>Nenhum pacote importado!</b>\nImporte romaneios antes de otimizar."
+        msg = "❌ <b>Nenhum pacote importado!</b>\nImporte romaneios antes de otimizar."
         if update.callback_query:
             await update.callback_query.answer(msg)
             await update.callback_query.edit_message_text(msg, parse_mode='HTML')
@@ -4599,8 +4033,8 @@ async def cmd_otimizar_rotas(update: Update, context: ContextTypes.DEFAULT_TYPE)
     msg = (
         "🧠 <b>OTIMIZAÇÃO INTELIGENTE</b>\n"
         "---\n\n"
-        f"[PACOTE] Total de pacotes: <b>{total_packages}</b>\n"
-        f"[DATA] Sessão: {session.session_name}\n\n"
+        f"📦 Total de pacotes: <b>{total_packages}</b>\n"
+        f"📅 Sessão: {session.session_name}\n\n"
         "🔢 <b>Quantos entregadores vão rodar?</b>"
     )
     
@@ -4611,7 +4045,7 @@ async def cmd_otimizar_rotas(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 
 async def handle_optimization_num(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Callback: Escolheu nmero de entregadores -> Vai pra seleo de cor"""
+    # docstring removed
     query = update.callback_query
     await query.answer()
     
@@ -4630,38 +4064,38 @@ async def handle_optimization_num(update: Update, context: ContextTypes.DEFAULT_
     # Precisamos montar o teclado aqui
     color_buttons = [
         [
-            InlineKeyboardButton("[VERMELHO] Vermelho", callback_data="color_vermelho"),
-            InlineKeyboardButton("[AZUL] Azul", callback_data="color_azul"),
+            InlineKeyboardButton("🔴 Vermelho", callback_data="color_vermelho"),
+            InlineKeyboardButton("🔵 Azul", callback_data="color_azul"),
         ],
         [
-            InlineKeyboardButton("[VERDE] Verde", callback_data="color_verde"),
-            InlineKeyboardButton("[AMARELO] Amarelo", callback_data="color_amarelo"),
+            InlineKeyboardButton("🟢 Verde", callback_data="color_verde"),
+            InlineKeyboardButton("🟡 Amarelo", callback_data="color_amarelo"),
         ],
         [
-            InlineKeyboardButton("[ROXO] Roxo", callback_data="color_roxo"),
-            InlineKeyboardButton("[LARANJA] Laranja", callback_data="color_laranja"),
+            InlineKeyboardButton("🟣 Roxo", callback_data="color_roxo"),
+            InlineKeyboardButton("🟠 Laranja", callback_data="color_laranja"),
         ],
         [
-            InlineKeyboardButton("[OK] Confirmar Cores", callback_data="color_confirm")
+            InlineKeyboardButton("✅ Confirmar Cores", callback_data="color_confirm")
         ]
     ]
     
     await query.edit_message_text(
-        "[COR] <b>ESCOLHA AS CORES DOS ADESIVOS</b>\n"
+        "🎨 <b>ESCOLHA AS CORES DOS ADESIVOS</b>\n"
         "---\n\n"
-        f"[PACOTE] Serão criadas <b>{num_entregadores} rotas</b>\n\n"
-        "[TAG] <b>Selecione as cores disponíveis:</b>\n"
-        "- Clique nas cores que você tem como adesivo\n"
-        "- Pode escolher quantas quiser\n"
-        "- Depois clique em [OK] Confirmar\n\n"
-        "<i>[DICA] As rotas usarão as cores selecionadas</i>",
+        f"📦 Serão criadas <b>{num_entregadores} rotas</b>\n\n"
+        "🏷️ <b>Selecione as cores disponíveis:</b>\n"
+        "• Clique nas cores que você tem como adesivo\n"
+        "• Pode escolher quantas quiser\n"
+        "• Depois clique em ✅ Confirmar\n\n"
+        "<i>💡 As rotas usarão as cores selecionadas</i>",
         parse_mode='HTML',
         reply_markup=InlineKeyboardMarkup(color_buttons)
     )
 
 
 async def _execute_route_distribution(update: Update, context: ContextTypes.DEFAULT_TYPE, query=None):
-    """Executa a distribuio de rotas COM cores selecionadas"""
+    # docstring removed
     
     # Recupera dados armazenados
     temp = context.user_data.get('temp', {})
@@ -4673,7 +4107,7 @@ async def _execute_route_distribution(update: Update, context: ContextTypes.DEFA
     is_interactive = excel_path is None
     
     if not num_entregadores:
-        msg = "[X] Dados perdidos. Refaça o comando /otimizar"
+        msg = "❌ Dados perdidos. Refaça o comando /otimizar"
         if query:
             await query.edit_message_text(msg)
         else:
@@ -4683,7 +4117,7 @@ async def _execute_route_distribution(update: Update, context: ContextTypes.DEFA
     # Validação de cores
     if not colors_selected:
         msg = (
-            "[ALERTA] <b>NENHUMA COR SELECIONADA!</b>\n\n"
+            "⚠️ <b>NENHUMA COR SELECIONADA!</b>\n\n"
             "Você precisa escolher pelo menos 1 cor.\n"
             "Volte e selecione as cores dos adesivos disponíveis."
         )
@@ -4696,13 +4130,13 @@ async def _execute_route_distribution(update: Update, context: ContextTypes.DEFA
     # Edita mensagem pra mostrar processamento
     processing_msg = (
         "⏳ <b>PROCESSANDO ENTREGAS...</b>\n\n"
-        f"[COR] Cores selecionadas: {', '.join(colors_selected)}\n\n"
-        "- Recuperando pontos da sessão\n"
-        "- Agrupando por STOP\n"
-        "- Dividindo entre entregadores\n"
-        "- Otimizando rotas (Scooter Mode)\n"
-        "- Aplicando cores às rotas\n\n"
-        "[FIRE] <i>Isso pode levar uns 10-20 segundos...</i>"
+        f"🎨 Cores selecionadas: {', '.join(colors_selected)}\n\n"
+        "• Recuperando pontos da sessão\n"
+        "• Agrupando por STOP\n"
+        "• Dividindo entre entregadores\n"
+        "• Otimizando rotas (Scooter Mode)\n"
+        "• Aplicando cores às rotas\n\n"
+        "🔥 <i>Isso pode levar uns 10-20 segundos...</i>"
     )
     
     if query:
@@ -4772,10 +4206,10 @@ async def _execute_route_distribution(update: Update, context: ContextTypes.DEFA
         all_deliverers = deliverer_service.get_all_deliverers()
         if len(all_deliverers) < num_entregadores:
             msg = (
-                f"[X] <b>ENTREGADORES INSUFICIENTES!</b>\n\n"
-                f"[PESSOAS] Cadastrados: <b>{len(all_deliverers)}</b>\n"
-                f"[OK] Necessários: <b>{num_entregadores}</b>\n\n"
-                f"[SIRENE] <b>Faltam {num_entregadores - len(all_deliverers)} entregadores!</b>\n\n"
+                f"❌ <b>ENTREGADORES INSUFICIENTES!</b>\n\n"
+                f"👥 Cadastrados: <b>{len(all_deliverers)}</b>\n"
+                f"✅ Necessários: <b>{num_entregadores}</b>\n\n"
+                f"🚨 <b>Faltam {num_entregadores - len(all_deliverers)} entregadores!</b>\n\n"
                 f"Use <code>/add_entregador</code> pra cadastrar mais."
             )
             if query:
@@ -4794,47 +4228,47 @@ async def _execute_route_distribution(update: Update, context: ContextTypes.DEFA
             deliveries, 
             num_entregadores, 
             entregadores_info,
-            colors=colors_selected  # [RAPIDO] PASSA AS CORES!
+            colors=colors_selected  # ⚡ PASSA AS CORES!
         )
         
         # Mapeia cores pra emojis
         color_emojis = {
-            'vermelho': '[VERMELHO]',
-            'azul': '[AZUL]',
-            'verde': '[VERDE]',
-            'amarelo': '[AMARELO]',
-            'roxo': '[ROXO]',
-            'laranja': '[LARANJA]'
+            'vermelho': '🔴',
+            'azul': '🔵',
+            'verde': '🟢',
+            'amarelo': '🟡',
+            'roxo': '🟣',
+            'laranja': '🟠'
         }
         
         # Envia resumo pro admin COM CORES
         total_distance = sum(r.total_distance_km for r in routes)
         total_time = sum(r.total_time_minutes for r in routes)
         
-        summary = f"[OK] <b>ROTAS OTIMIZADAS E DISTRIBUÍDAS!</b>\n"
+        summary = f"✅ <b>ROTAS OTIMIZADAS E DISTRIBUÍDAS!</b>\n"
         summary += f"---\n\n"
-        summary += f"[PACOTE] <b>RESUMO GERAL:</b>\n"
-        summary += f"- Total: {len(deliveries)} pacotes\n"
-        summary += f"- Entregadores: {num_entregadores}\n"
-        summary += f"- Distância Total: {total_distance:.1f} km\n"
-        summary += f"- Tempo Total: {total_time:.0f} min\n\n"
+        summary += f"📦 <b>RESUMO GERAL:</b>\n"
+        summary += f"• Total: {len(deliveries)} pacotes\n"
+        summary += f"• Entregadores: {num_entregadores}\n"
+        summary += f"• Distância Total: {total_distance:.1f} km\n"
+        summary += f"• Tempo Total: {total_time:.0f} min\n\n"
         
-        summary += f"[PESSOAS] <b>ROTAS POR ENTREGADOR:</b>\n\n"
+        summary += f"👥 <b>ROTAS POR ENTREGADOR:</b>\n\n"
         
         for i, route in enumerate(routes, 1):
             # Pega cor da rota (se existe)
             route_color = getattr(route, 'color', None)
-            color_emoji = color_emojis.get(route_color, '[BRANCO]') if route_color else '[BRANCO]'
+            color_emoji = color_emojis.get(route_color, '⚪') if route_color else '⚪'
             
             summary += f"{color_emoji} <b>{i}. {route.entregador_nome}</b>\n"
-            summary += f"   [PACOTE] {route.total_packages} pacotes | [PIN] {len(route.stops)} paradas\n"
-            summary += f"   [ESTRADA] {route.total_distance_km:.1f}km | [TEMPO] {route.total_time_minutes:.0f}min\n"
-            summary += f"   [RAPIDO] Atalhos: {route.shortcuts}\n\n"
+            summary += f"   📦 {route.total_packages} pacotes | 📍 {len(route.stops)} paradas\n"
+            summary += f"   🛣️ {route.total_distance_km:.1f}km | ⏱️ {route.total_time_minutes:.0f}min\n"
+            summary += f"   ⚡ Atalhos: {route.shortcuts}\n\n"
         
         summary += f"---\n"
-        summary += f"[CELULAR] Mapas HTML enviados para cada entregador!\n"
-        summary += f"[OLHO] Monitore pelo dashboard: http://localhost:8765\n\n"
-        summary += f"[FIRE] <i>Bora faturar!</i>"
+        summary += f"📲 Mapas HTML enviados para cada entregador!\n"
+        summary += f"👀 Monitore pelo dashboard: http://localhost:8765\n\n"
+        summary += f"🔥 <i>Bora faturar!</i>"
         
         # Envia summary
         chat_id = update.effective_chat.id
@@ -4852,7 +4286,7 @@ async def _execute_route_distribution(update: Update, context: ContextTypes.DEFA
             
             # Pega cor da rota
             route_color = getattr(route, 'color', None)
-            color_emoji = color_emojis.get(route_color, '[BRANCO]') if route_color else ''
+            color_emoji = color_emojis.get(route_color, '⚪') if route_color else ''
             
             # Gera HTML do mapa
             session = session_manager.get_current_session()
@@ -4876,19 +4310,19 @@ async def _execute_route_distribution(update: Update, context: ContextTypes.DEFA
                 msg = (
                     f"{color_emoji} <b>SUA ROTA DO DIA ESTÁ PRONTA!</b>\n"
                     f"---\n\n"
-                    f"[COR] <b>COR DA SUA ROTA: {color_emoji} {route_color.upper() if route_color else 'Sem cor'}</b>\n\n"
-                    f"[PACOTE] <b>RESUMO:</b>\n"
-                    f"- Pacotes: <b>{route.total_packages}</b>\n"
-                    f"- Paradas: <b>{len(route.stops)}</b>\n"
-                    f"- Distância: <b>{route.total_distance_km:.1f} km</b>\n"
-                    f"- Tempo: <b>{route.total_time_minutes:.0f} min</b>\n"
-                    f"- Atalhos: <b>{route.shortcuts}</b> [RAPIDO]\n\n"
-                    f"[ALVO] <b>INÍCIO:</b>\n{route.start_point[2][:60]}\n\n"
-                    f"[FIM] <b>FIM:</b>\n{route.end_point[2][:60]}\n\n"
+                    f"🎨 <b>COR DA SUA ROTA: {color_emoji} {route_color.upper() if route_color else 'Sem cor'}</b>\n\n"
+                    f"📦 <b>RESUMO:</b>\n"
+                    f"• Pacotes: <b>{route.total_packages}</b>\n"
+                    f"• Paradas: <b>{len(route.stops)}</b>\n"
+                    f"• Distância: <b>{route.total_distance_km:.1f} km</b>\n"
+                    f"• Tempo: <b>{route.total_time_minutes:.0f} min</b>\n"
+                    f"• Atalhos: <b>{route.shortcuts}</b> ⚡\n\n"
+                    f"🎯 <b>INÍCIO:</b>\n{route.start_point[2][:60]}\n\n"
+                    f"🏁 <b>FIM:</b>\n{route.end_point[2][:60]}\n\n"
                     f"---\n\n"
-                    f"[MAPA] Baixe o <b>mapa HTML</b> abaixo!\n"
-                    f"[FIRE] Abra no navegador e siga os pins!\n\n"
-                    f"<i>Boa sorte, parceiro! [ROCKET]</i>"
+                    f"🗺️ Baixe o <b>mapa HTML</b> abaixo!\n"
+                    f"🔥 Abra no navegador e siga os pins!\n\n"
+                    f"<i>Boa sorte, parceiro! 🚀</i>"
                 )
                 
                 await context.bot.send_message(
@@ -4911,19 +4345,19 @@ async def _execute_route_distribution(update: Update, context: ContextTypes.DEFA
         
         await context.bot.send_message(
             chat_id,
-            "[OK] Rotas coloridas enviadas para todos os entregadores!",
+            "✅ Rotas coloridas enviadas para todos os entregadores!",
             parse_mode='HTML'
         )
         
     except FileNotFoundError:
-        msg = f"[X] Arquivo não encontrado: {excel_path}"
+        msg = f"❌ Arquivo não encontrado: {excel_path}"
         if query:
             await query.edit_message_text(msg)
         else:
             await context.bot.send_message(update.effective_chat.id, msg)
     except Exception as e:
         logger.error(f"Erro ao distribuir rota: {e}")
-        msg = f"[X] Erro: {str(e)}"
+        msg = f"❌ Erro: {str(e)}"
         if query:
             await query.edit_message_text(msg)
         else:
@@ -4946,9 +4380,9 @@ async def cmd_distribuir_rota(update: Update, context: ContextTypes.DEFAULT_TYPE
             "---\n\n"
             "<b>📝 FORMATO:</b>\n"
             "<code>/otimizar &lt;arquivo.xlsx&gt; &lt;N_entregadores&gt;</code>\n\n"
-            "<b>[ALVO] EXEMPLO:</b>\n"
+            "<b>🎯 EXEMPLO:</b>\n"
             "<code>/otimizar romaneio_05-11.xlsx 3</code>\n\n"
-            "<b>[RAPIDO] O QUE ACONTECE:</b>\n"
+            "<b>⚡ O QUE ACONTECE:</b>\n"
             "1️⃣ Lê romaneio da Shopee\n"
             "2️⃣ Agrupa entregas por STOP (mesmo prédio)\n"
             "3️⃣ Divide geograficamente (K-means)\n"
@@ -4982,40 +4416,40 @@ async def cmd_distribuir_rota(update: Update, context: ContextTypes.DEFAULT_TYPE
     # Cores padrão com emojis
     color_buttons = [
         [
-            InlineKeyboardButton("[VERMELHO] Vermelho", callback_data="color_vermelho"),
-            InlineKeyboardButton("[AZUL] Azul", callback_data="color_azul"),
+            InlineKeyboardButton("🔴 Vermelho", callback_data="color_vermelho"),
+            InlineKeyboardButton("🔵 Azul", callback_data="color_azul"),
         ],
         [
-            InlineKeyboardButton("[VERDE] Verde", callback_data="color_verde"),
-            InlineKeyboardButton("[AMARELO] Amarelo", callback_data="color_amarelo"),
+            InlineKeyboardButton("🟢 Verde", callback_data="color_verde"),
+            InlineKeyboardButton("🟡 Amarelo", callback_data="color_amarelo"),
         ],
         [
-            InlineKeyboardButton("[ROXO] Roxo", callback_data="color_roxo"),
-            InlineKeyboardButton("[LARANJA] Laranja", callback_data="color_laranja"),
+            InlineKeyboardButton("🟣 Roxo", callback_data="color_roxo"),
+            InlineKeyboardButton("🟠 Laranja", callback_data="color_laranja"),
         ],
         [
-            InlineKeyboardButton("[OK] Confirmar Cores", callback_data="color_confirm")
+            InlineKeyboardButton("✅ Confirmar Cores", callback_data="color_confirm")
         ]
     ]
     
     keyboard = InlineKeyboardMarkup(color_buttons)
     
     await update.message.reply_text(
-        "[COR] <b>ESCOLHA AS CORES DOS ADESIVOS</b>\n"
+        "🎨 <b>ESCOLHA AS CORES DOS ADESIVOS</b>\n"
         "---\n\n"
-        f"[PACOTE] Serão criadas <b>{num_entregadores} rotas</b>\n\n"
-        "[TAG] <b>Selecione as cores disponíveis:</b>\n"
-        "- Clique nas cores que você tem como adesivo\n"
-        "- Pode escolher quantas quiser\n"
-        "- Depois clique em [OK] Confirmar\n\n"
-        "<i>[DICA] As rotas usarão as cores selecionadas</i>",
+        f"📦 Serão criadas <b>{num_entregadores} rotas</b>\n\n"
+        "🏷️ <b>Selecione as cores disponíveis:</b>\n"
+        "• Clique nas cores que você tem como adesivo\n"
+        "• Pode escolher quantas quiser\n"
+        "• Depois clique em ✅ Confirmar\n\n"
+        "<i>💡 As rotas usarão as cores selecionadas</i>",
         parse_mode='HTML',
         reply_markup=keyboard
     )
 
 
 def run_bot():
-    """Inicia o bot com retry automtico"""
+    # docstring removed
     import os
     import time
     
@@ -5024,18 +4458,18 @@ def run_bot():
     admin_id = os.getenv('ADMIN_TELEGRAM_ID')
     
     if not token:
-        logger.error("[X] TELEGRAM_BOT_TOKEN não configurado! Defina a variável de ambiente.")
-        print("[X] ERRO CRÍTICO: TELEGRAM_BOT_TOKEN vazio.")
+        logger.error("❌ TELEGRAM_BOT_TOKEN não configurado! Defina a variável de ambiente.")
+        print("❌ ERRO CRÍTICO: TELEGRAM_BOT_TOKEN vazio.")
         print("Configure com: export TELEGRAM_BOT_TOKEN='seu_token' (Linux/Mac)")
         print("ou: $env:TELEGRAM_BOT_TOKEN='seu_token' (Windows PowerShell)")
         return
     
     if not admin_id:
-        logger.warning("[ALERTA] ADMIN_TELEGRAM_ID não configurado. Bot rodará mas sem admin.")
+        logger.warning("⚠️ ADMIN_TELEGRAM_ID não configurado. Bot rodará mas sem admin.")
     else:
-        logger.info(f"[OK] Admin ID configurado: {admin_id}")
+        logger.info(f"✅ Admin ID configurado: {admin_id}")
     
-    logger.info(f"[OK] Token presente: {token[:10]}...{token[-4:]}")
+    logger.info(f"✅ Token presente: {token[:10]}...{token[-4:]}")
     
     max_retries = 5
     retry_count = 0
@@ -5056,14 +4490,14 @@ def run_bot():
             # Handlers
             app.add_handler(CommandHandler("start", cmd_start))
             app.add_handler(CommandHandler("help", cmd_help))
-            app.add_handler(CommandHandler("cancelar", cmd_cancelar))  # [PROIBIDO] NOVO COMMANDO DE EMERGÊNCIA
+            app.add_handler(CommandHandler("cancelar", cmd_cancelar))  # 🚫 NOVO COMMANDO DE EMERGÊNCIA
             app.add_handler(CommandHandler("importar", handle_document_message))  # Novo comando!
             app.add_handler(CommandHandler("otimizar", cmd_distribuir_rota))  # Renomeado!
             app.add_handler(CommandHandler("distribuir", cmd_distribuir_rota))  # Mantido por compatibilidade
             app.add_handler(CommandHandler("fechar_rota", cmd_fechar_rota))
-            app.add_handler(CommandHandler("analisar_rota", cmd_analisar_rota))  # [RAPIDO] NOVO!
-            app.add_handler(CommandHandler("sessoes", cmd_sessoes))  # [PASTA] NOVO!
-            app.add_handler(CommandHandler("selecionar_sessao", cmd_selecionar_sessao))  # [PASTA] Escolher sessão ativa
+            app.add_handler(CommandHandler("analisar_rota", cmd_analisar_rota))  # ⚡ NOVO!
+            app.add_handler(CommandHandler("sessoes", cmd_sessoes))  # 📂 NOVO!
+            app.add_handler(CommandHandler("selecionar_sessao", cmd_selecionar_sessao))  # 📂 Escolher sessão ativa
             app.add_handler(CommandHandler("add_entregador", cmd_add_deliverer))
             app.add_handler(CommandHandler("entregadores", cmd_list_deliverers))
             app.add_handler(CommandHandler("ranking", cmd_ranking))
@@ -5073,7 +4507,7 @@ def run_bot():
             app.add_handler(CommandHandler("financeiro", cmd_financeiro))
             app.add_handler(CommandHandler("fechar_semana", cmd_fechar_semana))
             app.add_handler(CommandHandler("config_socios", cmd_config_socios))
-            app.add_handler(CommandHandler("faturamento", cmd_faturamento))  # [DINHEIRO] NOVO PARA ENTREGADORES
+            app.add_handler(CommandHandler("faturamento", cmd_faturamento))  # 💰 NOVO PARA ENTREGADORES
             
             # Comandos avançados
             app.add_handler(CommandHandler("exportar", cmd_exportar))
@@ -5093,7 +4527,7 @@ def run_bot():
             app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_message))
             app.add_handler(CallbackQueryHandler(handle_callback_query))
             
-            logger.info(f"[ROCKET] Bot iniciado! (Tentativa {retry_count + 1}/{max_retries})")
+            logger.info(f"🚀 Bot iniciado! (Tentativa {retry_count + 1}/{max_retries})")
             
             # run_polling sem parâmetros de timeout (já configurados no builder)
             app.run_polling(
@@ -5112,7 +4546,7 @@ def run_bot():
             
             if isinstance(e, Conflict):
                 logger.error(
-                    "[X] CONFLITO: Múltiplas instâncias do bot rodando!\n"
+                    "❌ CONFLITO: Múltiplas instâncias do bot rodando!\n"
                     "Soluções:\n"
                     "1. Pare qualquer bot rodando localmente\n"
                     "2. No Render: certifique que é Background Worker (não Web Service)\n"
@@ -5124,22 +4558,22 @@ def run_bot():
                 retry_count += 1
                 wait_time = min(30, 5 * retry_count)  # Espera progressiva: 5, 10, 15, 20, 25 segundos
                 logger.warning(
-                    f"[ALERTA] Erro de rede/timeout: {e}\n"
+                    f"⚠️ Erro de rede/timeout: {e}\n"
                     f"🔄 Tentando reconectar em {wait_time} segundos... "
                     f"(Tentativa {retry_count}/{max_retries})"
                 )
                 time.sleep(wait_time)
             else:
                 retry_count += 1
-                logger.error(f"[X] Erro no polling: {e}", exc_info=True)
+                logger.error(f"❌ Erro no polling: {e}", exc_info=True)
                 if retry_count < max_retries:
                     wait_time = 10
                     logger.info(f"🔄 Tentando reconectar em {wait_time} segundos...")
                     time.sleep(wait_time)
     
     if retry_count >= max_retries:
-        logger.error("[X] Número máximo de tentativas alcançado. Bot encerrado.")
-        print("\n[ALERTA] Bot parou após múltiplas falhas. Verifique sua conexão e tente novamente.")
+        logger.error("❌ Número máximo de tentativas alcançado. Bot encerrado.")
+        print("\n⚠️ Bot parou após múltiplas falhas. Verifique sua conexão e tente novamente.")
 
 
 if __name__ == "__main__":
@@ -5154,12 +4588,12 @@ async def _show_costs_menu(update, context, revenue, expenses):
     
     # Se for mensagem nova ou edição
     msg_text = (
-        f"[GRAFICO] <b>EXTRATO PARCIAL DO DIA</b>\n"
+        f"📊 <b>EXTRATO PARCIAL DO DIA</b>\n"
         f"---\n\n"
-        f"[DINHEIRO] <b>Faturamento:</b> R$ {revenue:.2f}\n"
+        f"💰 <b>Faturamento:</b> R$ {revenue:.2f}\n"
         f"🔻 <b>Custos Totais:</b> R$ {total_expenses:.2f}\n"
         f"---\n"
-        f"[R$] <b>LUCRO LÍQUIDO: R$ {partial_profit:.2f}</b>\n\n"
+        f"💵 <b>LUCRO LÍQUIDO: R$ {partial_profit:.2f}</b>\n\n"
         f"📝 <b>Despesas Lançadas:</b>\n"
     )
     
@@ -5179,14 +4613,14 @@ async def _show_costs_menu(update, context, revenue, expenses):
         ],
         [
             InlineKeyboardButton("🍔 Alimentação", callback_data="add_cost_Alimentação"),
-            InlineKeyboardButton("[FERRAMENTA] Manutenção", callback_data="add_cost_Manutenção")
+            InlineKeyboardButton("🔧 Manutenção", callback_data="add_cost_Manutenção")
         ],
         [
             InlineKeyboardButton("👷 Ajudante", callback_data="add_cost_Ajudante"),
             InlineKeyboardButton("📝 Outros", callback_data="add_cost_Outros")
         ],
         [
-            InlineKeyboardButton("[OK] FINALIZAR DIA", callback_data="finish_day_closing")
+            InlineKeyboardButton("✅ FINALIZAR DIA", callback_data="finish_day_closing")
         ]
     ]
     
@@ -5197,13 +4631,13 @@ async def _show_costs_menu(update, context, revenue, expenses):
     else:
         await update.message.reply_text(msg_text, parse_mode='HTML', reply_markup=reply_markup)
 async def cmd_faturamento(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Mostra faturamento acumulado para o entregador"""
+    # docstring removed
     user_id = update.effective_user.id
     
     # Verifica cadastro
     partner = BotConfig.get_partner_by_id(user_id)
     if not partner:
-        await update.message.reply_text("[X] Você não está cadastrado como entregador.")
+        await update.message.reply_text("❌ Você não está cadastrado como entregador.")
         return
         
     start_date, end_date = financial_service.get_current_week_range()
@@ -5219,22 +4653,22 @@ async def cmd_faturamento(update: Update, context: ContextTypes.DEFAULT_TYPE):
         msg = (
             f"🕴️ <b>ÁREA DO SÓCIO: {partner.name}</b>\n"
             f"---\n\n"
-            f"[DATA] Semana: {start_date} a {end_date}\n\n"
-            f"[DINHEIRO] <b>Lucro da Empresa:</b> R$ {report['distributable_profit']:.2f}\n"
+            f"📅 Semana: {start_date} a {end_date}\n\n"
+            f"💰 <b>Lucro da Empresa:</b> R$ {report['distributable_profit']:.2f}\n"
             f"〽️ <b>Sua Parte ({share_pct*100:.0f}%):</b> R$ {my_share:.2f}\n\n"
-            f"<i>[DICA] Valor estimativo baseados nos fechamentos da semana.</i>"
+            f"<i>💡 Valor estimativo baseados nos fechamentos da semana.</i>"
         )
     else:
         # Entregador vê ganhos acumulados
         earnings = deliverer_service.get_weekly_earnings(user_id, start_date, end_date)
         
         msg = (
-            f"[DINHEIRO] <b>SEU FATURAMENTO</b>\n"
+            f"💰 <b>SEU FATURAMENTO</b>\n"
             f"---\n\n"
-            f"[PESSOA] {partner.name}\n"
-            f"[DATA] Semana: {start_date} a {end_date}\n\n"
-            f"[R$] <b>A Receber: R$ {earnings:.2f}</b>\n\n"
-            f"<i>[DICA] Valor acumulado das entregas realizadas.</i>"
+            f"👤 {partner.name}\n"
+            f"📅 Semana: {start_date} a {end_date}\n\n"
+            f"💵 <b>A Receber: R$ {earnings:.2f}</b>\n\n"
+            f"<i>💡 Valor acumulado das entregas realizadas.</i>"
         )
         
     await update.message.reply_text(msg, parse_mode='HTML')
