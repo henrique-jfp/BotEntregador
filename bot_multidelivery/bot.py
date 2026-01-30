@@ -1179,7 +1179,7 @@ async def cmd_fechar_rota(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # Busca lista de entregadores para permitir transferência nos mapas
     from bot_multidelivery.services.deliverer_service import deliverer_service
-    all_deliverers = deliverer_service.list_deliverers()
+    all_deliverers = deliverer_service.get_all_deliverers()
     entregadores_lista = [{'name': d.name, 'id': str(d.telegram_id)} for d in all_deliverers]
     
     # Otimiza rotas
@@ -2872,7 +2872,7 @@ async def send_route_to_deliverer(context: ContextTypes.DEFAULT_TYPE, telegram_i
     """Envia rota formatada para o entregador"""
     # Busca lista de entregadores para permitir transferência
     from bot_multidelivery.services.deliverer_service import deliverer_service
-    all_deliverers = deliverer_service.list_deliverers()
+    all_deliverers = deliverer_service.get_all_deliverers()
     entregadores_lista = [{'name': d.name, 'id': str(d.telegram_id)} for d in all_deliverers]
     
     # Garante que existe mapa HTML
@@ -4296,7 +4296,7 @@ async def _execute_route_distribution(update: Update, context: ContextTypes.DEFA
         deliveries = ShopeeRomaneioParser.parse(excel_path)
         
         # Pega entregadores disponiveis
-        all_deliverers = deliverer_service.list_deliverers()
+        all_deliverers = deliverer_service.get_all_deliverers()
         if len(all_deliverers) < num_entregadores:
             msg = (
                 f"❌ <b>ENTREGADORES INSUFICIENTES!</b>\n\n"

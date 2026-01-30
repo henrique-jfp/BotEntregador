@@ -829,12 +829,12 @@ class MapGenerator:
                 alert('Digite o nome do entregador!');
                 return;
             }}
-            transferTo({{ name: dest, id: dest.toLowerCase().replace(/\s/g, '_') }});
+            transferTo({{ name: dest, id: dest.toLowerCase().replace(/\\s/g, '_') }});
         }}
         
         // 📥 Verifica pacotes recebidos (transferidos para mim)
         function checkReceivedPackages() {{
-            const myId = '{entregador_nome}'.toLowerCase().replace(/\s/g, '_');
+            const myId = '{entregador_nome}'.toLowerCase().replace(/\\s/g, '_');
             const key = `transferidos_para_${{myId}}`;
             
             try {{
@@ -852,7 +852,7 @@ class MapGenerator:
         
         // Mostra pacotes recebidos
         function showReceivedPackages() {{
-            const myId = '{entregador_nome}'.toLowerCase().replace(/\s/g, '_');
+            const myId = '{entregador_nome}'.toLowerCase().replace(/\\s/g, '_');
             const key = `transferidos_para_${{myId}}`;
             
             try {{
