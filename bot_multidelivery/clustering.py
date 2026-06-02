@@ -190,17 +190,27 @@ class TerritoryDivider:
 
         # --- FASE 2: REBALANCEAMENTO ITERATIVO ---
         for _ in range(len(stops) * 2): # Limita o número de iterações
-            sizes = [len(c) for c in stop_clusters]
+            # Usa getattr para funcionar tanto com DeliveryStop (package_count) quanto com DeliveryPoint (fallback para 1)
+            sizes = [sum(getattr(s, 'package_count', 1) for s in c) for c in stop_clusters]
+
             if not any(s == 0 for s in sizes):
                 min_cluster_idx, max_cluster_idx = np.argmin(sizes), np.argmax(sizes)
+                
+                total_packages = sum(sizes)
+                # Tolerância de 10% na diferença entre o maior e o menor cluster.
+                # Para k=2, isso se traduz em uma divisão máxima de 55/45.
+                allowed_imbalance = max(1, int(total_packages * 0.10))
 
-                # Para k=2, forçamos o mais próximo possível de 50/50
-                is_balanced = (sizes[max_cluster_idx] - sizes[min_cluster_idx] <= 1)
-                if k == 2 and len(stops) > 0:
-                    is_balanced = (sizes[max_cluster_idx] - sizes[min_cluster_idx] <= 1)
+                is_balanced = (sizes[max_cluster_idx] - sizes[min_cluster_idx] <= allowed_imbalance)
+
+                # Para k=2, uma checagem adicional para garantir que a maior parte não exceda 55%
+                if k == 2 and total_packages > 0:
+                    max_share = sizes[max_cluster_idx] / total_packages
+                    if max_share > 0.55:
+                        is_balanced = False
 
                 if is_balanced:
-                    logger.info("✅ Clusters balanceados.")
+                    logger.info(f"✅ Clusters de pacotes balanceados. Divisão: {sizes}")
                     break
 
                 largest_cluster_stops = stop_clusters[max_cluster_idx]
