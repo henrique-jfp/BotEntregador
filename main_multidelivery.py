@@ -105,6 +105,11 @@ from fastapi import APIRouter
 from bot_multidelivery.routers import admin, auth, financial, session, logistic, romaneio, routes, separation, deliverer, neighborhoods, analytics, history
 
 api_router = APIRouter(prefix="/api")
+
+@api_router.get("/ping")
+async def ping():
+    return {"status": "online", "version": "SISTEMA ATUALIZADO V2", "timestamp": time.time()}
+
 api_router.include_router(admin.router)
 api_router.include_router(auth.router)
 api_router.include_router(financial.router)
@@ -137,6 +142,14 @@ if frontend_path.exists():
         print(f"🌐 Servindo SPA para entregador: {token}")
         index_file = frontend_path / "index.html"
         return FileResponse(index_file)
+
+    # Rota explícita para o dashboard (SPA)
+    @scanner_app.get("/dashboard")
+    async def dashboard_spa(request: Request):
+        index_file = frontend_path / "index.html"
+        if index_file.exists():
+            return FileResponse(index_file)
+        raise HTTPException(status_code=404, detail="Frontend build (index.html) not found.")
 
     @scanner_app.get("/public/{full_path:path}")
     async def public_paths(full_path: str, request: Request):

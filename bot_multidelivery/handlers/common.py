@@ -65,6 +65,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await reply_with_cover(
+            f"🚀 **SISTEMA ATUALIZADO V2**\n\n"
             f"👤 Olá, **Administrador** {user.first_name}!\n\n"
             "🔧 Acesso ao Painel de Controle\n\n"
             "Clique abaixo para acessar o Dashboard completo com:\n"
