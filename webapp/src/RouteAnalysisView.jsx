@@ -53,7 +53,7 @@ export default function RouteAnalysisView() {
       .catch(() => setDeliverers([]));
 
     // 2. Restaurar Estado da Sessão (Cross-Device)
-    fetchWithAuth(`${import.meta.env.VITE_API_URL}/session/state`)
+    fetchWithAuth(`/session/state`)
       .then(r => r.json())
       .then(data => {
         if (data.active) {
@@ -72,7 +72,7 @@ export default function RouteAnalysisView() {
             }
             
             // Recarrega relatório visual
-            fetchWithAuth(`${import.meta.env.VITE_API_URL}/session/report`)
+            fetchWithAuth(`/session/report`)
                .then(r => r.json())
                .then(data => setImportAnalysis(data))
                .catch(e => console.error("Erro recarregar report", e));
@@ -480,7 +480,7 @@ export default function RouteAnalysisView() {
       
       console.log('📤 Enviando atribuições:', { session_id: sessionId, assignments: assignmentsPayload });
       
-      const res = await fetchWithAuth(`${import.meta.env.VITE_API_URL}/routes/assign-multiple`, { 
+      const res = await fetchWithAuth(`/routes/assign-multiple`, { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

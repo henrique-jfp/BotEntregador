@@ -124,7 +124,7 @@ function App() {
       
       // Financial (Todos têm acesso, mas dados diferentes)
       promises.push(
-          fetchWithAuth(`${import.meta.env.VITE_API_URL}/financial/balance?user_id=${id}`)
+          fetchWithAuth(`/financial/balance?user_id=${id}`)
         .then(r => r.json())
         .then(data => setFinancialData(data))
         .catch(err => console.error("Erro Finanças", err))
@@ -132,7 +132,7 @@ function App() {
 
       if (authData.role === 'admin') {
         promises.push(
-            fetchWithAuth(`${import.meta.env.VITE_API_URL}/admin/stats`)
+            fetchWithAuth(`/admin/stats`)
                 .then(r => r.json())
                 .then(data => setAdminStats(data))
         )
@@ -145,7 +145,7 @@ function App() {
         )
         // Buscar dados do mapa zonal (se disponível)
         promises.push(
-            fetchWithAuth(`${import.meta.env.VITE_API_URL}/analytics/neighborhood-stats?days=7`)
+            fetchWithAuth(`/analytics/neighborhood-stats?days=7`)
                 .then(r => r.json())
                 .then(data => {
                   // Converter para formato do mapa
