@@ -1,0 +1,28 @@
+<!-- Ícone 192x192 para PWA -->
+<svg width="192" height="192" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4c51bf;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="192" height="192" rx="40" fill="url(#grad1)"/>
+  
+  <!-- Delivery Icon (Box + Arrow) -->
+  <g transform="translate(48, 48)">
+    <!-- Box -->
+    <rect x="10" y="35" width="76" height="61" rx="8" fill="white" opacity="0.9"/>
+    <path d="M48 35 L86 53 L86 96 L48 114 L10 96 L10 53 Z" fill="white" opacity="0.3"/>
+    <line x1="48" y1="35" x2="48" y2="114" stroke="white" stroke-width="3" opacity="0.5"/>
+    
+    <!-- Arrow (delivery motion) -->
+    <path d="M65 20 L80 28 L65 36" fill="none" stroke="#fbbf24" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="40" y1="28" x2="80" y2="28" stroke="#fbbf24" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  
+  <!-- Badge "OFFLINE" support indicator -->
+  <circle cx="152" cy="152" r="28" fill="#10b981"/>
+  <text x="152" y="162" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="white">✓</text>
+</svg>

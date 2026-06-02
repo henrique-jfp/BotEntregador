@@ -1,0 +1,33 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {"name": "Leblon"},
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-43.2245, -22.9847],
+          [-43.2175, -22.9847],
+          [-43.2175, -22.9900],
+          [-43.2245, -22.9900],
+          [-43.2245, -22.9847]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {"name": "Ipanema"},
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-43.2175, -22.9847],
+          [-43.2100, -22.9847],
+          [-43.2100, -22.9900],
+          [-43.2175, -22.9900],
+          [-43.2175, -22.9847]
+        ]]
+      }
+    }
+  ]
+}

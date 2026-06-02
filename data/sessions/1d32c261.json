@@ -1,0 +1,14 @@
+{
+  "session_id": "1d32c261",
+  "session_name": "Segunda Manhã",
+  "date": "2026-02-02",
+  "period": "manhã",
+  "created_at": "2026-02-02T01:15:32.687870",
+  "base_address": "",
+  "base_lat": 0.0,
+  "base_lng": 0.0,
+  "is_finalized": false,
+  "finalized_at": null,
+  "romaneios": [],
+  "routes": []
+}

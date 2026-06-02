@@ -1,0 +1,29 @@
+# Configuração do Railway Nixpacks
+# Garante Python + Node.js e instala dependências de sistema para OCR/Barcode
+
+[phases.setup]
+nixPkgs = [
+    "python311", 
+    "python311Packages.pip", 
+    "nodejs_20", 
+    "zbar",           # Barcode scanner library
+    "zbar.dev",       # Development headers
+    "tesseract",      # OCR engine
+    "pkg-config"      # Helper for finding libraries
+]
+
+[phases.install]
+cmds = [
+    "python3 -m venv .venv",
+    ". .venv/bin/activate && pip install -r requirements.txt",
+    "cd webapp && npm install"
+]
+
+[phases.build]
+cmds = [
+    "cd webapp && chmod -R +x node_modules/.bin && npm run build"
+]
+
+[start]
+cmd = "/app/.venv/bin/python main_multidelivery.py"
+

@@ -1,0 +1,1280 @@
+{
+  "session_id": "6190ddc7",
+  "session_name": "Sábado Manhã",
+  "date": "2026-02-07",
+  "period": "manhã",
+  "created_at": "2026-02-07T15:09:15.316858",
+  "base_address": "Base simulated (-22.966468763220533,-43.18888393962499)",
+  "base_lat": -22.966468763220533,
+  "base_lng": -43.18888393962499,
+  "is_finalized": true,
+  "finalized_at": "2026-02-07T15:09:16.619193",
+  "romaneios": [
+    {
+      "id": "rom_full",
+      "filename": "romaneio020226.txt",
+      "uploaded_at": "2026-02-07T15:09:15.318882",
+      "points": [
+        {
+          "package_id": "BR262725655373V",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Visconde de Pirajá, 303, Sala 503",
+          "lat": -22.984607,
+          "lng": -43.20432,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR2685027707436",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Prudente de Morais, 719, Apto 302",
+          "lat": -22.9853935,
+          "lng": -43.2037697,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR2692413838498",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Joana Angélica, 63, Andar G2",
+          "lat": -22.98489,
+          "lng": -43.20504,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR264841766415P",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Joana Angélica, 116, Loja A",
+          "lat": -22.9837513,
+          "lng": -43.2049408,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR2667792062159",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Joana Angélica, 108, Loja OPEN",
+          "lat": -22.9840641,
+          "lng": -43.2049179,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR2639054859069",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Joana Angélica, 108, Loja Open",
+          "lat": -22.9840641,
+          "lng": -43.2049179,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR267777153838C",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Joana Angélica, 124, Banco do Brasil",
+          "lat": -22.9835567,
+          "lng": -43.2049332,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR2628672186628",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Joana Angélica, 134",
+          "lat": -22.9834003,
+          "lng": -43.2047997,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR269275063750W",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Visconde de Pirajá, 318, COB 01",
+          "lat": -22.9841995,
+          "lng": -43.2042999,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR2617437475255",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Visconde de Pirajá, 318, COB 01",
+          "lat": -22.9841995,
+          "lng": -43.2042999,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR267800671753C",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Visconde de Pirajá, 330, Loja 103/104",
+          "lat": -22.9841003,
+          "lng": -43.2045479,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR2622068014662",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Visconde de Pirajá, 281, Loja L",
+          "lat": -22.9845467,
+          "lng": -43.2037544,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR264901380125Z",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Visconde de Pirajá, 318, Loja 1/2",
+          "lat": -22.9841785,
+          "lng": -43.2043571,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR265413930312V",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Visconde de Pirajá, 318, Sala 207 BlindaSom",
+          "lat": -22.9841785,
+          "lng": -43.2043571,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR264364051276L",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Visconde de Pirajá, 291, Ap 301",
+          "lat": -22.9842548,
+          "lng": -43.2036667,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR264145517127Z",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Visconde de Pirajá, 281, Loja agatha chocolates",
+          "lat": -22.9845982,
+          "lng": -43.203743,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR263459204862U",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Visconde de Pirajá, 303, Sala 503",
+          "lat": -22.98456,
+          "lng": -43.2043457,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR263545360428J",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Visconde de Pirajá, 303, Sala 503",
+          "lat": -22.98456,
+          "lng": -43.2043457,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR268010751947E",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Visconde de Pirajá, 318, Loja 19",
+          "lat": -22.9841995,
+          "lng": -43.2042999,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR261157753280F",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Visconde de Pirajá, 318, Loja 101 box5",
+          "lat": -22.9841995,
+          "lng": -43.2042999,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR2609784001634",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Visconde de Pirajá, 291, Apto 602",
+          "lat": -22.9843807,
+          "lng": -43.203949,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR2647042600510",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Visconde de Pirajá, 330, Portaria",
+          "lat": -22.9841003,
+          "lng": -43.2045479,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR267310431712B",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Visconde de Pirajá, 303, 302",
+          "lat": -22.98456,
+          "lng": -43.2043457,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR269839270263U",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Vinícius de Moraes, 74, Barbearia PLURAL-barbeiro KADU",
+          "lat": -22.9846992,
+          "lng": -43.202858,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR266741122881Y",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Vinícius de Moraes, 111, Loja A",
+          "lat": -22.9838638,
+          "lng": -43.2029152,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR261556163601P",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Vinícius de Moraes, 111",
+          "lat": -22.9838638,
+          "lng": -43.2029152,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR268276737612P",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Barão da Torre, 274, Portaria",
+          "lat": -22.9829006,
+          "lng": -43.2033997,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR262185961439H",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Barão da Torre, 274, Portaria",
+          "lat": -22.9829006,
+          "lng": -43.2033997,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR262916749719Y",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Barão da Torre, 277, Portaria",
+          "lat": -22.9832478,
+          "lng": -43.2034798,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR260384898795P",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Barão da Torre, 259, 501",
+          "lat": -22.9832611,
+          "lng": -43.2032433,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR266590646620G",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Barão da Torre, 287, Apto    501",
+          "lat": -22.9832134,
+          "lng": -43.2038727,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR265873703813Q",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Barão da Torre, 308, Encomenda da prof do integral",
+          "lat": -22.9829006,
+          "lng": -43.2043991,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR260359689828K",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Barão da Torre, 308, Encomenda da prof do integral",
+          "lat": -22.9829006,
+          "lng": -43.2043991,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR2687764768003",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Barão da Torre, 308, Colegio notre dame (subsolo)",
+          "lat": -22.9829006,
+          "lng": -43.2043991,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR2669873182821",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Barão da Torre, 308, Colegio notre dame (subsolo)",
+          "lat": -22.9829006,
+          "lng": -43.2043991,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR2620569416752",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Barão da Torre, 308, Colegio Notre Dame Ipanema",
+          "lat": -22.9829006,
+          "lng": -43.2043991,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR269138665477D",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Joana Angélica, 155, Restaurante toto",
+          "lat": -22.9829082,
+          "lng": -43.2049026,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR262303620253V",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Joana Angélica, 192, Sala 102",
+          "lat": -22.9818575,
+          "lng": -43.2046946,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR2646485998970",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Joana Angélica, 203, Igreja crista de ipanema",
+          "lat": -22.9816079,
+          "lng": -43.2046634,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR265279021782L",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Joana Angélica, 203, Igreja crista de ipanema",
+          "lat": -22.9816079,
+          "lng": -43.2046634,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR264282185583G",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Joana Angélica, 203, Igreja Cristã de Ipanema",
+          "lat": -22.9816079,
+          "lng": -43.2046634,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR267601478333I",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Barão de Jaguaripe, 19, Apt 201",
+          "lat": -22.9816284,
+          "lng": -43.203186,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR268974570482L",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Vinícius de Moraes, 208, C-01",
+          "lat": -22.9813,
+          "lng": -43.20249,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR2673569938988",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Vinícius de Moraes, 208, C-01",
+          "lat": -22.9813,
+          "lng": -43.20249,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR262575423258G",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Nascimento Silva, 81, 1004",
+          "lat": -22.9822845,
+          "lng": -43.2010918,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR2696381068761",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Nascimento Silva, 84, Edificio Hortense",
+          "lat": -22.9820995,
+          "lng": -43.2010994,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR2683799363326",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua R NascimentoSilva, 110, 305",
+          "lat": -22.9822426,
+          "lng": -43.2018471,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR266066047930D",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Nascimento Silva, 136, Apartamento 205",
+          "lat": -22.9822178,
+          "lng": -43.2020683,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR261281841306B",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Alberto de Campos, 85, Apto 201",
+          "lat": -22.9812374,
+          "lng": -43.2013664,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR268000012213H",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Alberto de Campos, 101, 902",
+          "lat": -22.9812145,
+          "lng": -43.2016258,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR267696330376R",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Barão da Torre, 220, Mercado zona sul",
+          "lat": -22.9832001,
+          "lng": -43.202301,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR261385542236P",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Nascimento Silva, 303, 101",
+          "lat": -22.9823002,
+          "lng": -43.2026299,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR2666225335626",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Nascimento Silva, 186, 201",
+          "lat": -22.9821758,
+          "lng": -43.2035408,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR262519985060C",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Alberto de Campos, 165, Apt 02",
+          "lat": -22.9811592,
+          "lng": -43.2031212,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR268652525643A",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Desembargador Renato Tavares, 14, Portaria",
+          "lat": -22.9804993,
+          "lng": -43.2014008,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR261595792358X",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Almirante Saddock de Sá, 216, Edifício",
+          "lat": -22.9804897,
+          "lng": -43.2028275,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR262113754920K",
+          "romaneio_id": "AT20260202131TW",
+          "address": "RUA ALMIRANTE SADDOCK DE SÁ, 216, 504 B",
+          "lat": -22.9804897,
+          "lng": -43.2028275,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR268950683776V",
+          "romaneio_id": "AT20260202131TW",
+          "address": "RUA ALMIRANTE SADDOCK DE SÁ, 216, 504 B",
+          "lat": -22.9804897,
+          "lng": -43.2028275,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR261267656840K",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Avenida Epitácio Pessoa, 2030, Apartamento 902",
+          "lat": -22.979084,
+          "lng": -43.200264,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR2664747358051",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Avenida Epitácio Pessoa, 2030, Apartamento 902",
+          "lat": -22.979084,
+          "lng": -43.200264,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR265437796346F",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Avenida Epitácio Pessoa, 2030, Deixar na portaria",
+          "lat": -22.979084,
+          "lng": -43.200264,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR262003067262B",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Avenida Epitácio Pessoa, 2300, Portaria",
+          "lat": -22.9776478,
+          "lng": -43.1983032,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR265852803383N",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Avenida Epitácio Pessoa, 2300, Portaria- Bruno",
+          "lat": -22.9776478,
+          "lng": -43.1983032,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR265701660530Z",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Avenida Epitácio Pessoa, 1600",
+          "lat": -22.9801407,
+          "lng": -43.2040863,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR265787147166F",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Avenida Epitácio Pessoa, 1924, Portaria",
+          "lat": -22.9792957,
+          "lng": -43.2010651,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR267575566134R",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Avenida Epitácio Pessoa, 2180, Apt 1003",
+          "lat": -22.9785517,
+          "lng": -43.1987978,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR264688314589S",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Avenida Epitácio Pessoa, 2180, Apt 1003",
+          "lat": -22.9785517,
+          "lng": -43.1987978,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR2696756125117",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Avenida Epitácio Pessoa, 2356, Apto 201",
+          "lat": -22.97682,
+          "lng": -43.1980591,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR267952430854P",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Avenida Epitácio Pessoa, 2356, Apto 201",
+          "lat": -22.97682,
+          "lng": -43.1980591,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR266816859146K",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Avenida Henrique Dodsworth, 183, Eu quero comprar nessa loja",
+          "lat": -22.9767742,
+          "lng": -43.1974297,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR267616593550U",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Avenida Henrique Dodsworth, 183, Eu quero comprar nessa loja",
+          "lat": -22.9767742,
+          "lng": -43.1974297,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR2613978661441",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Avenida Henrique Dodsworth, 183, Eu quero comprar nessa loja",
+          "lat": -22.9767742,
+          "lng": -43.1974297,
+          "priority": "normal"
+        }
+      ]
+    }
+  ],
+  "routes": [
+    {
+      "id": "86165060-4805-41c6-9503-58bb6ab7cdb8",
+      "assigned_to_telegram_id": 1111001,
+      "assigned_to_name": null,
+      "color": "#FF4444",
+      "optimized_order": [
+        {
+          "package_id": "BR2685027707436",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Prudente de Morais, 719, Apto 302",
+          "lat": -22.9853935,
+          "lng": -43.2037697,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR262725655373V",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Visconde de Pirajá, 303, Sala 503",
+          "lat": -22.984607,
+          "lng": -43.20432,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR263459204862U",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Visconde de Pirajá, 303, Sala 503",
+          "lat": -22.98456,
+          "lng": -43.2043457,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR263545360428J",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Visconde de Pirajá, 303, Sala 503",
+          "lat": -22.98456,
+          "lng": -43.2043457,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR2609784001634",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Visconde de Pirajá, 291, Apto 602",
+          "lat": -22.9843807,
+          "lng": -43.203949,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR2622068014662",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Visconde de Pirajá, 281, Loja L",
+          "lat": -22.9845467,
+          "lng": -43.2037544,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR264145517127Z",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Visconde de Pirajá, 281, Loja agatha chocolates",
+          "lat": -22.9845982,
+          "lng": -43.203743,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR264364051276L",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Visconde de Pirajá, 291, Ap 301",
+          "lat": -22.9842548,
+          "lng": -43.2036667,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR266741122881Y",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Vinícius de Moraes, 111, Loja A",
+          "lat": -22.9838638,
+          "lng": -43.2029152,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR261556163601P",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Vinícius de Moraes, 111",
+          "lat": -22.9838638,
+          "lng": -43.2029152,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR261281841306B",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Alberto de Campos, 85, Apto 201",
+          "lat": -22.9812374,
+          "lng": -43.2013664,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR262575423258G",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Nascimento Silva, 81, 1004",
+          "lat": -22.9822845,
+          "lng": -43.2010918,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR2696381068761",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Nascimento Silva, 84, Edificio Hortense",
+          "lat": -22.9820995,
+          "lng": -43.2010994,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR2683799363326",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua R NascimentoSilva, 110, 305",
+          "lat": -22.9822426,
+          "lng": -43.2018471,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR266066047930D",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Nascimento Silva, 136, Apartamento 205",
+          "lat": -22.9822178,
+          "lng": -43.2020683,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR267575566134R",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Avenida Epitácio Pessoa, 2180, Apt 1003",
+          "lat": -22.9785517,
+          "lng": -43.1987978,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR264688314589S",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Avenida Epitácio Pessoa, 2180, Apt 1003",
+          "lat": -22.9785517,
+          "lng": -43.1987978,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR262003067262B",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Avenida Epitácio Pessoa, 2300, Portaria",
+          "lat": -22.9776478,
+          "lng": -43.1983032,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR265852803383N",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Avenida Epitácio Pessoa, 2300, Portaria- Bruno",
+          "lat": -22.9776478,
+          "lng": -43.1983032,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR266816859146K",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Avenida Henrique Dodsworth, 183, Eu quero comprar nessa loja",
+          "lat": -22.9767742,
+          "lng": -43.1974297,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR267616593550U",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Avenida Henrique Dodsworth, 183, Eu quero comprar nessa loja",
+          "lat": -22.9767742,
+          "lng": -43.1974297,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR2613978661441",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Avenida Henrique Dodsworth, 183, Eu quero comprar nessa loja",
+          "lat": -22.9767742,
+          "lng": -43.1974297,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR269839270263U",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Vinícius de Moraes, 74, Barbearia PLURAL-barbeiro KADU",
+          "lat": -22.9846992,
+          "lng": -43.202858,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR267696330376R",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Barão da Torre, 220, Mercado zona sul",
+          "lat": -22.9832001,
+          "lng": -43.202301,
+          "priority": "normal"
+        }
+      ],
+      "delivered_packages": [
+        "BR2685027707436",
+        "BR262725655373V",
+        "BR263459204862U",
+        "BR263545360428J",
+        "BR2609784001634",
+        "BR2622068014662",
+        "BR264145517127Z",
+        "BR264364051276L",
+        "BR266741122881Y",
+        "BR261556163601P",
+        "BR261281841306B",
+        "BR262575423258G",
+        "BR2696381068761",
+        "BR2683799363326",
+        "BR266066047930D",
+        "BR267575566134R",
+        "BR264688314589S",
+        "BR262003067262B",
+        "BR265852803383N",
+        "BR266816859146K",
+        "BR267616593550U",
+        "BR2613978661441",
+        "BR269839270263U",
+        "BR267696330376R"
+      ],
+      "map_file": null
+    },
+    {
+      "id": "d63145cd-a4e3-45dc-979e-4bce8c093b4d",
+      "assigned_to_telegram_id": 1111002,
+      "assigned_to_name": null,
+      "color": "#44FF44",
+      "optimized_order": [
+        {
+          "package_id": "BR267310431712B",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Visconde de Pirajá, 303, 302",
+          "lat": -22.98456,
+          "lng": -43.2043457,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR2692413838498",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Joana Angélica, 63, Andar G2",
+          "lat": -22.98489,
+          "lng": -43.20504,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR2667792062159",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Joana Angélica, 108, Loja OPEN",
+          "lat": -22.9840641,
+          "lng": -43.2049179,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR261267656840K",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Avenida Epitácio Pessoa, 2030, Apartamento 902",
+          "lat": -22.979084,
+          "lng": -43.200264,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR2664747358051",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Avenida Epitácio Pessoa, 2030, Apartamento 902",
+          "lat": -22.979084,
+          "lng": -43.200264,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR265437796346F",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Avenida Epitácio Pessoa, 2030, Deixar na portaria",
+          "lat": -22.979084,
+          "lng": -43.200264,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR2696756125117",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Avenida Epitácio Pessoa, 2356, Apto 201",
+          "lat": -22.97682,
+          "lng": -43.1980591,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR267952430854P",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Avenida Epitácio Pessoa, 2356, Apto 201",
+          "lat": -22.97682,
+          "lng": -43.1980591,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR267800671753C",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Visconde de Pirajá, 330, Loja 103/104",
+          "lat": -22.9841003,
+          "lng": -43.2045479,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR2647042600510",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Visconde de Pirajá, 330, Portaria",
+          "lat": -22.9841003,
+          "lng": -43.2045479,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR264901380125Z",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Visconde de Pirajá, 318, Loja 1/2",
+          "lat": -22.9841785,
+          "lng": -43.2043571,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR265413930312V",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Visconde de Pirajá, 318, Sala 207 BlindaSom",
+          "lat": -22.9841785,
+          "lng": -43.2043571,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR269275063750W",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Visconde de Pirajá, 318, COB 01",
+          "lat": -22.9841995,
+          "lng": -43.2042999,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR2617437475255",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Visconde de Pirajá, 318, COB 01",
+          "lat": -22.9841995,
+          "lng": -43.2042999,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR268010751947E",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Visconde de Pirajá, 318, Loja 19",
+          "lat": -22.9841995,
+          "lng": -43.2042999,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR261157753280F",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Visconde de Pirajá, 318, Loja 101 box5",
+          "lat": -22.9841995,
+          "lng": -43.2042999,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR260384898795P",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Barão da Torre, 259, 501",
+          "lat": -22.9832611,
+          "lng": -43.2032433,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR268276737612P",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Barão da Torre, 274, Portaria",
+          "lat": -22.9829006,
+          "lng": -43.2033997,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR262185961439H",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Barão da Torre, 274, Portaria",
+          "lat": -22.9829006,
+          "lng": -43.2033997,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR262916749719Y",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Barão da Torre, 277, Portaria",
+          "lat": -22.9832478,
+          "lng": -43.2034798,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR266590646620G",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Barão da Torre, 287, Apto    501",
+          "lat": -22.9832134,
+          "lng": -43.2038727,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR268000012213H",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Alberto de Campos, 101, 902",
+          "lat": -22.9812145,
+          "lng": -43.2016258,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR261385542236P",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Nascimento Silva, 303, 101",
+          "lat": -22.9823002,
+          "lng": -43.2026299,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR268652525643A",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Desembargador Renato Tavares, 14, Portaria",
+          "lat": -22.9804993,
+          "lng": -43.2014008,
+          "priority": "normal"
+        }
+      ],
+      "delivered_packages": [
+        "BR267310431712B",
+        "BR2692413838498",
+        "BR2667792062159",
+        "BR261267656840K",
+        "BR2664747358051",
+        "BR265437796346F",
+        "BR2696756125117",
+        "BR267952430854P",
+        "BR267800671753C",
+        "BR2647042600510",
+        "BR264901380125Z",
+        "BR265413930312V",
+        "BR269275063750W",
+        "BR2617437475255",
+        "BR268010751947E",
+        "BR261157753280F",
+        "BR260384898795P",
+        "BR268276737612P",
+        "BR262185961439H",
+        "BR262916749719Y",
+        "BR266590646620G",
+        "BR268000012213H",
+        "BR261385542236P",
+        "BR268652525643A"
+      ],
+      "map_file": null
+    },
+    {
+      "id": "820d48db-4c02-438f-8e80-ad5e7c546ab9",
+      "assigned_to_telegram_id": 1111003,
+      "assigned_to_name": null,
+      "color": "#4444FF",
+      "optimized_order": [
+        {
+          "package_id": "BR265701660530Z",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Avenida Epitácio Pessoa, 1600",
+          "lat": -22.9801407,
+          "lng": -43.2040863,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR265787147166F",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Avenida Epitácio Pessoa, 1924, Portaria",
+          "lat": -22.9792957,
+          "lng": -43.2010651,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR2646485998970",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Joana Angélica, 203, Igreja crista de ipanema",
+          "lat": -22.9816079,
+          "lng": -43.2046634,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR265279021782L",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Joana Angélica, 203, Igreja crista de ipanema",
+          "lat": -22.9816079,
+          "lng": -43.2046634,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR264282185583G",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Joana Angélica, 203, Igreja Cristã de Ipanema",
+          "lat": -22.9816079,
+          "lng": -43.2046634,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR267601478333I",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Barão de Jaguaripe, 19, Apt 201",
+          "lat": -22.9816284,
+          "lng": -43.203186,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR268974570482L",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Vinícius de Moraes, 208, C-01",
+          "lat": -22.9813,
+          "lng": -43.20249,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR2673569938988",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Vinícius de Moraes, 208, C-01",
+          "lat": -22.9813,
+          "lng": -43.20249,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR261595792358X",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Almirante Saddock de Sá, 216, Edifício",
+          "lat": -22.9804897,
+          "lng": -43.2028275,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR262113754920K",
+          "romaneio_id": "AT20260202131TW",
+          "address": "RUA ALMIRANTE SADDOCK DE SÁ, 216, 504 B",
+          "lat": -22.9804897,
+          "lng": -43.2028275,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR268950683776V",
+          "romaneio_id": "AT20260202131TW",
+          "address": "RUA ALMIRANTE SADDOCK DE SÁ, 216, 504 B",
+          "lat": -22.9804897,
+          "lng": -43.2028275,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR262519985060C",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Alberto de Campos, 165, Apt 02",
+          "lat": -22.9811592,
+          "lng": -43.2031212,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR2666225335626",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Nascimento Silva, 186, 201",
+          "lat": -22.9821758,
+          "lng": -43.2035408,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR262303620253V",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Joana Angélica, 192, Sala 102",
+          "lat": -22.9818575,
+          "lng": -43.2046946,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR2639054859069",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Joana Angélica, 108, Loja Open",
+          "lat": -22.9840641,
+          "lng": -43.2049179,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR264841766415P",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Joana Angélica, 116, Loja A",
+          "lat": -22.9837513,
+          "lng": -43.2049408,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR267777153838C",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Joana Angélica, 124, Banco do Brasil",
+          "lat": -22.9835567,
+          "lng": -43.2049332,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR2628672186628",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Joana Angélica, 134",
+          "lat": -22.9834003,
+          "lng": -43.2047997,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR269138665477D",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Joana Angélica, 155, Restaurante toto",
+          "lat": -22.9829082,
+          "lng": -43.2049026,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR265873703813Q",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Barão da Torre, 308, Encomenda da prof do integral",
+          "lat": -22.9829006,
+          "lng": -43.2043991,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR260359689828K",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Barão da Torre, 308, Encomenda da prof do integral",
+          "lat": -22.9829006,
+          "lng": -43.2043991,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR2687764768003",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Barão da Torre, 308, Colegio notre dame (subsolo)",
+          "lat": -22.9829006,
+          "lng": -43.2043991,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR2669873182821",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Barão da Torre, 308, Colegio notre dame (subsolo)",
+          "lat": -22.9829006,
+          "lng": -43.2043991,
+          "priority": "normal"
+        },
+        {
+          "package_id": "BR2620569416752",
+          "romaneio_id": "AT20260202131TW",
+          "address": "Rua Barão da Torre, 308, Colegio Notre Dame Ipanema",
+          "lat": -22.9829006,
+          "lng": -43.2043991,
+          "priority": "normal"
+        }
+      ],
+      "delivered_packages": [
+        "BR265701660530Z",
+        "BR265787147166F",
+        "BR2646485998970",
+        "BR265279021782L",
+        "BR264282185583G",
+        "BR267601478333I",
+        "BR268974570482L",
+        "BR2673569938988",
+        "BR261595792358X",
+        "BR262113754920K",
+        "BR268950683776V",
+        "BR262519985060C",
+        "BR2666225335626",
+        "BR262303620253V",
+        "BR2639054859069",
+        "BR264841766415P",
+        "BR267777153838C",
+        "BR2628672186628",
+        "BR269138665477D",
+        "BR265873703813Q",
+        "BR260359689828K",
+        "BR2687764768003",
+        "BR2669873182821",
+        "BR2620569416752"
+      ],
+      "map_file": null
+    }
+  ]
+}

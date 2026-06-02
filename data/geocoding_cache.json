@@ -1,0 +1,884 @@
+{
+  "2c7a21bec534d8c1970f8ad8bde4891a": {
+    "address": "Av Paulista 1000, São Paulo",
+    "lat": -23.604599999999998,
+    "lng": -46.6976,
+    "cached_at": "2025-12-12T23:42:29.378384"
+  },
+  "a1e8e79c8ad9c235500c4bc92d51affb": {
+    "address": "Av Paulista 1000",
+    "lat": -23.6833,
+    "lng": -46.890299999999996,
+    "cached_at": "2025-12-12T23:46:47.670660"
+  },
+  "098f6bcd4621d373cade4e832627b4f6": {
+    "address": "Test",
+    "lat": -23.6994,
+    "lng": -46.8169,
+    "cached_at": "2025-12-12T23:47:43.799228"
+  },
+  "c2504fdece1c6e840581c7916456ae38": {
+    "address": "Rua Alberto de Campos, 80, Ipanema, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9813114,
+    "lng": -43.1995443,
+    "cached_at": "2026-02-21T23:59:45.408016"
+  },
+  "61572196dd416686782ee4dd3d486e0b": {
+    "address": "Alberto de Campos, 80, Ipanema, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9813114,
+    "lng": -43.1995443,
+    "cached_at": "2026-02-21T23:59:47.718575"
+  },
+  "a33d0b6be5859f2daf419fd572124b9a": {
+    "address": "VISCONDE DE PIRAJA 265, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9845831,
+    "lng": -43.2033258,
+    "cached_at": "2026-02-22T11:18:11.427678"
+  },
+  "98fedc85880afdcc488a3342720c7fd0": {
+    "address": "ENGENHEIRO CORTES SIGAUD 95, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9846096,
+    "lng": -43.2306859,
+    "cached_at": "2026-02-22T11:18:14.415837"
+  },
+  "15ebb0a163e74f291bb85b9c378629db": {
+    "address": "AVENIDA VIEIRA SOUTO 462, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.986694,
+    "lng": -43.2004611,
+    "cached_at": "2026-02-22T11:18:26.486099"
+  },
+  "6df8e44a4323644405e11a3a0be62995": {
+    "address": "R. Barão da Torre 583, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9831446,
+    "lng": -43.2053723,
+    "cached_at": "2026-02-22T11:18:37.906527"
+  },
+  "db214d0d15bcb14142b3346d52311610": {
+    "address": "EPITACIO PESSOA 1000, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9641317,
+    "lng": -43.2038332,
+    "cached_at": "2026-02-22T11:18:46.264998"
+  },
+  "ffcb1ca9c2cccf8fbb714c6580bb70fb": {
+    "address": "CARLOS GOIS 219, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9842355,
+    "lng": -43.2198731,
+    "cached_at": "2026-02-22T11:18:46.810119"
+  },
+  "108c941cf03a94ec39fc851cd2044c43": {
+    "address": "Rua General Urquiza, 242, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.981026,
+    "lng": -43.2251572,
+    "cached_at": "2026-02-22T11:18:47.476963"
+  },
+  "cb8a781c10634c0bcdac06876e6aa016": {
+    "address": "Av. Ataulfo de Paiva 50 501, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9836819,
+    "lng": -43.2159178,
+    "cached_at": "2026-02-22T11:18:49.669380"
+  },
+  "4d56c78874d244e5a1b0b6c192cdcaa6": {
+    "address": "Av. Afrânio de Melo 290, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9825622,
+    "lng": -43.2173424,
+    "cached_at": "2026-02-22T11:18:51.837588"
+  },
+  "6840db7f86079939003e6e5bb7d9eba5": {
+    "address": "Rua, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9368333,
+    "lng": -43.1845935,
+    "cached_at": "2026-02-22T11:18:51.866209"
+  },
+  "94e763abcea119900dacff9c8d6d55a4": {
+    "address": "R. TimÓteo Da Costa 1100, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.985002,
+    "lng": -43.2346388,
+    "cached_at": "2026-02-22T11:18:53.209776"
+  },
+  "fb0d00b03538114b988ecbd0d5941654": {
+    "address": "Rua Rainha Guilhermina, 181, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9833027,
+    "lng": -43.2280137,
+    "cached_at": "2026-02-22T11:18:55.243045"
+  },
+  "5b9e8799d7358c05b62d3e41c197a639": {
+    "address": "R. Nascimento Silva 4, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9823477,
+    "lng": -43.2000957,
+    "cached_at": "2026-02-22T11:18:55.309389"
+  },
+  "a39db61f5736ffb8d3763718cc9f7e11": {
+    "address": "R. Pinheiro Guimarães 115, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9590666,
+    "lng": -43.1955266,
+    "cached_at": "2026-02-22T11:18:59.316541"
+  },
+  "b9a1362a8efb370764d5a447066cb353": {
+    "address": "R. Almirante Guilhem 421, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9841086,
+    "lng": -43.2188118,
+    "cached_at": "2026-02-22T11:19:06.328855"
+  },
+  "11ee5be4a40aa5cd99edfb0d2876a486": {
+    "address": "Av. General San Martin 993, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9847366,
+    "lng": -43.2159035,
+    "cached_at": "2026-02-22T11:19:11.360084"
+  },
+  "2de1423803d90be283cf007470f9b007": {
+    "address": "Rua José Linhares, 28, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.982263,
+    "lng": -43.2218767,
+    "cached_at": "2026-02-22T11:19:14.231395"
+  },
+  "c477c43cf847a6ff735279db7205e5c7": {
+    "address": "RUA BARÃO DE JAGUARIPE, 55, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9814118,
+    "lng": -43.2079885,
+    "cached_at": "2026-02-22T11:19:16.328076"
+  },
+  "d23e4c07140427000b5888a2ba01a620": {
+    "address": "Av. Ataulfo de Paiva 1292, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9837831,
+    "lng": -43.2192532,
+    "cached_at": "2026-02-22T11:19:17.373335"
+  },
+  "2ba6450e29d37307591b7afa216fdd7c": {
+    "address": "Avenida Epitácio Pessoa, 1000, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9637355,
+    "lng": -43.2037567,
+    "cached_at": "2026-02-22T11:19:17.895070"
+  },
+  "1c56c5640f1ad6d096f56fe3e08964f5": {
+    "address": "Rua General Venâncio Flores 481, Leblon 6224899, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9821076,
+    "lng": -43.2260803,
+    "cached_at": "2026-02-22T11:28:26.381010"
+  },
+  "1ced24e8a2d33aa19774d1d04e6fba7f": {
+    "address": "Rua Nascimento Silva 110, Ipanema 6222975, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9823477,
+    "lng": -43.2000957,
+    "cached_at": "2026-02-22T11:28:28.261879"
+  },
+  "21dcbd59e562ca99c8096680da9d559c": {
+    "address": "Rua Timóteo da Costa 541, Leblon 6222952, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9842978,
+    "lng": -43.2294951,
+    "cached_at": "2026-02-22T11:28:30.582090"
+  },
+  "b372023583678e110dc6833f6353ff3c": {
+    "address": "Rua Timóteo da Costa 785, Leblon 6222910, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9842978,
+    "lng": -43.2294951,
+    "cached_at": "2026-02-22T11:28:32.804108"
+  },
+  "7a1168245698aa229b3568091e2bb5ff": {
+    "address": "Avenida General San Martin 847, Leblon 6222865, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9847366,
+    "lng": -43.2159035,
+    "cached_at": "2026-02-22T11:28:35.174528"
+  },
+  "1f323c43adb02183aab107df8313ede7": {
+    "address": "Rua Nascimento Silva 435, Ipanema 6222860, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9823477,
+    "lng": -43.2000957,
+    "cached_at": "2026-02-22T11:28:37.080813"
+  },
+  "12b079ed1f471565ced386003cb2941a": {
+    "address": "Rua Barão de Jaguaripe 55, Ipanema 6222768, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9814118,
+    "lng": -43.2079885,
+    "cached_at": "2026-02-22T11:28:38.939658"
+  },
+  "f7b97480310521438bb5f08cf2b5952a": {
+    "address": "Avenida General San Martin 900, Leblon 6222508, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9847366,
+    "lng": -43.2159035,
+    "cached_at": "2026-02-22T11:28:40.984488"
+  },
+  "a8ff4eee2554ea7e5b7cbd7d334324a4": {
+    "address": "Rua Engenheiro Cortes Sigaud 100, Leblon 6222197, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9846096,
+    "lng": -43.2306859,
+    "cached_at": "2026-02-22T11:28:45.416544"
+  },
+  "65f084e30f898e34a990c556dcd2d3fd": {
+    "address": "Rua Sambaíba 304, Leblon 6222089, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9859061,
+    "lng": -43.2304195,
+    "cached_at": "2026-02-22T11:28:47.311270"
+  },
+  "e09e6a6dbfa56fff3c63ea897c861b71": {
+    "address": "Rua Gomes Carneiro 58, Ipanema 6221759, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9843287,
+    "lng": -43.1946817,
+    "cached_at": "2026-02-22T11:28:49.766942"
+  },
+  "02047efd4c5cf9b6fffcaaab852d4028": {
+    "address": "Avenida Ataulfo de Paiva 23, Leblon 6219769, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.983673,
+    "lng": -43.216959,
+    "cached_at": "2026-02-22T11:28:52.229168"
+  },
+  "09003195e999ff736ebe5d5188bc2eb8": {
+    "address": "Rua Rainha Guilhermina 156, Leblon 6219627, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9833027,
+    "lng": -43.2280137,
+    "cached_at": "2026-02-22T11:28:56.978090"
+  },
+  "88e8d0f8d307cb04278999c8d1e2ade5": {
+    "address": "Avenida Visconde de Albuquerque 1080, Leblon 6219598, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.978099,
+    "lng": -43.2262952,
+    "cached_at": "2026-02-22T11:28:59.297376"
+  },
+  "005e9f00d44b54a11e2d3dace62528c4": {
+    "address": "Rua Prudente de Morais 1565, Ipanema 6217431, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9857424,
+    "lng": -43.1972278,
+    "cached_at": "2026-02-22T11:29:01.299370"
+  },
+  "a463ebccb9f240dfbfb15e1516230ff2": {
+    "address": "Rua Prudente de Morais 10, Ipanema 6197516, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9856887,
+    "lng": -43.1967098,
+    "cached_at": "2026-02-22T11:29:03.235684"
+  },
+  "5e846ac07b9377524be63719226468ee": {
+    "address": "Rua Dias Ferreira 147, Leblon 6196384, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9821873,
+    "lng": -43.2248038,
+    "cached_at": "2026-02-22T11:29:05.669143"
+  },
+  "b5eb360a67ef8af4a6a3419012cd7244": {
+    "address": "Rua João Líra 135, Leblon 6193257, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9840773,
+    "lng": -43.2223308,
+    "cached_at": "2026-02-22T11:29:09.197349"
+  },
+  "6381a1fc6636138fc602af12a33f60ad": {
+    "address": "Rua Carlos Gois 99, Leblon 6138478, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9842355,
+    "lng": -43.2198731,
+    "cached_at": "2026-02-22T11:29:11.020802"
+  },
+  "14c064af04f800cbfb0edaa98e6e4cab": {
+    "address": "RUA NASCIMENTO SILVA 183 204, IPANEMA 5996051, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9823477,
+    "lng": -43.2000957,
+    "cached_at": "2026-02-22T11:29:20.558186"
+  },
+  "112e9164deb6a3cf8bbe6d149447ecbb": {
+    "address": "R. Desembargador Renato Tavares 14 402, Ipanema 22505, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9804014,
+    "lng": -43.2013461,
+    "cached_at": "2026-02-22T11:32:12.295837"
+  },
+  "dbb8afeaf8443a4fc160a6c49c4dbe8e": {
+    "address": "Avenida Epitácio Pessoa 1116, Ipanema 22338, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9796799,
+    "lng": -43.2029352,
+    "cached_at": "2026-02-22T11:32:14.284348"
+  },
+  "2baafe2c88a03bc1a69c0031fed6bdaa": {
+    "address": "av ataulfo de paiva8028, Leblon 6222504, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.980404,
+    "lng": -43.219846,
+    "cached_at": "2026-02-22T11:50:09.644298"
+  },
+  "53e28f1265617a8ed32cd49383fca82c": {
+    "address": "AVENIDA VISCONDE DE ALBUQUERQUE 1366 POR, LEBLON 5993182, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.977722,
+    "lng": -43.225647,
+    "cached_at": "2026-02-22T11:50:14.445878"
+  },
+  "10fa3e4a7d6df540fa75b567cf723285": {
+    "address": "AVENIDA ATAULFO DE PAIVA 765 304, LEBLON 5993124, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.985753,
+    "lng": -43.224206,
+    "cached_at": "2026-02-22T11:50:15.031358"
+  },
+  "dae231044e34aa764348c028c581af92": {
+    "address": "AVENIDA ATAULFO DE PAIVA 765 304, LEBLON 5993082, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.985753,
+    "lng": -43.224206,
+    "cached_at": "2026-02-22T11:50:15.556787"
+  },
+  "780483efaf39dda7532a08129e44f5f7": {
+    "address": "RUA PRUDENTE DE MORAIS 1464 501, IPANEMA 5989723, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.985028,
+    "lng": -43.210332,
+    "cached_at": "2026-02-22T11:50:16.543387"
+  },
+  "268027b9452b252186d01d9a0f677910": {
+    "address": "AVENIDA BARTOLOMEU MITRE 1083 201-EM FRE, LEBLON 5981732, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.977725,
+    "lng": -43.224818,
+    "cached_at": "2026-02-22T11:50:17.842552"
+  },
+  "37e48618da8201f037893c51b93e1e6a": {
+    "address": "AVENIDA ATAULFO DE PAIVA 280 RIO DESIGN, LEBLON 5865224, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.983984,
+    "lng": -43.219713,
+    "cached_at": "2026-02-22T11:50:19.841611"
+  },
+  "e203ad5226ee2fba1d18078f1ca8da9e": {
+    "address": "VISCONDE DE ALBUQUERQUE 1228 205, LEBLON 2158434, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.987691,
+    "lng": -43.226355,
+    "cached_at": "2026-02-22T11:50:20.783721"
+  },
+  "a728e57e7582a2d4c98fc7bd173d5db9": {
+    "address": "Avenida Epitácio Pessoa, 2356 - 604, Ipanema 1421718, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.979117,
+    "lng": -43.201644,
+    "cached_at": "2026-02-22T11:50:21.052240"
+  },
+  "52514e1f196d0d314941b5b232f8d879": {
+    "address": "Rua Gomes Carneiro, 28 - 201, Ipanema 1421462, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.985707,
+    "lng": -43.196434,
+    "cached_at": "2026-02-22T11:50:21.802381"
+  },
+  "4d4a9ae417014b3b82cec26599e8e0c9": {
+    "address": "Rua Codajas, 151 -, Leblon 1421216, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.981926,
+    "lng": -43.227948,
+    "cached_at": "2026-02-22T11:50:22.645893"
+  },
+  "79016ebc46770a045ab2d09ea9d0806b": {
+    "address": "Rua AlmiranteGuilhem, 231 - 302, Leblon 1420617, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.983258,
+    "lng": -43.23029,
+    "cached_at": "2026-02-22T11:50:23.973147"
+  },
+  "af82a9e7c121490feaccb3cc7da8cc93": {
+    "address": "Rua Barão deJaguaripe, 413 - 101, Ipanema 1420530, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.981639,
+    "lng": -43.203744,
+    "cached_at": "2026-02-22T11:50:24.905611"
+  },
+  "2e7377c3f77b81a1bf60d95050c1aa78": {
+    "address": "Rua Visconde dePirajá, 407, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.984098,
+    "lng": -43.208142,
+    "cached_at": "2026-02-22T11:50:25.021609"
+  },
+  "85c9f369cbb22aac07f91db8489e4215": {
+    "address": "Rua Timóteo daCosta, 230 - 402, Leblon 1419855, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.98365,
+    "lng": -43.231355,
+    "cached_at": "2026-02-22T11:50:25.452559"
+  },
+  "04f55cd3fc4e5fc8de36da88d86620b4": {
+    "address": "Rua CarlosGois, 64 - 701, Leblon 1419696, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.987565,
+    "lng": -43.229698,
+    "cached_at": "2026-02-22T11:50:26.222194"
+  },
+  "787dcfcc6397f11e99d539f14b8e0777": {
+    "address": "Rua Prudente De Morais, 163 - 101, Ipanema 560997, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.984959,
+    "lng": -43.209012,
+    "cached_at": "2026-02-22T11:50:28.149923"
+  },
+  "b27dbbdaa85b1e10bf950d98b81cbb42": {
+    "address": "Rua Carlos Gois, 366 - 404, Leblon 173680, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.982854,
+    "lng": -43.219992,
+    "cached_at": "2026-02-22T11:50:30.843446"
+  },
+  "e8101f85ad4a47a90870608d1aebdcb4": {
+    "address": "Avenida Epitácio Pessoa, 1700 - 406, Ipanema 163731, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.979117,
+    "lng": -43.201644,
+    "cached_at": "2026-02-22T11:50:30.971848"
+  },
+  "bb9f4f5d1bf087c1f7cf655dd86d4107": {
+    "address": "Rua Prudente de Morais, 1408 - 401, Ipanema 44391, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.985028,
+    "lng": -43.210332,
+    "cached_at": "2026-02-22T11:50:31.643603"
+  },
+  "0ae7155b1d20eea470314957c3498b43": {
+    "address": "RUA VISCONDE DE PIRAJA, 365 B -, IPANEMA 41170, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9837435,
+    "lng": -43.214208,
+    "cached_at": "2026-02-22T11:50:32.024108"
+  },
+  "fec4fcb62381f1acfd979e0df9a9e824": {
+    "address": "Rua Alberto de Campos, 80 - 201, Ipanema 40894, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9809983,
+    "lng": -43.2056129,
+    "cached_at": "2026-02-22T11:50:32.559747"
+  },
+  "8e3a7a22ee44b9e44ada0bb9fd0ab8b2": {
+    "address": "RUA PROFESSOR BRANDÃO FILHO , 60 - 401, LEBLON 31630, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9874103,
+    "lng": -43.231629,
+    "cached_at": "2026-02-22T11:50:33.215328"
+  },
+  "f073cfc8c42f1d2dd9ac3fffe537006a": {
+    "address": "Rua Barao da Torre, 19 - 1303, Ipanema 29955, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.983603,
+    "lng": -43.197644,
+    "cached_at": "2026-02-22T11:50:33.668973"
+  },
+  "b1bc7f6495b16fa373efe74eb820e933": {
+    "address": "Rua Nascimento Silva, 262 - 401, Ipanema 22722, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9823219,
+    "lng": -43.2004675,
+    "cached_at": "2026-02-22T11:50:34.256661"
+  },
+  "54b20a93afca748f5bd0cef085621c6c": {
+    "address": "Rua Cupertino Durão, 45 -, Leblon 22719, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9807122,
+    "lng": -43.2218556,
+    "cached_at": "2026-02-22T11:50:34.879321"
+  },
+  "6bc37c1a227d399e29959c496b03c57b": {
+    "address": "Rua General Urquiza, 161 - Body Tech, Leblon 22707, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.983009,
+    "lng": -43.224564,
+    "cached_at": "2026-02-22T11:50:35.572100"
+  },
+  "ad942e5d684e818c8157e69883735b81": {
+    "address": "Rua Prudente de Morais, 1465 - 703, Ipanema 22706, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.985074,
+    "lng": -43.210336,
+    "cached_at": "2026-02-22T11:50:36.071214"
+  },
+  "ddec57fe71dab7285318697d51db09d0": {
+    "address": "RUA JOAO LIRA, 112 - 501, LEBLON 22695, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.983239,
+    "lng": -43.222485,
+    "cached_at": "2026-02-22T11:50:36.274470"
+  },
+  "182e67a94fbfa0c86b623efbf6e94194": {
+    "address": "Rua General Artigas, 383 - 202, Leblon 22671, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.984178,
+    "lng": -43.226166,
+    "cached_at": "2026-02-22T11:50:36.891558"
+  },
+  "df7b5f3a2af16efb4035ea9e6692a948": {
+    "address": "Rua Ministro Ramos Monteiro, 37 - 1001A, Leblon 15038, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.979623,
+    "lng": -43.219483,
+    "cached_at": "2026-02-22T11:50:37.629853"
+  },
+  "605d1e1aaa6baebd36b6ac618c06d66c": {
+    "address": "Rua Dias Ferreira, 217 - 402, Leblon 729, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.984606,
+    "lng": -43.227747,
+    "cached_at": "2026-02-22T11:50:38.299468"
+  },
+  "b91770a93106212a1ee7c3bc97091677": {
+    "address": "Rua Visconde de Pirajá, 303, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9844266,
+    "lng": -43.2046474,
+    "cached_at": "2026-02-22T12:55:29.347426"
+  },
+  "2df4e94bb90cd2667330074a2af7fd05": {
+    "address": "Rua Prudente de Morais, 719, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9854247,
+    "lng": -43.2028317,
+    "cached_at": "2026-02-22T12:55:30.639199"
+  },
+  "655c1194b19a3dbbc936798ec0eeec80": {
+    "address": "Rua Joana Angélica, 63, Andar G2, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.984792,
+    "lng": -43.205027,
+    "cached_at": "2026-02-22T12:55:31.583860"
+  },
+  "3f4c0f186b2e704f24ee60a09cab878c": {
+    "address": "Rua Joana Angélica, 116, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9840985,
+    "lng": -43.2049576,
+    "cached_at": "2026-02-22T12:55:32.596545"
+  },
+  "45777a1a89d2859982c0dac762ba4d84": {
+    "address": "Rua Joana Angélica, 108, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9840985,
+    "lng": -43.2049576,
+    "cached_at": "2026-02-22T12:55:33.615422"
+  },
+  "52b9fdcb24ca65226eb83222c55b4ddf": {
+    "address": "Rua Joana Angélica, 124, Banco do Brasil, Rio de Janeiro, RJ",
+    "lat": -22.901058,
+    "lng": -43.176284,
+    "cached_at": "2026-02-22T12:55:34.622457"
+  },
+  "198ae39c4cd9c000b0791c227efd2d49": {
+    "address": "Rua Joana Angélica, 134, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9840985,
+    "lng": -43.2049576,
+    "cached_at": "2026-02-22T12:55:35.613132"
+  },
+  "923c9a0018f29710349623e059ff85a1": {
+    "address": "Rua Visconde de Pirajá, 318, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9840977,
+    "lng": -43.2041935,
+    "cached_at": "2026-02-22T12:55:36.524990"
+  },
+  "ea893527b2b7b54b9f9a60f1da0ad4ff": {
+    "address": "Rua Visconde de Pirajá, 330, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9844497,
+    "lng": -43.2009191,
+    "cached_at": "2026-02-22T12:55:37.518665"
+  },
+  "d40e9b181f02e457e991ecbb09ac855d": {
+    "address": "Rua Visconde de Pirajá, 281, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9844497,
+    "lng": -43.2009191,
+    "cached_at": "2026-02-22T12:55:38.400262"
+  },
+  "35fcc6190bcbc7edb7c56b5d7802f413": {
+    "address": "Rua Visconde de Pirajá, 291, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9844497,
+    "lng": -43.2009191,
+    "cached_at": "2026-02-22T12:55:39.349446"
+  },
+  "3eb1b083e6d42b084b0ee366dcef21ef": {
+    "address": "Rua Visconde de Pirajá, 303, 302, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9844266,
+    "lng": -43.2046474,
+    "cached_at": "2026-02-22T12:55:40.380805"
+  },
+  "2e68332b7c5ac0933b81787754a8f0ec": {
+    "address": "Rua Vinícius de Moraes, 74, Barbearia PLURAL-barbeiro KADU, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.984705,
+    "lng": -43.20273,
+    "cached_at": "2026-02-22T12:55:41.359155"
+  },
+  "635b2c40af81aabfbecaa4c716ee08c6": {
+    "address": "Rua Vinícius de Moraes, 111, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9838741,
+    "lng": -43.2029803,
+    "cached_at": "2026-02-22T12:55:42.272040"
+  },
+  "6793fa2db725fc9b0dd3091dc2a41c6c": {
+    "address": "Rua Barão da Torre, 274, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9831351,
+    "lng": -43.2055487,
+    "cached_at": "2026-02-22T12:55:43.179933"
+  },
+  "fdd8a932dd37e15dec3a0c4fa2069079": {
+    "address": "Rua Barão da Torre, 277, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9831351,
+    "lng": -43.2055487,
+    "cached_at": "2026-02-22T12:55:44.072595"
+  },
+  "6f07c708415af49c8abf2b661da786c5": {
+    "address": "Rua Barão da Torre, 259, 501, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9831351,
+    "lng": -43.2055487,
+    "cached_at": "2026-02-22T12:55:44.967317"
+  },
+  "d95e39cfbb50963fb6d378faca3455a3": {
+    "address": "Rua Barão da Torre, 287, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9831351,
+    "lng": -43.2055487,
+    "cached_at": "2026-02-22T12:55:45.916252"
+  },
+  "5e454547049e19f41a1affd63d490d1a": {
+    "address": "Rua Barão da Torre, 308, Encomenda da prof do integral, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.982169,
+    "lng": -43.20377,
+    "cached_at": "2026-02-22T12:55:47.018136"
+  },
+  "1c5ca4a3bed37c0dd4cbac080fb834cf": {
+    "address": "Rua Barão da Torre, 308, Colegio notre dame, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.982169,
+    "lng": -43.20377,
+    "cached_at": "2026-02-22T12:55:48.056443"
+  },
+  "81381e4108d8b234f9406aa85bbe361b": {
+    "address": "Rua Barão da Torre, 308, Colegio Notre Dame Ipanema, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.982169,
+    "lng": -43.20377,
+    "cached_at": "2026-02-22T12:55:49.115918"
+  },
+  "a95a66c534e79634db02166b1187555b": {
+    "address": "Rua Joana Angélica, 155, Restaurante toto, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.982924,
+    "lng": -43.20496,
+    "cached_at": "2026-02-22T12:55:50.075624"
+  },
+  "04ba8f2d65f74437b97cc98f64289c1c": {
+    "address": "Rua Joana Angélica, 192, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9840985,
+    "lng": -43.2049576,
+    "cached_at": "2026-02-22T12:55:50.989676"
+  },
+  "65221bd982de2fb3e3fd7ad30d5da29d": {
+    "address": "Rua Joana Angélica, 203, Igreja crista de ipanema, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.982366,
+    "lng": -43.204866,
+    "cached_at": "2026-02-22T12:55:51.943219"
+  },
+  "29b02c6617070c5dc95cc8850c9df897": {
+    "address": "Rua Joana Angélica, 203, Igreja Cristã de Ipanema, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.982366,
+    "lng": -43.204866,
+    "cached_at": "2026-02-22T12:55:53.070107"
+  },
+  "12e9d722219eabaaf24970c05563b3ca": {
+    "address": "Rua Barão de Jaguaripe, 19, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9814293,
+    "lng": -43.207694,
+    "cached_at": "2026-02-22T12:55:53.978828"
+  },
+  "610cdbfcec00f7a4586e5db4fec5972a": {
+    "address": "Rua Vinícius de Moraes, 208, C-01, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.983066,
+    "lng": -43.202767,
+    "cached_at": "2026-02-22T12:55:54.972831"
+  },
+  "95ae8a695e6e1dfeb0b2577efbec71e6": {
+    "address": "Rua Nascimento Silva, 81, 1004, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9823219,
+    "lng": -43.2004675,
+    "cached_at": "2026-02-22T12:55:55.966109"
+  },
+  "ca08b238ca24efdf52c2c2bb64cd72de": {
+    "address": "Rua Nascimento Silva, 84, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9819941,
+    "lng": -43.2070156,
+    "cached_at": "2026-02-22T12:55:56.827262"
+  },
+  "90aa49e3a785d138566d50cc0f0c08bd": {
+    "address": "Rua R NascimentoSilva, 110, 305, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.863613,
+    "lng": -43.286477,
+    "cached_at": "2026-02-22T12:55:57.676041"
+  },
+  "f2fc11b3d948ed0abebfbac9288263d5": {
+    "address": "Rua Nascimento Silva, 136, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9819941,
+    "lng": -43.2070156,
+    "cached_at": "2026-02-22T12:55:58.539065"
+  },
+  "58c4d9c277c2384716b7f03c20d584ab": {
+    "address": "Rua Alberto de Campos, 85, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9813265,
+    "lng": -43.1992171,
+    "cached_at": "2026-02-22T12:55:59.445828"
+  },
+  "0138f7d6baacf5f44c40180103705e9e": {
+    "address": "Rua Alberto de Campos, 101, 902, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9813265,
+    "lng": -43.1992171,
+    "cached_at": "2026-02-22T12:56:00.371633"
+  },
+  "86907a2b8422e57be925862d23174ebe": {
+    "address": "Rua Barão da Torre, 220, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.983161,
+    "lng": -43.2021997,
+    "cached_at": "2026-02-22T12:56:01.279124"
+  },
+  "7ffae128f67f62192993d93904a94082": {
+    "address": "Rua Nascimento Silva, 303, 101, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9823219,
+    "lng": -43.2004675,
+    "cached_at": "2026-02-22T12:56:02.201591"
+  },
+  "048684a80fee07c8584fc7e85b48c44f": {
+    "address": "Rua Nascimento Silva, 186, 201, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9823219,
+    "lng": -43.2004675,
+    "cached_at": "2026-02-22T12:56:03.133143"
+  },
+  "dd46427578fc8e437bb9f43949a9ea1a": {
+    "address": "Rua Alberto de Campos, 165, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9813265,
+    "lng": -43.1992171,
+    "cached_at": "2026-02-22T12:56:03.988375"
+  },
+  "940128446ae07ad71037affd74adc874": {
+    "address": "Rua Desembargador Renato Tavares, 14, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9804025,
+    "lng": -43.2013462,
+    "cached_at": "2026-02-22T12:56:04.912660"
+  },
+  "99fa8a75981f1cd136cedc8706e5e5ba": {
+    "address": "Rua Almirante Saddock de Sá, 216, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.980087,
+    "lng": -43.2013154,
+    "cached_at": "2026-02-22T12:56:05.839657"
+  },
+  "8625a34f74d37c7ee9dc8cb2c4d8e5b4": {
+    "address": "RUA ALMIRANTE SADDOCK DE SÁ, 216, 504 B, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.980087,
+    "lng": -43.2013154,
+    "cached_at": "2026-02-22T12:56:06.832284"
+  },
+  "9ace75432109f064eba7c05526d8e611": {
+    "address": "Avenida Epitácio Pessoa, 2030, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.978167,
+    "lng": -43.1993523,
+    "cached_at": "2026-02-22T12:56:07.807968"
+  },
+  "5fff5851d9b49f735da48a3cc6ba23cb": {
+    "address": "Avenida Epitácio Pessoa, 2030, Deixar na, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.979117,
+    "lng": -43.201644,
+    "cached_at": "2026-02-22T12:56:08.983156"
+  },
+  "8ac2a9957b64a6b014c3e1ff98332041": {
+    "address": "Avenida Epitácio Pessoa, 2300, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9804482,
+    "lng": -43.2146258,
+    "cached_at": "2026-02-22T12:56:09.995473"
+  },
+  "267e8e7b63e49d0d2d395492e3e241c8": {
+    "address": "Avenida Epitácio Pessoa, 1600, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9626135,
+    "lng": -43.2039651,
+    "cached_at": "2026-02-22T12:56:11.026258"
+  },
+  "547ee65c7ee1f68543e140208281bcab": {
+    "address": "Avenida Epitácio Pessoa, 1924, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9626135,
+    "lng": -43.2039651,
+    "cached_at": "2026-02-22T12:56:12.037850"
+  },
+  "9a24a403c966c674550f1aa618c4a697": {
+    "address": "Avenida Epitácio Pessoa, 2180, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9626135,
+    "lng": -43.2039651,
+    "cached_at": "2026-02-22T12:56:13.061013"
+  },
+  "58184a7c8ee40bf768f95ac28ab6aaed": {
+    "address": "Avenida Epitácio Pessoa, 2356, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9769507,
+    "lng": -43.19784775371567,
+    "cached_at": "2026-02-22T12:56:14.087802"
+  },
+  "963f6bd4c7c29d0d66e2f66d81a89813": {
+    "address": "Avenida Henrique Dodsworth, 183, Eu quero comprar nessa, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.977023,
+    "lng": -43.199169,
+    "cached_at": "2026-02-22T12:56:15.184821"
+  },
+  "fe070a740ab69dac3024829a25206425": {
+    "address": "EPITACIO PESSOA 2030 202, em, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.923958,
+    "lng": -43.371694,
+    "cached_at": "2026-02-22T12:56:16.187444"
+  },
+  "e8ad7782422ae1406fcbbe7e3e75792c": {
+    "address": "FARME DE AMOEDO 27 901, IPANEMA 33179293, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.985891,
+    "lng": -43.200851,
+    "cached_at": "2026-02-22T12:56:21.353605"
+  },
+  "209acdadcb59e5e83357dcd49feafdf3": {
+    "address": "RUA RUA ALBERTO DE CAMPOS 40, IPANEMA 33178055, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.98127,
+    "lng": -43.199843,
+    "cached_at": "2026-02-22T12:56:22.390219"
+  },
+  "dc816a009e2dfb553fd5837adec65092": {
+    "address": "Avenida Rainha Elizabeth da Bélgica 540, Ipanema 6219636, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.985305,
+    "lng": -43.192174,
+    "cached_at": "2026-02-22T12:56:23.739388"
+  },
+  "c5f019f1a1daefd6e27f9f9622534f21": {
+    "address": "AVENIDA RAINHA ELIZABETH DA B?LGICA 463, IPANEMA 5993297, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.985305,
+    "lng": -43.192174,
+    "cached_at": "2026-02-22T12:56:35.803989"
+  },
+  "c89886b464d2eaef737532b51ed335f3": {
+    "address": "RUA VISCONDE DE PIRAJ? 572, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.983748,
+    "lng": -43.212474,
+    "cached_at": "2026-02-22T12:56:41.196304"
+  },
+  "1a462c5f01548d35cc96f236f668e457": {
+    "address": "RUA FRANCISCO OTAVIANO 120 ENTREGAR NA P, IPANEMA 5987225, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.987476,
+    "lng": -43.193077,
+    "cached_at": "2026-02-22T12:56:42.203162"
+  },
+  "bd6130ac57cc2957cbdf913784cdf608": {
+    "address": "RUA JOAQUIM NABUCO 226 803, IPANEMA 5969021, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.986994,
+    "lng": -43.195256,
+    "cached_at": "2026-02-22T12:56:47.925741"
+  },
+  "8734088af6ddfef3cb8536c647bfd007": {
+    "address": "Rua AlmiranteGuilhem, 262, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.87614,
+    "lng": -43.412455,
+    "cached_at": "2026-02-22T12:57:08.905771"
+  },
+  "0d8971f37da1145696af84a2d36070e6": {
+    "address": "Rua Alberto deCampos, 74 - 301, Ipanema 1420540, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.981197,
+    "lng": -43.201296,
+    "cached_at": "2026-02-22T12:57:09.689356"
+  },
+  "0c80d7bfd60477715e4b4493dc989749": {
+    "address": "Rua Sambaíba, 380 - 203, Leblon 1419748, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.986448,
+    "lng": -43.233128,
+    "cached_at": "2026-02-22T12:57:10.744079"
+  },
+  "6479bc0c693b863104e51f432d691fa2": {
+    "address": "Rua Prudente de Morais, 1565 - 901, Ipanema 507813, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.984958,
+    "lng": -43.212416,
+    "cached_at": "2026-02-22T12:57:27.945770"
+  },
+  "d5fe50055ab7794b4c53bbe13de845f7": {
+    "address": "Av. Rainha Elizabeth da Belgica 499 101, Ipanema 219356, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.985305,
+    "lng": -43.192174,
+    "cached_at": "2026-02-22T12:57:28.995955"
+  },
+  "8257586190794ffed01417611117c0b1": {
+    "address": "Rua Barão de Jaguaripe, 328 - 301, Ipanema 78705, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.981275,
+    "lng": -43.210092,
+    "cached_at": "2026-02-22T12:57:30.087968"
+  },
+  "993b6b8f91aeb1060f9b2f902f4ee9b3": {
+    "address": "Rua Gilberto Cardoso, 260 - 1604, Leblon 41030, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9795314,
+    "lng": -43.2211704,
+    "cached_at": "2026-02-22T12:57:30.989410"
+  },
+  "c7bb97def1fd5d4e28493af672e42830": {
+    "address": "Avenida Epitácio Pessoa, 1900 - 601, Ipanema 31959, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.857697,
+    "lng": -43.315342,
+    "cached_at": "2026-02-22T12:57:38.156459"
+  },
+  "489b25859a70fe4ef691e7f5c0fe16cf": {
+    "address": "Rua Cupertino Durão, 45 -, Leblon 22716, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.9807122,
+    "lng": -43.2218556,
+    "cached_at": "2026-02-22T12:57:39.210356"
+  },
+  "2a2ed03d2510eb8a84bcf7a38ff5887b": {
+    "address": "Avenida Epitacio Pessoa, 2160 - 203, Ipanema 15678, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.857697,
+    "lng": -43.315342,
+    "cached_at": "2026-02-22T12:57:40.402887"
+  },
+  "4eb6ffd0d3e38bde9d7fbfe62201e5fd": {
+    "address": "Rua Jerônimo Monteiro, 216 - 401, Leblon 11031, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.98562,
+    "lng": -43.217999,
+    "cached_at": "2026-02-22T12:57:41.481741"
+  },
+  "615b9489875576ef05c85beec7e189df": {
+    "address": "R. Redentor floor, Rio de Janeiro, RJ, Brasil",
+    "lat": -22.982402,
+    "lng": -43.209366,
+    "cached_at": "2026-02-22T12:57:42.761426"
+  }
+}

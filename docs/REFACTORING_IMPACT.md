@@ -1,0 +1,1 @@
+- [Fix] Adicionado módulo handlers faltante

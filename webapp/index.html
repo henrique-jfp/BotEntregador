@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#667eea" />
+    <meta name="description" content="Sistema inteligente de gestão de entregas com otimização de rotas" />
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- iOS PWA Support -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="BotEntregador" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    
+    <link rel="shortcut icon" href="/logoMiniApp.jpg" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
+    
+    <title>MiniApp Entregador v3.0 - PWA</title>
+    
+    <!-- Script do Telegram WebApp -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <!-- PWA Service Worker Registration -->
+    <script>
+      const APP_BUILD = '2026-02-05.4';
+      const BUILD_KEY = 'app_build';
+      const CLEANUP_KEY = `sw_cleanup_${APP_BUILD}`;
+
+      const cleanupServiceWorker = async () => {
+        if (!('serviceWorker' in navigator)) return;
+        try {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map(reg => reg.unregister()));
+          if (window.caches) {
+            const keys = await caches.keys();
+            await Promise.all(keys.map(key => caches.delete(key)));
+          }
+          console.log('🧹 Service Worker e caches antigos removidos');
+        } catch (err) {
+          console.warn('⚠️ Falha ao limpar SW/caches:', err);
+        }
+      };
+
+      if (localStorage.getItem(BUILD_KEY) !== APP_BUILD && !sessionStorage.getItem(CLEANUP_KEY)) {
+        sessionStorage.setItem(CLEANUP_KEY, '1');
+        localStorage.setItem(BUILD_KEY, APP_BUILD);
+        cleanupServiceWorker().finally(() => {
+          window.location.reload();
+        });
+      }
+
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/service-worker.js')
+            .then(registration => {
+              console.log('✅ Service Worker registrado:', registration.scope);
+              
+              // Verifica atualizações periodicamente
+              setInterval(() => {
+                registration.update();
+              }, 60000); // A cada 1 minuto
+            })
+            .catch(error => {
+              console.error('❌ Falha ao registrar Service Worker:', error);
+            });
+        });
+        
+        // Listener de mensagens do Service Worker
+        navigator.serviceWorker.addEventListener('message', (event) => {
+          if (event.data.type === 'SYNC_COMPLETE') {
+            console.log(`✅ ${event.data.count} itens sincronizados`);
+            // Dispara evento customizado para componentes React
+            window.dispatchEvent(new CustomEvent('sw-sync-complete', {
+              detail: { count: event.data.count }
+            }));
+          }
+        });
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx?t=" + Date.now()></script>
+  </body>
+</html>

@@ -1,0 +1,110 @@
+NF	Bairro	Endereço Completo	Latitude	Longitude
+33194023	Ipanema	Epitacio Pessoa 2030 202, Em Frente A Saida Do Metro Na Lagoa, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9791527	-43,2000137
+33183851	Leblon	Afranio De Melo Franco 353 204, Leblon, Rio De Janeiro - RJ, Brasil	-22,9805684	-43,218275
+33179293	Ipanema	Farme De Amoedo 27 901, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9858598	-43,2011224
+33178055	Ipanema	Rua Rua Alberto De Campos 40, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9810601	-43,1994403
+33177724	Leblon	Engenheiro Cortes Sigaud 95 Apto 306, Sem, Leblon, Rio De Janeiro - RJ, Brasil	-22,9847366	-43,2308475
+33176074	Ipanema	Visconde De Piraja 265 Apto 802, Proximo Ao Metro Nossa Senhora Da Paz, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9845155	-43,2033427
+6224899	Leblon	Rua General Venâncio Flores 481, Leblon, Rio De Janeiro - RJ, Brasil	-22,9831773	-43,2257259
+6222975	Ipanema	Rua Nascimento Silva 110, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9821187	-43,2018583
+6222952	Leblon	Rua Timóteo Da Costa 541, Leblon, Rio De Janeiro - RJ, Brasil	-22,9840807	-43,2327551
+6222910	Leblon	Rua Timóteo Da Costa 785, Leblon, Rio De Janeiro - RJ, Brasil	-22,985925	-43,2312502
+6222865	Leblon	Avenida General San Martin 847, Leblon, Rio De Janeiro - RJ, Brasil	-22,98592	-43,224365
+6222860	Ipanema	Rua Nascimento Silva 435, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9820082	-43,2097395
+6222768	Ipanema	Rua Barão De Jaguaripe 55, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9817704	-43,2040916
+6222508	Leblon	Avenida General San Martin 900, Leblon, Rio De Janeiro - RJ, Brasil	-22,9857941	-43,2250247
+6222504	Leblon	Av Ataulfo De Paiva 8028, Leblon, Rio De Janeiro - RJ, Brasil	-22,9843111	-43,2228142
+6222197	Leblon	Rua Engenheiro Cortes Sigaud 100, Leblon, Rio De Janeiro - RJ, Brasil	-22,9843965	-43,2306795
+6222089	Leblon	Rua Sambaíba 304, Leblon, Rio De Janeiro - RJ, Brasil	-22,9865329	-43,2313611
+6221759	Ipanema	Rua Gomes Carneiro 58, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9857268	-43,1962573
+6219769	Leblon	Avenida Ataulfo De Paiva 23, Leblon, Rio De Janeiro - RJ, Brasil	-22,9838208	-43,2163991
+6219636	Ipanema	Avenida Rainha Elizabeth Da Bélgica 540, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9858491	-43,1947479
+6219627	Leblon	Rua Rainha Guilhermina 156, Leblon, Rio De Janeiro - RJ, Brasil	-22,9842416	-43,226865
+6219598	Leblon	Avenida Visconde De Albuquerque 1080, Leblon, Rio De Janeiro - RJ, Brasil	-22,979943	-43,226224
+6217431	Ipanema	Rua Prudente De Morais 1565, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9853715	-43,2120116
+6197516	Ipanema	Rua Prudente De Morais 10, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9856063	-43,1966733
+6196384	Leblon	Rua Dias Ferreira 147, Leblon, Rio De Janeiro - RJ, Brasil	-22,9847267	-43,2279738
+6193257	Leblon	Rua João Líra 135, Leblon, Rio De Janeiro - RJ, Brasil	-22,9832632	-43,2228051
+6138478	Leblon	Rua Carlos Gois 99, Leblon, Rio De Janeiro - RJ, Brasil	-22,9856184	-43,219925
+6003988	Ipanema	Avenida Vieira Souto 462 Apt 303-Ao Lado, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9859271	-43,2075715
+5996798	Leblon	Rua Joao Lira 122 Apto 901, Leblon, Rio De Janeiro - RJ, Brasil	-22,9829933	-43,2223491
+5996337	Leblon	Rua Professor Saboia Ribeiro 47 701, Leblon, Rio De Janeiro - RJ, Brasil	-22,981391	-43,2201069
+5996051	Ipanema	Rua Nascimento Silva 183 204, Ipanema, Rio De Janeiro - RJ, Brasil	-22,982287	-43,2036253
+5993297	Ipanema	Avenida Rainha Elizabeth Da Blgica 463, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9862529	-43,1955717
+5993182	Leblon	Avenida Visconde De Albuquerque 1366 Por, Leblon, Rio De Janeiro - RJ, Brasil	-22,9776882	-43,2254043
+5993124	Leblon	Avenida Ataulfo De Paiva 765 304, Leblon, Rio De Janeiro - RJ, Brasil	-22,9848642	-43,2242802
+5993082	Leblon	Avenida Ataulfo De Paiva 765 304, Leblon, Rio De Janeiro - RJ, Brasil	-22,9848642	-43,2242802
+5992865	Ipanema	Rua Vincius De Moraes 111 601-Edifcio, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9839096	-43,2030323
+5990355	Ipanema	Rua Visconde De Piraj 572 Sl 601, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9834866	-43,2120193
+5989723	Ipanema	Rua Prudente De Morais 1464 501, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9848718	-43,2107602
+5987225	Ipanema	Rua Francisco Otaviano 120 Entregar Na P, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9872235	-43,1928999
+5981732	Leblon	Avenida Bartolomeu Mitre 1083 201-Em Fre, Leblon, Rio De Janeiro - RJ, Brasil	-22,9777452	-43,225006
+5978464	Leblon	Rua Cupertino Durao 121 Apto 101, Leblon, Rio De Janeiro - RJ, Brasil	-22,9829261	-43,2211236
+5969021	Ipanema	Rua Joaquim Nabuco 226 803, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9866757	-43,1948457
+5958016	Ipanema	Avenida Epitcio Pessoa 1000 Apt 102-Ed, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9811037	-43,2095828
+5865224	Leblon	Avenida Ataulfo De Paiva 280 Rio Design, Leblon, Rio De Janeiro - RJ, Brasil	-22,9836522	-43,2187473
+2158434	Leblon	Visconde De Albuquerque 1228 205, Leblon, Rio De Janeiro - RJ, Brasil	-22,9786639	-43,226079
+1421718	Ipanema	Avenida Epitácio Pessoa, 2356 - 604, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9769263	-43,1979105
+1421681	Leblon	Avenida Bartolomeu Mitre, 254 - Ap 905, Leblon, Rio De Janeiro - RJ, Brasil	-22,9845302	-43,2228094
+1421462	Ipanema	Rua Gomes Carneiro, 28 - 201, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9864665	-43,1971193
+1421262	Ipanema	Av. Rainha Elizabeth Da Bélgica 499 101, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9860013	-43,1941669
+1421216	Leblon	Rua Codajas, 151 -, Leblon, Rio De Janeiro - RJ, Brasil	-22,9821697	-43,2279464
+1420774	Ipanema	R. Barão Da Torre 583 Apto 2 (botão 2), Ipanema, Rio De Janeiro - RJ, Brasil	-22,9829327	-43,2110515
+1420643	Leblon	R. Timóteo Da Costa 600 Bloco 1 Apt 501, Leblon, Rio De Janeiro - RJ, Brasil	-22,9847027	-43,2325917
+1420617	Leblon	Rua Almirante Guilhem, 231 - 302, Leblon, Rio De Janeiro - RJ, Brasil	-22,9843382	-43,218933
+1420554	Leblon	Rua Almirante Guilhem, 262 - Apt 603, Leblon, Rio De Janeiro - RJ, Brasil	-22,984033	-43,2186545
+1420540	Ipanema	Rua Alberto De Campos, 74 - 301, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9810973	-43,200669
+1420530	Ipanema	Rua Barão De Jaguaripe, 413 - 101, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9813129	-43,2129943
+1420053	Ipanema	Rua Visconde De Pirajá, 407 - Sala 307, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9843648	-43,207459
+1419855	Leblon	Rua Timóteo Da Costa, 230 - 402, Leblon, Rio De Janeiro - RJ, Brasil	-22,9835991	-43,2312853
+1419748	Leblon	Rua Sambaíba, 380 - 203, Leblon, Rio De Janeiro - RJ, Brasil	-22,9863426	-43,2320928
+1419696	Leblon	Rua Carlos Gois, 64 - 701, Leblon, Rio De Janeiro - RJ, Brasil	-22,9858534	-43,2193633
+1419571	Ipanema	Rua Visconde De Pirajá, 592 - 802, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9835733	-43,212624
+1419451	Leblon	Rua Almirante Guilhem, 198 - Ap.201, Leblon, Rio De Janeiro - RJ, Brasil	-22,9846296	-43,2186213
+1414069	Leblon	Rua Humberto De Campos, 664 - Apto 103, Leblon, Rio De Janeiro - RJ, Brasil	-22,9818485	-43,2215676
+560997	Ipanema	Rua Prudente De Morais, 163 - 101, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9857653	-43,1983672
+560566	Leblon	Carlos Gois 219 Apto 303, Leblon, Rio De Janeiro - RJ, Brasil	-22,9845674	-43,2199893
+556162	Ipanema	Epitacio Pessoa 1000 Apt 102, Ed Lagoa, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9811037	-43,2095828
+553406	Leblon	Rua Aperana, 38 -, Leblon, Rio De Janeiro - RJ, Brasil	-22,9874449	-43,2302435
+507813	Ipanema	Rua Prudente De Morais, 1565 - 901, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9853715	-43,2120116
+219630	Leblon	Rua General Urquiza, 242 - Apto 213, Leblon, Rio De Janeiro - RJ, Brasil	-22,9807365	-43,2249425
+219356	Ipanema	Av. Rainha Elizabeth Da Belgica 499 101, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9860013	-43,1941669
+173680	Leblon	Rua Carlos Gois, 366 - 404, Leblon, Rio De Janeiro - RJ, Brasil	-22,9832261	-43,2197433
+173556	Leblon	Av. Ataulfo De Paiva 50 501 Bloco B 1, Leblon, Rio De Janeiro - RJ, Brasil	-22,9834407	-43,2166243
+163731	Ipanema	Avenida Epitácio Pessoa, 1700 - 406, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9800589	-43,2031662
+155169	Leblon	Av. Afrânio De Melo 290 Shopping Leblon, Leblon, Rio De Janeiro - RJ, Brasil	-22,9824704	-43,2168792
+152456	Leblon	R. Timóteo Da Costa 1100 Bl.04 Apto.304,, Leblon, Rio De Janeiro - RJ, Brasil	-22,9850405	-43,2346749
+78705	Ipanema	Rua Barão De Jaguaripe, 328 - 301, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9810753	-43,2107279
+45691	Ipanema	R. Nascimento Silva 4 Bloco C - Apt 1702, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9822737	-43,1993994
+44391	Ipanema	Rua Prudente De Morais, 1408 - 401, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9848904	-43,2102344
+43979	Leblon	Rua Rainha Guilhermina, 181 - Ap 604, Leblon, Rio De Janeiro - RJ, Brasil	-22,9838569	-43,2275432
+41170	Ipanema	Rua Visconde De Piraja, 365 B -, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9844268	-43,2060633
+41030	Leblon	Rua Gilberto Cardoso, 260 - 1604, Leblon, Rio De Janeiro - RJ, Brasil	-22,9796358	-43,2202245
+40894	Ipanema	Rua Alberto De Campos, 80 - 201, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9809582	-43,200949
+40707	Leblon	Rua Conde Bernadotte, 26 - 1803 Bl 2, Leblon, Rio De Janeiro - RJ, Brasil	-22,980799	-43,2229
+31959	Ipanema	Avenida Epitácio Pessoa, 1900 - 601, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9795064	-43,2013235
+31630	Leblon	Rua Professor Brandão Filho , 60 - 401, Leblon, Rio De Janeiro - RJ, Brasil	-22,9875507	-43,2315961
+29955	Ipanema	Rua Barao Da Torre, 19 - 1303, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9838607	-43,1974901
+22725	Ipanema	Rua Aníbal De Mendonça, 28 - 501, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9853784	-43,2112172
+22724	Ipanema	Rua Aníbal De Mendonça, 28 - 501, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9853784	-43,2112172
+22722	Ipanema	Rua Nascimento Silva, 262 - 401, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9819631	-43,2054082
+22719	Leblon	Rua Cupertino Durão, 45 -, Leblon, Rio De Janeiro - RJ, Brasil	-22,985332	-43,2206929
+22716	Leblon	Rua Cupertino Durão, 45 -, Leblon, Rio De Janeiro - RJ, Brasil	-22,985332	-43,2206929
+22707	Leblon	Rua General Urquiza, 161 - Body Tech, Leblon, Rio De Janeiro - RJ, Brasil	-22,9830774	-43,2246892
+22706	Ipanema	Rua Prudente De Morais, 1465 - 703, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9852553	-43,2109412
+22695	Leblon	Rua Joao Lira, 112 - 501, Leblon, Rio De Janeiro - RJ, Brasil	-22,9833043	-43,2222786
+22691	Leblon	R. Timóteo Da Costa 1100 Apt 303, Bloco, Leblon, Rio De Janeiro - RJ, Brasil	-22,9850405	-43,2346749
+22674	Leblon	R. Almirante Guilhem 421 Apt 705 Bloco 2, Leblon, Rio De Janeiro - RJ, Brasil	-22,9824697	-43,2194725
+22671	Leblon	Rua General Artigas, 383 - 202, Leblon, Rio De Janeiro - RJ, Brasil	-22,984118	-43,2263458
+22634	Leblon	Av. General San Martin 993 Apto 501, Leblon, Rio De Janeiro - RJ, Brasil	-22,9864395	-43,2256548
+22505	Ipanema	R. Desembargador Renato Tavares 14 402, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9805443	-43,2014882
+22393	Leblon	Rua José Linhares, 28 - Apto 402, Leblon, Rio De Janeiro - RJ, Brasil	-22,9858981	-43,2209331
+22338	Ipanema	Avenida Epitácio Pessoa 1116, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9810164	-43,2084004
+19519	Ipanema	Rua Barão De Jaguaripe, 55 - Apt 501, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9817704	-43,2040916
+15678	Ipanema	Avenida Epitacio Pessoa, 2160 - 203, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9786878	-43,1988559
+15038	Leblon	Rua Ministro Ramos Monteiro, 37 - 1001 A, Leblon, Rio De Janeiro - RJ, Brasil	-22,9799881	-43,2191195
+11031	Leblon	Rua Jerônimo Monteiro, 216 - 401, Leblon, Rio De Janeiro - RJ, Brasil	-22,9864282	-43,2285043
+8072	Ipanema	R. Redentor Floor Ap 197 Apartamento 501, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9823998	-43,2091136
+5881	Leblon	Av. Ataulfo De Paiva 1292 Apto 704, Leblon, Rio De Janeiro - RJ, Brasil	-22,9857715	-43,2281543
+3965	Ipanema	Avenida Epitácio Pessoa, 1000 - Apt 202, Ipanema, Rio De Janeiro - RJ, Brasil	-22,9811037	-43,2095828
+729	Leblon	Rua Dias Ferreira, 217 - 402, Leblon, Rio De Janeiro - RJ, Brasil	-22,9841907	-43,2276377

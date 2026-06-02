@@ -1,0 +1,52 @@
+google-credentials.json
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Environment files
+.env
+.env.bot_multidelivery
+.env.*
+
+# Dados locais
+gains.jsonl
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+# Node / frontend build
+webapp/dist/
+webapp/node_modules/
+
+# Backups and temp
+backups/
+*.bak
+*.tmp
+*.old
+
+# Coverage / test artifacts
+.coverage
+htmlcov/
+
+# Misc
+.pytest_cache/

@@ -1,0 +1,104 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#87CEEB;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4A90E2;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="robotGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0056B3;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#003D82;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="accentGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FF8C42;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FF6B1A;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="200" height="200" fill="url(#bgGradient)" />
+
+  <!-- Robot Group -->
+  <g transform="translate(100, 100)">
+    
+    <!-- Head Base (Corpo azul) -->
+    <rect x="-28" y="-35" width="56" height="50" rx="12" fill="url(#robotGradient)" stroke="#003D82" stroke-width="2"/>
+    
+    <!-- Cap/Visor (Laranja) -->
+    <ellipse cx="0" cy="-38" rx="32" ry="18" fill="url(#accentGradient)" stroke="#FF6B1A" stroke-width="1.5"/>
+    <path d="M -20 -32 Q 0 -38 20 -32" fill="url(#accentGradient)" stroke="#FF6B1A" stroke-width="1.5"/>
+    
+    <!-- Visor Screen (Tela com olhos) -->
+    <rect x="-18" y="-28" width="36" height="24" rx="4" fill="#001A4D" stroke="#00D4FF" stroke-width="1"/>
+    
+    <!-- Eyes (Amarelo) -->
+    <circle cx="-8" cy="-18" r="3" fill="#FFD700"/>
+    <circle cx="8" cy="-18" r="3" fill="#FFD700"/>
+    
+    <!-- Smile -->
+    <path d="M -8 -12 Q 0 -8 8 -12" stroke="#FFD700" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+    
+    <!-- Headphones Left -->
+    <circle cx="-32" cy="-20" r="6" fill="url(#robotGradient)" stroke="#FF8C42" stroke-width="2"/>
+    <path d="M -32 -14 Q -40 -10 -42 0" stroke="#FF8C42" stroke-width="3" fill="none" stroke-linecap="round"/>
+    
+    <!-- Headphones Right -->
+    <circle cx="32" cy="-20" r="6" fill="url(#robotGradient)" stroke="#FF8C42" stroke-width="2"/>
+    <path d="M 32 -14 Q 40 -10 42 0" stroke="#FF8C42" stroke-width="3" fill="none" stroke-linecap="round"/>
+    
+    <!-- Body (Azul escuro) -->
+    <rect x="-24" y="0" width="48" height="45" rx="8" fill="url(#robotGradient)" stroke="#003D82" stroke-width="2"/>
+    
+    <!-- Chest Accent (Laranja) -->
+    <rect x="-16" y="8" width="32" height="28" rx="6" fill="none" stroke="url(#accentGradient)" stroke-width="2" opacity="0.7"/>
+    
+    <!-- ROTA IA Badge -->
+    <rect x="-14" y="15" width="28" height="18" rx="4" fill="#FF8C42" stroke="#FF6B1A" stroke-width="1"/>
+    <text x="0" y="26" font-family="Arial, sans-serif" font-size="8" font-weight="bold" fill="white" text-anchor="middle" letter-spacing="1">ROTA IA</text>
+    
+    <!-- Left Arm (Laranja) -->
+    <g>
+      <rect x="-28" y="5" width="8" height="35" rx="4" fill="url(#accentGradient)" stroke="#FF6B1A" stroke-width="1.5"/>
+      <!-- Hand -->
+      <circle cx="-24" cy="42" r="7" fill="url(#accentGradient)" stroke="#FF6B1A" stroke-width="1.5"/>
+      <!-- Thumb -->
+      <ellipse cx="-18" cy="40" rx="5" ry="6" fill="url(#accentGradient)" stroke="#FF6B1A" stroke-width="1"/>
+    </g>
+    
+    <!-- Right Arm (Azul) -->
+    <g>
+      <rect x="20" y="5" width="8" height="35" rx="4" fill="url(#robotGradient)" stroke="#003D82" stroke-width="1.5"/>
+      <!-- Hand holding map -->
+      <rect x="18" y="35" width="14" height="18" rx="2" fill="#4DD0E1" stroke="#00D4FF" stroke-width="1.5"/>
+      <!-- Map lines -->
+      <line x1="22" y1="40" x2="28" y2="45" stroke="#00D4FF" stroke-width="0.8"/>
+      <line x1="22" y1="48" x2="28" y2="42" stroke="#00D4FF" stroke-width="0.8"/>
+      <circle cx="25" cy="37" r="2" fill="#FF4081"/>
+    </g>
+    
+    <!-- Legs (Azul) -->
+    <rect x="-12" y="48" width="6" height="24" rx="3" fill="url(#robotGradient)" stroke="#003D82" stroke-width="1"/>
+    <rect x="6" y="48" width="6" height="24" rx="3" fill="url(#robotGradient)" stroke="#003D82" stroke-width="1"/>
+    
+    <!-- Feet (Laranja) -->
+    <ellipse cx="-9" cy="74" rx="6" ry="4" fill="url(#accentGradient)" stroke="#FF6B1A" stroke-width="1"/>
+    <ellipse cx="9" cy="74" rx="6" ry="4" fill="url(#accentGradient)" stroke="#FF6B1A" stroke-width="1"/>
+  </g>
+
+  <!-- Floating Elements -->
+  <!-- Location Pin -->
+  <g transform="translate(35, 55)">
+    <path d="M 0 0 C -8 -8 -12 -14 -12 -18 C -12 -23.5 -8 -28 0 -28 C 8 -28 12 -23.5 12 -18 C 12 -14 8 -8 0 0 Z" fill="#FF6B1A" stroke="#FF4D1A" stroke-width="1"/>
+    <circle cx="0" cy="-18" r="3" fill="white"/>
+  </g>
+
+  <!-- Checkmark -->
+  <g transform="translate(155, 65)">
+    <circle cx="0" cy="0" r="12" fill="#10B981" stroke="#059669" stroke-width="2"/>
+    <path d="M -5 2 L -1 6 L 6 -2" stroke="white" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <!-- Lightning Bolt -->
+  <g transform="translate(145, 35)">
+    <path d="M 0 -8 L 3 -2 L -2 -2 L 2 8 L -4 2 L 2 2 Z" fill="#FFD700" stroke="#FFA500" stroke-width="0.8"/>
+  </g>
+</svg>

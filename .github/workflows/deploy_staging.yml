@@ -1,0 +1,51 @@
+name: Deploy Staging
+
+on:
+  push:
+    branches: [ feat/reoptimize-preserve-ci, main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node (railway CLI)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Install Railway CLI
+        run: |
+          npm install -g @railway/cli
+      - name: Login to Railway
+        env:
+          RAILWAY_API_KEY: ${{ secrets.RAILWAY_API_KEY }}
+        run: |
+          railway login --apiKey $RAILWAY_API_KEY || true
+      - name: Deploy to Railway (staging)
+        env:
+          RAILWAY_API_KEY: ${{ secrets.RAILWAY_API_KEY }}
+          RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
+          RAILWAY_ENVIRONMENT_ID: ${{ secrets.RAILWAY_ENVIRONMENT_ID }}
+        run: |
+          # Link project (optional) and deploy
+          railway up --projectId $RAILWAY_PROJECT_ID --environmentId $RAILWAY_ENVIRONMENT_ID --yes || true
+      - name: Wait for app to be reachable
+        env:
+          WEBAPP_URL: ${{ secrets.WEBAPP_URL }}
+        run: |
+          echo "Checking $WEBAPP_URL"
+          for i in {1..20}; do
+            status=$(curl -s -o /dev/null -w "%{http_code}" "$WEBAPP_URL/health" || true)
+            echo "attempt $i -> $status"
+            if [ "$status" = "200" ]; then
+              echo "App is up"
+              exit 0
+            fi
+            sleep 6
+          done
+          echo "App did not become healthy" && exit 1
+      - name: Run smoke probe
+        env:
+          WEBAPP_URL: ${{ secrets.WEBAPP_URL }}
+        run: |
+          python3 scripts/e2e_smoke_probe.py || true

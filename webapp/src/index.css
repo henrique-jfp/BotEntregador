@@ -1,0 +1,651 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap');
+html, body {
+  overflow-x: hidden;
+}
+/* ========================================
+   🖥️ CONTAINER RESPONSIVO UNIVERSAL
+   ======================================== */
+.container-responsive {
+  @apply w-full max-w-4xl mx-auto px-4 sm:px-6 md:px-8;
+}
+
+/* ========================================
+   📐 FONTES E ESPAÇAMENTOS ADAPTATIVOS
+   ======================================== */
+.text-responsive {
+  @apply text-base sm:text-lg md:text-xl;
+}
+.p-responsive {
+  @apply p-4 sm:p-6 md:p-8;
+}
+/* ========================================
+   📊 TABELAS E LISTAS FLUIDAS
+   ======================================== */
+.table-responsive, .list-responsive {
+  @apply w-full overflow-x-auto;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ========================================
+   🎨 BOT ENTREGADOR - DESIGN SYSTEM v3.0
+   Sistema de Design Premium Enterprise
+   ======================================== */
+
+:root {
+  /* 🎨 Paleta Principal */
+  --color-primary-50: #f5f3ff;
+  --color-primary-100: #ede9fe;
+  --color-primary-200: #ddd6fe;
+  --color-primary-300: #c4b5fd;
+  --color-primary-400: #a78bfa;
+  --color-primary-500: #8b5cf6;
+  --color-primary-600: #7c3aed;
+  --color-primary-700: #6d28d9;
+  --color-primary-800: #5b21b6;
+  --color-primary-900: #4c1d95;
+  
+  /* ✅ Cores Semânticas */
+  --color-success: #10b981;
+  --color-success-light: #d1fae5;
+  --color-success-dark: #059669;
+  
+  --color-danger: #ef4444;
+  --color-danger-light: #fee2e2;
+  --color-danger-dark: #dc2626;
+  
+  --color-warning: #f59e0b;
+  --color-warning-light: #fef3c7;
+  --color-warning-dark: #d97706;
+  
+  --color-info: #3b82f6;
+  --color-info-light: #dbeafe;
+  --color-info-dark: #2563eb;
+  
+  /* 📐 Espaçamentos Consistentes */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
+  
+  /* 🔲 Border Radius Padronizados */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.5rem;
+  --radius-full: 9999px;
+  
+  /* 📏 Tap Targets - Mínimo 48px para mobile */
+  --tap-target-min: 48px;
+  --button-height-sm: 40px;
+  --button-height-md: 48px;
+  --button-height-lg: 56px;
+  
+  /* 🎭 Sombras Hierárquicas */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-glow-primary: 0 0 20px rgba(124, 58, 237, 0.3);
+  --shadow-glow-success: 0 0 20px rgba(16, 185, 129, 0.3);
+  
+  /* ⏱️ Transições */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@layer base {
+  * {
+    @apply antialiased;
+  }
+
+  body {
+    @apply bg-gradient-to-br from-gray-50 via-white to-gray-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950;
+    @apply text-gray-900 dark:text-gray-50;
+    @apply font-sans;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Tipografia Profissional */
+  code, pre, .mono {
+    @apply font-mono;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  
+  /* Links acessíveis */
+  a:focus-visible, button:focus-visible {
+    @apply outline-none ring-2 ring-primary-500 ring-offset-2;
+  }
+}
+
+@layer components {
+  /* ========================================
+     🧱 COMPONENTES ENTERPRISE
+     ======================================== */
+  
+  /* Glass Effect Components */
+  .glass {
+    @apply bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border border-white/20 dark:border-gray-700/50;
+  }
+
+  .glass-strong {
+    @apply bg-white/95 dark:bg-gray-800/95 backdrop-blur-2xl;
+  }
+
+  /* Card Premium - Hierarquia Visual Consistente */
+  .card-premium {
+    @apply bg-white dark:bg-gray-800 rounded-2xl;
+    @apply shadow-md hover:shadow-lg;
+    @apply border border-gray-100 dark:border-gray-700/50;
+    @apply transition-all duration-200;
+  }
+
+  .card-premium:hover {
+    @apply -translate-y-0.5;
+  }
+  
+  .card-premium-interactive {
+    @apply card-premium cursor-pointer;
+    @apply hover:border-primary-200 dark:hover:border-primary-700;
+    @apply active:scale-[0.98];
+  }
+
+  /* Gradientes Premium */
+  .gradient-primary {
+    @apply bg-gradient-to-br from-primary-600 via-primary-500 to-purple-600;
+  }
+
+  .gradient-success {
+    @apply bg-gradient-to-br from-emerald-500 via-green-500 to-teal-600;
+  }
+
+  .gradient-dark {
+    @apply bg-gradient-to-br from-gray-900 via-gray-800 to-slate-900;
+  }
+  
+  .gradient-info {
+    @apply bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600;
+  }
+
+  /* ========================================
+     🔘 BOTÕES - SISTEMA HIERÁRQUICO
+     ======================================== */
+  
+  /* Botão Primário - Ações principais */
+  .btn-primary {
+    @apply bg-gradient-to-r from-primary-600 to-purple-600 text-white font-semibold;
+    @apply px-6 py-3 rounded-xl;
+    @apply shadow-lg shadow-primary-500/25;
+    @apply transition-all duration-200;
+    @apply active:scale-95 hover:shadow-xl hover:shadow-primary-500/30;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-lg disabled:active:scale-100;
+    min-height: var(--button-height-md);
+  }
+  
+  /* Botão de Sucesso - Confirmações */
+  .btn-success {
+    @apply bg-gradient-to-r from-emerald-500 to-green-600 text-white font-semibold;
+    @apply px-6 py-3 rounded-xl;
+    @apply shadow-lg shadow-emerald-500/25;
+    @apply transition-all duration-200;
+    @apply active:scale-95 hover:shadow-xl hover:shadow-emerald-500/30;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed;
+    min-height: var(--button-height-md);
+  }
+  
+  /* Botão de Perigo - Exclusões/Cancelamentos */
+  .btn-danger {
+    @apply bg-gradient-to-r from-red-500 to-rose-600 text-white font-semibold;
+    @apply px-6 py-3 rounded-xl;
+    @apply shadow-lg shadow-red-500/25;
+    @apply transition-all duration-200;
+    @apply active:scale-95 hover:shadow-xl hover:shadow-red-500/30;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed;
+    min-height: var(--button-height-md);
+  }
+  
+  /* Botão Danger Outline - Menos destaque */
+  .btn-danger-outline {
+    @apply bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 font-semibold;
+    @apply border-2 border-red-200 dark:border-red-800;
+    @apply px-6 py-3 rounded-xl;
+    @apply transition-all duration-200;
+    @apply active:scale-95 hover:bg-red-100 dark:hover:bg-red-900/40;
+    min-height: var(--button-height-md);
+  }
+
+  .btn-ghost {
+    @apply bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200;
+    @apply px-5 py-2.5 rounded-xl font-medium;
+    @apply transition-all duration-200 active:scale-95;
+    @apply hover:bg-gray-200 dark:hover:bg-gray-700;
+    min-height: var(--button-height-md);
+  }
+  
+  /* Botão Secundário - Ações secundárias */
+  .btn-secondary {
+    @apply bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 font-semibold;
+    @apply border-2 border-gray-200 dark:border-gray-700;
+    @apply px-6 py-3 rounded-xl;
+    @apply transition-all duration-200;
+    @apply active:scale-95 hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-gray-300 dark:hover:border-gray-600;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed;
+    min-height: var(--button-height-md);
+  }
+
+  /* Badge Premium */
+  .badge {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold;
+    @apply border backdrop-blur-sm;
+  }
+
+  .badge-success {
+    @apply bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20;
+  }
+
+  .badge-warning {
+    @apply bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-500/20;
+  }
+
+  .badge-info {
+    @apply bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20;
+  }
+  
+  .badge-danger {
+    @apply bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20;
+  }
+
+  /* Skeleton Loading Premium */
+  .skeleton {
+    @apply bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 dark:from-gray-800 dark:via-gray-700 dark:to-gray-800;
+    @apply animate-pulse rounded-lg;
+  }
+
+  /* Input Premium */
+  .input-premium {
+    @apply w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-gray-700;
+    @apply bg-white dark:bg-gray-800 text-gray-900 dark:text-white;
+    @apply focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10;
+    @apply transition-all duration-200 outline-none;
+    @apply placeholder:text-gray-400 dark:placeholder:text-gray-500;
+    font-family: 'JetBrains Mono', monospace;
+    min-height: var(--button-height-md);
+  }
+
+  /* Divider Elegante */
+  .divider {
+    @apply border-t border-gray-200/60 dark:border-gray-700/60;
+  }
+
+  /* Bottom Sheet */
+  .bottom-sheet {
+    @apply fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-3xl;
+    @apply shadow-2xl z-40;
+    @apply transition-all duration-300;
+  }
+
+  /* Progress Bar */
+  .progress-bar {
+    @apply fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary-500 via-purple-500 to-primary-500;
+    @apply shadow-lg shadow-primary-500/50;
+    @apply z-50;
+  }
+
+  .progress-bar::after {
+    content: '';
+    @apply absolute inset-0 bg-white/20 blur-lg;
+    @apply animate-pulse;
+  }
+  
+  /* ========================================
+     📭 ESTADOS VAZIOS - EMPTY STATES
+     ======================================== */
+  
+  .empty-state {
+    @apply flex flex-col items-center justify-center py-12 px-6 text-center;
+  }
+  
+  .empty-state-icon {
+    @apply w-20 h-20 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-50 dark:from-gray-800 dark:to-gray-700;
+    @apply flex items-center justify-center mb-4;
+    @apply shadow-inner;
+  }
+  
+  .empty-state-title {
+    @apply text-lg font-bold text-gray-900 dark:text-white mb-2;
+  }
+  
+  .empty-state-description {
+    @apply text-sm text-gray-500 dark:text-gray-400 max-w-xs mb-6;
+  }
+  
+  /* ========================================
+     👆 LISTA INTERATIVA - CLICÁVEL
+     ======================================== */
+  
+  .list-item-interactive {
+    @apply flex items-center gap-4 p-4 rounded-xl;
+    @apply bg-white dark:bg-gray-800;
+    @apply border border-gray-100 dark:border-gray-700;
+    @apply cursor-pointer transition-all duration-200;
+    @apply hover:bg-gray-50 dark:hover:bg-gray-700/50;
+    @apply hover:border-primary-200 dark:hover:border-primary-700;
+    @apply active:scale-[0.99];
+  }
+  
+  .list-item-interactive:hover .list-item-arrow {
+    @apply translate-x-1 text-primary-500;
+  }
+  
+  .list-item-arrow {
+    @apply text-gray-400 transition-all duration-200;
+  }
+}
+
+@layer utilities {
+  /* Safe area padding for mobile notches */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  /* Text Gradient */
+  .text-gradient {
+    @apply bg-gradient-to-r from-primary-600 to-purple-600 bg-clip-text text-transparent;
+  }
+
+  /* Animações Suaves */
+  .transition-smooth {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Glow Effect */
+  .glow-primary {
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+  }
+
+  .glow-success {
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+  }
+
+  /* Scrollbar Premium */
+  .scrollbar-premium::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-premium::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  .scrollbar-premium::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 dark:bg-gray-600 rounded-full;
+  }
+
+  .scrollbar-premium::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-400 dark:bg-gray-500;
+  }
+
+  /* Mono Font Utility */
+  .font-mono-lg {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.125rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+
+  .font-mono-sm {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  /* Numeric Precision Style */
+  .numeric {
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* ========================================
+   📱 MOBILE OPTIMIZATIONS
+   ======================================== */
+
+@media (max-width: 640px) {
+  body {
+    font-size: 15px;
+  }
+
+  .bottom-sheet {
+    @apply max-h-screen;
+  }
+}
+
+/* ========================================
+   🌙 DARK MODE REFINEMENTS
+   ======================================== */
+
+.dark {
+  color-scheme: dark;
+}
+
+* {
+  @apply transition-colors duration-200;
+}
+
+/* ========================================
+   ⚡ ANIMATIONS ENHANCED
+   ======================================== */
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+  }
+  50% {
+    opacity: 0.8;
+    box-shadow: 0 0 40px rgba(139, 92, 246, 0.5);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse-soft {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}
+
+.animate-glow-pulse {
+  animation: glow-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out forwards;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.4s ease-out forwards;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.2s ease-out forwards;
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+
+/* Map Container Styles */
+.map-container {
+  @apply rounded-none border-0;
+}
+
+.custom-marker {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+.custom-marker-start {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.custom-marker-end {
+  animation: bounce 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.custom-popup {
+  @apply rounded-xl !important;
+}
+
+.custom-popup .leaflet-popup-content {
+  @apply rounded-xl !important;
+  margin: 0 !important;
+}
+
+.custom-popup .leaflet-popup-content-wrapper {
+  @apply rounded-xl !important;
+  border-radius: 0.75rem !important;
+}
+
+.custom-popup .leaflet-popup-tip {
+  background: white;
+}
+
+.dark .custom-popup .leaflet-popup-tip {
+  background: #1f2937;
+}
+/* ========================================
+   📷 CAMERA SCANNER - Custom Styles
+   Esconde a UI padrão do html5-qrcode
+   ======================================== */
+
+/* Container principal do scanner */
+#camera-reader {
+  position: relative !important;
+  width: 100% !important;
+  height: 100% !important;
+  border: none !important;
+  background: #000 !important;
+}
+
+/* Video element - fullscreen */
+#camera-reader video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  border-radius: 0 !important;
+}
+
+/* Esconde TODOS os elementos de UI padrão */
+#camera-reader > div:not(:first-child),
+#camera-reader__header_message,
+#camera-reader__dashboard,
+#camera-reader__dashboard_section,
+#camera-reader__dashboard_section_csr,
+#camera-reader__dashboard_section_fsr,
+#camera-reader__status_span,
+#camera-reader__scan_region > br,
+#camera-reader img[alt="Info icon"],
+#html5-qrcode-anchor-scan-type-change,
+#html5-qrcode-button-camera-permission,
+#html5-qrcode-button-camera-start,
+#html5-qrcode-button-camera-stop,
+#html5-qrcode-button-file-selection,
+#html5-qrcode-select-camera,
+#camera-reader select,
+#camera-reader button,
+#camera-reader span,
+#camera-reader a {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Mantém visível apenas o video e scan region */
+#camera-reader > div:first-child,
+#camera-reader video,
+#camera-reader__scan_region,
+#camera-reader__scan_region video {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Scan region */
+#camera-reader__scan_region {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 100% !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+/* QR Box (área de scan) - escondemos para usar nosso próprio overlay */
+#camera-reader__scan_region > img,
+#camera-reader .qr-shaded,
+#camera-reader [style*="border"] {
+  display: none !important;
+}
