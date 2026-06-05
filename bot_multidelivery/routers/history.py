@@ -25,6 +25,17 @@ async def list_history_sessions(limit: int = 100):
     result = []
     for s in sessions[:limit]:
         is_completed = bool(s.is_finalized)
+        
+        # Determinar status detalhado
+        if is_completed:
+            status = "completed"
+        elif s.total_packages == 0:
+            status = "empty"
+        elif s.current_step == "separating":
+            status = "separating"
+        else:
+            status = "active"
+
         result.append({
             "id": s.session_id,
             "session_name": s.session_name,
@@ -33,8 +44,11 @@ async def list_history_sessions(limit: int = 100):
             "addresses_count": s.total_packages,
             "deliverers_count": s.num_deliverers or len(s.routes or []),
             "financials": None,
-            "statistics": None,
-            "status": "completed" if is_completed else "active",
+            "statistics": {
+                "step": s.current_step,
+                "is_finalized": is_completed
+            },
+            "status": status,
             "last_updated": (s.finalized_at or s.created_at).isoformat() if (s.finalized_at or s.created_at) else None,
             "is_completed": is_completed
         })
