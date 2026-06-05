@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { 
   Package, Truck, Barcode, Play, Flag, Camera, Keyboard, RotateCcw,
-  AlertCircle, Loader2, Wifi, WifiOff, X, SwitchCamera, Zap, CloudSync
+  AlertCircle, Loader2, Wifi, WifiOff, X, SwitchCamera, Zap, RefreshCw
 } from 'lucide-react';
 import { fetchSafe } from './api_client';
 import { addScanToQueue, getPendingScans, removeScanFromQueue } from './lib/offlineQueue';
@@ -405,7 +405,7 @@ export default function SeparationMode() {
               
               {pendingScans.length > 0 && (
                 <div className="flex items-center gap-1 px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-full text-[10px] font-bold animate-pulse">
-                  <CloudSync size={10} className={isSyncing ? 'animate-spin' : ''} />
+                  <RefreshCw size={10} className={isSyncing ? 'animate-spin' : ''} />
                   {pendingScans.length} PENDENTE{pendingScans.length > 1 ? 'S' : ''}
                 </div>
               )}

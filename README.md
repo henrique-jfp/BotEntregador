@@ -98,16 +98,18 @@ Solução enterprise-grade para gestão completa de operações logísticas, des
 - 📱 Notificação automática via Telegram
 - 🚀 Rota fica disponível instantaneamente no app do entregador
 
-#### **3. Separação com Scanner**
+#### **3. Separação com Scanner & Resiliência Offline**
 - 📷 Scanner de código de barras (câmera ou leitor USB)
 - ⚡ Resposta instantânea: **"ROTA AZUL - PARADA 12"**
+- 📶 **Modo Offline (Novo)**: Se a internet cair, os bipes são salvos no **IndexedDB** local e sincronizados automaticamente ao reconectar.
 - 🎯 Feedback por cor para separação física
 - 📊 Progresso em tempo real por rota
 - ✅ Som e vibração de confirmação
 
-#### **4. Mapa em Tempo Real (WebSocket)**
+#### **4. Mapa em Tempo Real (WebSocket Auto-Curável)**
 - 🗺️ **Todas as rotas no mesmo mapa** com cores únicas
 - 🟢 **Indicador de Conexão**: 🟢 Ao vivo | 🔴 Desconectado
+- 🔄 **Auto-Cura (Novo)**: Reconexão automática com *Exponential Backoff* e ressincronização total de estado ao reconectar.
 - ⚡ **Zero delay**: Pontos viram verdes instantaneamente quando entregador confirma
 - 📊 **Legenda de Rotas**: Cada cor + entregador + progresso (X/Y - Z%)
 - 🎯 **Filtros**: Ver apenas rota específica
@@ -154,7 +156,7 @@ graph TB
         B -->|HTTPS REST| D[FastAPI Server]
         B -->|WebSocket WSS| D
         A -->|Bot Commands| E[Telegram Bot]
-        E -->|Polling| D
+        E -->|Webhook/Push| D
     end
     
     subgraph "Backend Layer"
@@ -309,7 +311,12 @@ Crie o arquivo `.env` na raiz com:
 
 ```bash
 TELEGRAM_BOT_TOKEN="SEU_TOKEN_AQUI"
-TELEGRAM_WEBAPP_URL="http://localhost:5173"
+# URL Pública (essencial para Webhook)
+WEBAPP_URL="https://seu-subdominio.ngrok-free.app" 
+# Modo Webhook (1 para sim, 0 para polling local)
+TELEGRAM_WEBHOOK_ENABLED="1"
+TELEGRAM_WEBHOOK_SECRET="chave-secreta-para-validar-telegram"
+
 DATABASE_URL="postgresql://postgres:sua_senha@localhost:5432/entregador_dev"
 LOCATIONIQ_API_KEY="pk.SEU_TOKEN"
 GEOAPIFY_API_KEY="SEU_TOKEN"
@@ -525,7 +532,15 @@ DEBUG=False
 
 ## 📝 Histórico de Mudanças Recentes
 
-### ✅ Versão 2.0 - Real-Time Architecture (Atual)
+### 📅 Versão 2.1 - Estabilização & Resiliência (Atual)
+
+**🚀 Features**
+- [x] **PostgreSQL Core**: Geocoding e Sessões agora persistem 100% no banco de dados (adeus arquivos JSON efêmeros).
+- [x] **Telegram Webhooks**: Migração de Polling para Webhook via FastAPI Lifespan (Padrão Ouro Railway).
+- [x] **Offline Separation**: Suporte a bipes offline via IndexedDB com sincronização em background.
+- [x] **WebSocket Auto-Cura**: Reconexão inteligente com ressincronização automática de estado.
+
+### ✅ Versão 2.0 - Real-Time Architecture
 
 **🚀 Features**
 - [x] **WebSocket Real-Time Map**: Mapa administrativo com atualizações ao vivo via WebSocket
