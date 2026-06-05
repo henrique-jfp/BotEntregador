@@ -4,7 +4,7 @@ Define estruturas de dados escaláveis
 """
 
 from dataclasses import dataclass, field
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 # --- MODELOS DE ENTREGA E CLUSTERIZAÇÃO ---
 @dataclass
