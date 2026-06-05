@@ -43,7 +43,6 @@ async def list_history_sessions(limit: int = 100):
             "completed_at": s.finalized_at.isoformat() if s.finalized_at else None,
             "addresses_count": s.total_packages,
             "deliverers_count": s.num_deliverers or len(s.routes or []),
-            "financials": None,
             "statistics": {
                 "step": s.current_step,
                 "is_finalized": is_completed

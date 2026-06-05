@@ -715,10 +715,6 @@ function App() {
       )
     }
     
-    if (activeTab === 'closure') {
-      return <FinancialClosureView />
-    }
-    
     if (activeTab === 'team') {
         return <TeamView />;
     }

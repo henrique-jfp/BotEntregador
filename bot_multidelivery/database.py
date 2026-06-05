@@ -23,10 +23,8 @@ class DelivererDB(Base):
     name = Column(String(100), nullable=False)
     is_partner = Column(Boolean, default=False)
     max_capacity = Column(Integer, default=50)
-    cost_per_package = Column(Float, default=1.0)
     is_active = Column(Boolean, default=True)
     total_deliveries = Column(Integer, default=0)
-    total_earnings = Column(Float, default=0.0)
     success_rate = Column(Float, default=100.0)
     average_delivery_time = Column(Float, default=0.0)
     joined_date = Column(DateTime, default=datetime.now)
@@ -131,17 +129,6 @@ class BotConfigDB(Base):
     value = Column(Text)
     value_type = Column(String(20))
     description = Column(Text)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
-
-class BankCredentialDB(Base):
-    """Tabela de credenciais bancárias (singleton, encrypted)"""
-    __tablename__ = 'bank_credentials'
-    
-    id = Column(Integer, primary_key=True, default=1)
-    bank_name = Column(String(50), nullable=False)
-    account_number = Column(String(50))
-    certificate_data = Column(Text)
-    key_data = Column(Text)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
 

@@ -390,36 +390,6 @@ const HistoryView = () => {
                 {/* Expanded Content */}
                 {expandedSession === session.id && (
                   <div className="border-t dark:border-gray-700 p-6 bg-gray-50 dark:bg-gray-700/30">
-                    {/* Financeiro */}
-                    {session.financials && (
-                      <div className="mb-6">
-                        <h4 className="font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                          <DollarSign className="w-5 h-5" />
-                          Resumo Financeiro
-                        </h4>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg table-responsive">
-                            <p className="text-gray-500 dark:text-gray-400 text-sm">Lucro Total</p>
-                            <p className="text-2xl font-bold text-green-600">
-                              {formatCurrency(session.financials.total_profit)}
-                            </p>
-                          </div>
-                          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg table-responsive">
-                            <p className="text-gray-500 dark:text-gray-400 text-sm">Custos</p>
-                            <p className="text-2xl font-bold text-red-600">
-                              {formatCurrency(session.financials.total_cost)}
-                            </p>
-                          </div>
-                          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg table-responsive">
-                            <p className="text-gray-500 dark:text-gray-400 text-sm">Salários</p>
-                            <p className="text-2xl font-bold text-blue-600">
-                              {formatCurrency(session.financials.total_salary)}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
                     {/* Estatísticas */}
                     {session.statistics && Object.keys(session.statistics).length > 0 && (
                       <div className="mb-6">

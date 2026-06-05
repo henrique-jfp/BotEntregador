@@ -184,8 +184,7 @@ async def complete_session(
     
     return {
         "success": True,
-        "message": "Sessão finalizada e arquivada!",
-        "financial_snapshot": result["financial_snapshot"]
+        "message": "Sessão finalizada e arquivada!"
     }
 
 
@@ -355,12 +354,6 @@ async def get_session_dashboard(
             "pending": pending,
             "total": len(packages),
             "percentage": round(progress, 2)
-        },
-        "financial": {
-            "revenue": financial["total_revenue"],
-            "cost": financial["total_cost"],
-            "profit": financial["total_profit"],
-            "deliverers_paid": sum(d["total_earned"] for d in deliverers)
         },
         "deliverers_count": len(deliverers),
         "is_readonly": session_data["session"]["is_readonly"],

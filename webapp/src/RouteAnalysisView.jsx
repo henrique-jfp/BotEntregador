@@ -682,22 +682,18 @@ Rua General Polidoro, 322, 301
                   ? 'from-yellow-500 to-orange-600'
                   : 'from-red-500 to-pink-600'
               }`}>
-                <div className={`grid gap-4 ${responsive.isDesktop ? 'grid-cols-4' : 'grid-cols-2'}`}>
+                <div className={`grid gap-4 ${responsive.isDesktop ? 'grid-cols-3' : 'grid-cols-1'}`}>
                   <div>
-                    <p className="text-sm opacity-80">Valor</p>
-                    <p className="text-2xl font-bold">{simpleAnalysis.header?.['💰 VALOR']}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm opacity-80">Tipo</p>
+                    <p className="text-sm opacity-80">Tipo de Rota</p>
                     <p className={`font-bold ${String(simpleAnalysis.header?.['⭐ TIPO'] || '').length > 10 ? 'text-xl' : 'text-2xl'}`}>{simpleAnalysis.header?.['⭐ TIPO']}</p>
                   </div>
                   <div>
-                    <p className="text-sm opacity-80">Score</p>
+                    <p className="text-sm opacity-80">Score Logístico</p>
                     <p className="text-3xl font-bold">{simpleAnalysis.header?.['📊 SCORE']}</p>
                   </div>
                   <div>
-                    <p className="text-sm opacity-80">Ganho/hora</p>
-                    <p className="text-2xl font-bold">{simpleAnalysis.financial?.hourly}</p>
+                    <p className="text-sm opacity-80">Tempo Estimado</p>
+                    <p className="text-2xl font-bold">{simpleAnalysis.metrics?.estimated_time || '---'}</p>
                   </div>
                 </div>
                 <p className="mt-4 text-sm font-semibold">{simpleAnalysis.header?.['✅ RECOMENDAÇÃO']}</p>
@@ -1014,36 +1010,17 @@ Rua General Polidoro, 322, 301
                     Análise da Sessão
                   </h4>
 
-                  <div className={`grid gap-3 ${responsive.isDesktop ? 'grid-cols-4' : 'grid-cols-2'}`}>
-                    <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg text-center">
-                      <p className="text-xs text-gray-500 uppercase">Valor</p>
-                      <p className="font-bold text-gray-900 dark:text-white text-lg">{importAnalysis.formatted.header?.value}</p>
-                    </div>
+                  <div className={`grid gap-3 ${responsive.isDesktop ? 'grid-cols-3' : 'grid-cols-2'}`}>
                     <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg text-center">
                       <p className="text-xs text-gray-500 uppercase">Tipo</p>
                       <p className="font-bold text-gray-900 dark:text-white text-lg">{importAnalysis.formatted.header?.type}</p>
                     </div>
                     <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg text-center">
-                      <p className="text-xs text-gray-500 uppercase">Score</p>
+                      <p className="text-xs text-gray-500 uppercase">Score Logístico</p>
                       <p className="font-bold text-gray-900 dark:text-white text-2xl text-blue-600">{importAnalysis.formatted.header?.score}</p>
                     </div>
                     <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg text-center">
-                      <p className="text-xs text-gray-500 uppercase">Status</p>
-                      <p className="font-bold text-gray-900 dark:text-white text-sm">{importAnalysis.formatted.header?.recommendation}</p>
-                    </div>
-                  </div>
-
-                  <div className={`grid gap-3 ${responsive.isDesktop ? 'grid-cols-4' : 'grid-cols-2'}`}>
-                    <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
-                      <p className="text-xs text-blue-600 font-bold">Ganho/Hora</p>
-                      <p className="font-bold text-gray-900 dark:text-white">{importAnalysis.formatted.earnings?.hourly}</p>
-                    </div>
-                    <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
-                      <p className="text-xs text-blue-600 font-bold">Ganho/Pct</p>
-                      <p className="font-bold text-gray-900 dark:text-white">{importAnalysis.formatted.earnings?.package}</p>
-                    </div>
-                    <div className={`bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg ${responsive.isDesktop ? 'col-span-2' : 'col-span-2'}`}>
-                      <p className="text-xs text-blue-600 font-bold">Tempo Total Est.</p>
+                      <p className="text-xs text-gray-500 uppercase">Tempo Total Est.</p>
                       <p className="font-bold text-gray-900 dark:text-white">{importAnalysis.formatted.earnings?.time_estimate}</p>
                     </div>
                   </div>
