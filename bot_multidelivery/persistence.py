@@ -8,7 +8,7 @@ import os
 from datetime import datetime, timedelta
 from typing import List, Optional, Dict
 from pathlib import Path
-from .models import Package, Deliverer, FinancialReport, PerformanceMetrics, PaymentRecord
+from .models import Package, Deliverer
 
 try:
     from .database import db_manager, DelivererDB, RouteDB, PackageDB
@@ -28,24 +28,23 @@ class DataStore:
         # Diretórios específicos
         self.deliverers_file = self.data_dir / "deliverers.json"
         self.packages_file = self.data_dir / "packages.jsonl"
-        self.reports_dir = self.data_dir / "reports"
-        self.payments_dir = self.data_dir / "payments"
-        
-        self.reports_dir.mkdir(exist_ok=True)
-        self.payments_dir.mkdir(exist_ok=True)
         
         # Indica se está usando database ou JSON
         self.using_database = HAS_DATABASE
         if self.using_database:
-            print("\n" + "="*50)
+            print("
+" + "="*50)
             print("DataStore usando PostgreSQL")
             print("Entregadores serao salvos permanentemente")
-            print("="*50 + "\n")
+            print("="*50 + "
+")
         else:
-            print("\n" + "="*50)
+            print("
+" + "="*50)
             print("DataStore usando JSON local")
             print("AVISO: Dados em data/deliverers.json (temporario)")
-            print("="*50 + "\n")
+            print("="*50 + "
+")
     
     # ==================== ENTREGADORES ====================
     
@@ -242,7 +241,8 @@ class DataStore:
         }
         
         with open(self.packages_file, 'a', encoding='utf-8') as f:
-            f.write(json.dumps(data, ensure_ascii=False) + '\n')
+            f.write(json.dumps(data, ensure_ascii=False) + '
+')
     
     def get_packages_by_date(self, date: datetime) -> List[Package]:
         """Carrega pacotes de uma data específica"""
@@ -288,9 +288,6 @@ class DataStore:
                     continue
         
         return packages
-    
-
-
 
 # Singleton
 data_store = DataStore()

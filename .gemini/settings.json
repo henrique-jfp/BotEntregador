@@ -36,5 +36,12 @@
         "@modelcontextprotocol/server-filesystem",
         "C:\\Projetos Pessoais\\ContaComigo"
       ]
-    }}
+    },
+    "railway": {
+      "command": "railway",
+      "args": [
+        "mcp"
+      ]
+    }
   }
+}
