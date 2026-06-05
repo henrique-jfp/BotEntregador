@@ -289,68 +289,7 @@ class DataStore:
         
         return packages
     
-    # ==================== RELATÓRIOS ====================
-    
-    def save_financial_report(self, report: FinancialReport):
-        """Salva relatório financeiro"""
-        filename = f"financial_{report.date.strftime('%Y-%m-%d')}.json"
-        filepath = self.reports_dir / filename
-        
-        with open(filepath, 'w', encoding='utf-8') as f:
-            json.dump(report.to_dict(), f, indent=2, ensure_ascii=False)
-    
-    def get_financial_reports(self, start_date: datetime, end_date: datetime) -> List[FinancialReport]:
-        """Carrega relatórios financeiros de um período"""
-        reports = []
-        
-        for file in self.reports_dir.glob("financial_*.json"):
-            with open(file, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                report_date = datetime.fromisoformat(data['date'])
-                
-                if start_date <= report_date <= end_date:
-                    reports.append(FinancialReport(**data))
-        
-        return sorted(reports, key=lambda r: r.date)
-    
-    # ==================== PAGAMENTOS ====================
-    
-    def export_payment_file(self, payments: List[PaymentRecord], filename: str = None):
-        """Exporta arquivo CSV de pagamentos"""
-        if filename is None:
-            filename = f"pagamentos_{datetime.now().strftime('%Y%m%d')}.csv"
-        
-        filepath = self.payments_dir / filename
-        
-        with open(filepath, 'w', encoding='utf-8') as f:
-            # Header
-            f.write("ID,Nome,Pacotes,Valor,Início,Fim\n")
-            
-            # Data
-            for payment in payments:
-                f.write(payment.to_payment_file_line() + '\n')
-        
-        return filepath
-    
-    def save_payment_record(self, payment: PaymentRecord):
-        """Salva registro de pagamento"""
-        filename = f"payment_{payment.deliverer_id}_{datetime.now().strftime('%Y%m%d')}.json"
-        filepath = self.payments_dir / filename
-        
-        data = {
-            'deliverer_id': payment.deliverer_id,
-            'deliverer_name': payment.deliverer_name,
-            'period_start': payment.period_start.isoformat(),
-            'period_end': payment.period_end.isoformat(),
-            'packages_delivered': payment.packages_delivered,
-            'amount_due': payment.amount_due,
-            'paid': payment.paid,
-            'paid_at': payment.paid_at.isoformat() if payment.paid_at else None,
-            'payment_method': payment.payment_method
-        }
-        
-        with open(filepath, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
+
 
 
 # Singleton
