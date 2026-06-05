@@ -32,19 +32,9 @@ class DataStore:
         # Indica se está usando database ou JSON
         self.using_database = HAS_DATABASE
         if self.using_database:
-            print("
-" + "="*50)
-            print("DataStore usando PostgreSQL")
-            print("Entregadores serao salvos permanentemente")
-            print("="*50 + "
-")
+            print("DataStore: Usando persistência via PostgreSQL.")
         else:
-            print("
-" + "="*50)
-            print("DataStore usando JSON local")
-            print("AVISO: Dados em data/deliverers.json (temporario)")
-            print("="*50 + "
-")
+            print("DataStore: Usando persistência via arquivos JSON.")
     
     # ==================== ENTREGADORES ====================
     
