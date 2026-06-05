@@ -2,9 +2,10 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { 
   Package, Truck, Barcode, Play, Flag, Camera, Keyboard, RotateCcw,
-  AlertCircle, Loader2, Wifi, WifiOff, X, SwitchCamera, Zap
+  AlertCircle, Loader2, Wifi, WifiOff, X, SwitchCamera, Zap, CloudSync
 } from 'lucide-react';
 import { fetchSafe } from './api_client';
+import { addScanToQueue, getPendingScans, removeScanFromQueue } from './lib/offlineQueue';
 
 // Color map helper
 const COLOR_NAMES = {
@@ -56,6 +57,8 @@ export default function SeparationMode() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [pendingScans, setPendingScans] = useState([]);
+  const [isSyncing, setIsSyncing] = useState(false);
   
   // Camera states
   const [cameraReady, setCameraReady] = useState(false);
@@ -66,17 +69,66 @@ export default function SeparationMode() {
   const html5QrCodeRef = useRef(null);
   const scannerContainerRef = useRef(null);
 
-  // Online/Offline detection
+  // Online/Offline detection & Background Sync
   useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
+    const handleOnline = () => {
+      setIsOnline(true);
+      syncPendingScans();
+    };
     const handleOffline = () => setIsOnline(false);
+    
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
+    
+    // Check pending on load
+    refreshPendingCount();
+    
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
+
+  const refreshPendingCount = async () => {
+    try {
+      const pending = await getPendingScans();
+      setPendingScans(pending || []);
+    } catch (e) {
+      console.error("Erro ao ler IndexedDB", e);
+    }
+  };
+
+  const syncPendingScans = async () => {
+    const pending = await getPendingScans();
+    if (!pending || pending.length === 0 || isSyncing) return;
+    
+    setIsSyncing(true);
+    console.log(`🔄 Iniciando sincronização de ${pending.length} bipes...`);
+    
+    for (const item of pending) {
+      try {
+        const res = await fetchSafe('/separation/scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ barcode: item.barcode })
+        });
+        
+        if (res.ok) {
+          await removeScanFromQueue(item.id);
+          console.log(`✅ Sincronizado: ${item.barcode}`);
+        } else {
+          console.warn(`⚠️ Falha ao sincronizar ${item.barcode}:`, res.error);
+          break; // Para se houver erro no servidor
+        }
+      } catch (e) {
+        console.error("❌ Erro de rede na sincronização", e);
+        break;
+      }
+    }
+    
+    await refreshPendingCount();
+    setIsSyncing(false);
+  };
 
   // Load routes
   useEffect(() => {
@@ -208,16 +260,30 @@ export default function SeparationMode() {
 
   const handleScan = async (barcode) => {
     if (!barcode?.trim() || loading) return;
+    const cleanBarcode = barcode.trim();
     setLoading(true);
     setError('');
 
     try {
+      // Se estiver explicitamente offline, nem tenta o fetch
+      if (!navigator.onLine) {
+        throw new Error('NETWORK_ERROR');
+      }
+
       const res = await fetchSafe('/separation/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ barcode: barcode.trim() })
+        body: JSON.stringify({ barcode: cleanBarcode })
       });
-      if (!res.ok) throw new Error(res.error || 'Erro ao escanear');
+      
+      if (!res.ok) {
+        // Se for erro de rede (não erro 4xx/5xx), jogamos para o catch do offline
+        if (res.status === 0 || res.error?.includes('Failed to fetch')) {
+            throw new Error('NETWORK_ERROR');
+        }
+        throw new Error(res.error || 'Erro ao escanear');
+      }
+      
       const data = res.json;
       if (data.status === 'not_found') {
         setError(data.message);
@@ -236,8 +302,32 @@ export default function SeparationMode() {
       setBarcodeInput('');
 
     } catch (err) {
-      setError(err.message);
-      playBeep('error');
+      if (err.message === 'NETWORK_ERROR' || !navigator.onLine) {
+        // MODO OFFLINE: Salvar na fila
+        try {
+          await addScanToQueue(cleanBarcode);
+          await refreshPendingCount();
+          
+          setLastScanned({
+            address: 'MODO OFFLINE - Sincronização pendente',
+            route_color: '#9ca3af',
+            deliverer: 'Aguardando Conexão',
+            sequence: '?',
+            total_in_route: '?',
+            offline: true
+          });
+          
+          setError('Conexão instável. Bipe salvo para sincronizar depois.');
+          playBeep('success');
+          setBarcodeInput('');
+        } catch (dbErr) {
+          setError('Erro ao salvar bipe offline.');
+          playBeep('error');
+        }
+      } else {
+        setError(err.message);
+        playBeep('error');
+      }
     } finally {
       setLoading(false);
     }
@@ -312,6 +402,14 @@ export default function SeparationMode() {
             </h1>
             <div className="flex items-center gap-2 mt-1">
               {isOnline ? <Wifi size={12} className="text-green-500" /> : <WifiOff size={12} className="text-red-500" />}
+              
+              {pendingScans.length > 0 && (
+                <div className="flex items-center gap-1 px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-full text-[10px] font-bold animate-pulse">
+                  <CloudSync size={10} className={isSyncing ? 'animate-spin' : ''} />
+                  {pendingScans.length} PENDENTE{pendingScans.length > 1 ? 'S' : ''}
+                </div>
+              )}
+
               <span className="text-xs text-gray-500 dark:text-gray-400">
                 {separationSession?.scanned_packages || 0} / {separationSession?.total_packages || 0}
               </span>

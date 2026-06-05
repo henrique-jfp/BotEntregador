@@ -18,6 +18,7 @@ export default function MapRealtimeView({ sessionId }) {
   const [error, setError] = useState(null);
   const [emptyState, setEmptyState] = useState(null);
   const [wsConnected, setWsConnected] = useState(false);
+  const [reconnectAttempt, setReconnectAttempt] = useState(0);
   const wsRef = useRef(null);
   const pingIntervalRef = useRef(null);
   const reconnectTimeoutRef = useRef(null);
@@ -64,36 +65,41 @@ export default function MapRealtimeView({ sessionId }) {
     loadActiveSession();
   }, [sessionId]);
 
-  // Carregar mapa inicial
-  useEffect(() => {
+  // Função para carregar mapa (separada para ser reutilizada no resync)
+  const loadInitialMap = useCallback(async (isResync = false) => {
     if (!activeSessionId) return;
+    if (!isResync) setLoading(true);
 
-    const loadInitialMap = async () => {
-      try {
-        const response = await fetch(`/api/map/realtime/${activeSessionId}`);
-        if (!response.ok) {
-          const errData = await response.json().catch(() => null);
-          throw new Error(errData?.detail || 'Erro ao carregar mapa');
-        }
-        
-        const data = await response.json();
-        const points = Array.isArray(data?.points) ? data.points : [];
-        setMapData({ ...data, points });
-        if (data?.status === 'empty' || points.length === 0) {
-          setEmptyState('Nenhuma rota iniciada. Otimize as rotas para ver o mapa.');
-        } else {
-          setEmptyState(null);
-        }
-        setError(null);
-        setLoading(false);
-      } catch (err) {
+    try {
+      const response = await fetch(`/api/map/realtime/${activeSessionId}`);
+      if (!response.ok) {
+        const errData = await response.json().catch(() => null);
+        throw new Error(errData?.detail || 'Erro ao carregar mapa');
+      }
+      
+      const data = await response.json();
+      const points = Array.isArray(data?.points) ? data.points : [];
+      setMapData({ ...data, points });
+      if (data?.status === 'empty' || points.length === 0) {
+        setEmptyState('Nenhuma rota iniciada. Otimize as rotas para ver o mapa.');
+      } else {
+        setEmptyState(null);
+      }
+      setError(null);
+      if (!isResync) setLoading(false);
+      if (isResync) console.log('🔄 Mapa sincronizado após reconexão');
+    } catch (err) {
+      if (!isResync) {
         setError(err.message);
         setLoading(false);
       }
-    };
-
-    loadInitialMap();
+    }
   }, [activeSessionId]);
+
+  // Carregar mapa inicial
+  useEffect(() => {
+    loadInitialMap();
+  }, [loadInitialMap]);
 
   const updatePointMarker = useCallback((update) => {
     const marker = markersById.current[update.point_id];
@@ -288,6 +294,7 @@ export default function MapRealtimeView({ sessionId }) {
     const connectWebSocket = () => {
       // Limpar conexão anterior e timeouts
       if (wsRef.current) {
+        wsRef.current.onclose = null; // Evitar loop de reconexão duplicado
         wsRef.current.close();
         wsRef.current = null;
       }
@@ -309,6 +316,11 @@ export default function MapRealtimeView({ sessionId }) {
       ws.onopen = () => {
         console.log('✅ WebSocket conectado');
         setWsConnected(true);
+        setReconnectAttempt(0); // Reset tentativas
+        
+        // Sincronizar estado ao reconectar para garantir que não perdemos nada
+        loadInitialMap(true);
+
         if (ws.readyState === WebSocket.OPEN) {
           ws.send('ping');
         }
@@ -338,16 +350,21 @@ export default function MapRealtimeView({ sessionId }) {
         setWsConnected(false);
       };
 
-      ws.onclose = () => {
-        console.log('❌ WebSocket desconectado');
+      ws.onclose = (event) => {
+        console.log('❌ WebSocket desconectado', event.reason);
         setWsConnected(false);
+        
         if (pingIntervalRef.current) {
           clearInterval(pingIntervalRef.current);
           pingIntervalRef.current = null;
         }
-        if (wsRef.current === ws) {
-          reconnectTimeoutRef.current = setTimeout(connectWebSocket, 5000);
-        }
+
+        // Exponential Backoff: 2s, 4s, 8s, 16s, máx 30s
+        const backoff = Math.min(Math.pow(2, reconnectAttempt + 1) * 1000, 30000);
+        setReconnectAttempt(prev => prev + 1);
+        
+        console.log(`🔄 Tentando reconectar em ${backoff/1000}s... (Tentativa ${reconnectAttempt + 1})`);
+        reconnectTimeoutRef.current = setTimeout(connectWebSocket, backoff);
       };
     };
 
@@ -448,11 +465,18 @@ export default function MapRealtimeView({ sessionId }) {
   return (
     <div className="space-y-4" ref={viewContainerRef}>
       {/* Indicador de conexão WebSocket */}
-      <div className="flex items-center gap-2 text-sm">
-        <div className={`w-3 h-3 rounded-full ${wsConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-        <span className="font-medium">
-          {wsConnected ? '🟢 Mapa ao vivo' : '🔴 Desconectado'}
-        </span>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-sm">
+          <div className={`w-3 h-3 rounded-full ${wsConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+          <span className="font-medium">
+            {wsConnected ? '🟢 Mapa ao vivo' : `🔴 Desconectado ${reconnectAttempt > 0 ? `(Tentando reconectar...)` : ''}`}
+          </span>
+        </div>
+        {reconnectAttempt > 0 && !wsConnected && (
+            <span className="text-[10px] text-gray-500 uppercase font-bold tracking-tighter">
+                Tentativa {reconnectAttempt} • Backoff: {Math.min(Math.pow(2, reconnectAttempt), 30)}s
+            </span>
+        )}
       </div>
 
       {/* Legenda de cores */}
