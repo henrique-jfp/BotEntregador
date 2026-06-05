@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { LayoutDashboard, Package, Map as MapIcon, Users, RefreshCw, Navigation, Sparkles, Zap, TrendingUp, Award, Moon, Sun, Archive, Trash2, Laptop } from 'lucide-react'
 import MapCircuitPremium from './pages/MapCircuitPremium.jsx'
 import MapRealtimeView from './components/MapRealtimeView'
-import FinancialClosureView from './pages/FinancialClosureView'
 import TeamView from './TeamView'
 import RouteAnalysisView from './RouteAnalysisView'
 import SeparationMode from './SeparationMode'
@@ -793,7 +792,6 @@ function App() {
                 { id: 'heatmap', icon: <TrendingUp size={20} />, label: 'Cérebro Geográfico' },
                 { id: 'separation', icon: <Navigation size={20} />, label: 'Separação' },
                 { id: 'map', icon: <MapIcon size={20} />, label: 'Mapa' },
-                { id: 'closure', icon: <Zap size={20} />, label: 'Fechamento' },
                 { id: 'team', icon: <Users size={20} />, label: 'Equipe' },
                 { id: 'history', icon: <Archive size={20} />, label: 'Histórico' },
               ].map(item => (

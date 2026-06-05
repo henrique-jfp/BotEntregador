@@ -9,7 +9,6 @@ from .gamification_service import gamification_service
 from .dashboard_service import dashboard_ws
 from .ml_predictor import predictor
 from .scooter_optimizer import scooter_optimizer
-from .financial_service import financial_service
 from .export_service import export_service
 from .bank_inter_service import bank_inter_service
 from .projection_service import projection_service
@@ -23,7 +22,6 @@ __all__ = [
     'dashboard_ws',
     'predictor',
     'scooter_optimizer',
-    'financial_service',
     'export_service',
     'bank_inter_service',
     'projection_service',
