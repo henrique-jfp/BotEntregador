@@ -73,7 +73,8 @@ async def get_stats():
             "total_deliverers": len(deliverers),
             "total_packages_delivered": total_historical,
             "system_status": "online",
-            "session_active": True,
+            "active_session": True,
+            "session_id": active_session.session_id,
             "session_name": active_session.session_name or "Sessão Ativa"
         }
     else:
@@ -86,7 +87,8 @@ async def get_stats():
             "total_deliverers": len(deliverers),
             "total_packages_delivered": total_historical,
             "system_status": "online",
-            "session_active": False
+            "active_session": False,
+            "session_id": None
         }
 
 

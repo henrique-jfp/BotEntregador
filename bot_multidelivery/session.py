@@ -114,9 +114,9 @@ class Route:
 class DailySession:
     """Sessão do dia (uma por dia de trabalho)"""
     session_id: str = field(default_factory=lambda: str(uuid.uuid4())[:8])  # ID único
-    session_name: str = ''  # 🆕 "Segunda Manhã", "Terça Tarde"
+    session_name: str = ''  # "Segunda Manhã", "Terça Tarde"
     date: str = ''  # YYYY-MM-DD
-    period: str = ''  # 🆕 "manhã" ou "tarde"
+    period: str = ''  # "manhã" ou "tarde"
     created_at: datetime = field(default_factory=datetime.now)
     base_address: str = ''
     base_lat: float = 0.0
@@ -192,23 +192,11 @@ class SessionManager:
             print(f"⚠️ Erro ao salvar sessão: {e}")
     
     def create_new_session(self, date: str, period: str = 'manhã') -> DailySession:
-        """
-        Cria nova sessão com nome automático
-        
-        Args:
-            date: Data no formato YYYY-MM-DD
-            period: 'manhã' ou 'tarde'
-        
-        Returns:
-            DailySession criada
-        """
+        """Cria nova sessão com nome automático"""
         from datetime import datetime as dt
         from .database import generate_session_name
         
-        # Converte string para datetime
         date_obj = dt.strptime(date, '%Y-%m-%d')
-        
-        # Gera nome automático
         session_name = generate_session_name(date_obj, period)
         
         session = DailySession(
@@ -221,7 +209,6 @@ class SessionManager:
         self._auto_save(session)
         
         print(f"✅ Sessão criada: {session_name} ({session.session_id})")
-        
         return session
     
     def get_session(self, session_id: str) -> Optional[DailySession]:
@@ -229,7 +216,7 @@ class SessionManager:
         return self.active_sessions.get(session_id)
 
     def save_session(self, session: DailySession, set_as_current: bool = True):
-        """Salva explicitamente a sessão e opcionalmente define como atual"""
+        """Salva explicitamente a sessão"""
         if session:
             self.active_sessions[session.session_id] = session
             if set_as_current:
@@ -243,20 +230,12 @@ class SessionManager:
         return None
 
     def get_active_session(self) -> Optional[DailySession]:
-        """Retorna a sessão ativa em foco.
-
-        Comportamento estendido: se `current_session_id` não estiver setada,
-        tenta retornar a última sessão não finalizada disponível. Isso evita
-        que partes do sistema (entregadores, separação, mapa) falhem quando
-        a aba de Análise for liberada (release_session_from_analysis).
-        """
-        # Se houver sessão explicitamente em foco, retorna ela
+        """Retorna a sessão ativa em foco (com fallback para última não finalizada)"""
         if self.current_session_id:
             sess = self.active_sessions.get(self.current_session_id)
             if sess:
                 return sess
 
-        # Senão, buscar a última sessão não finalizada (mais recente)
         candidates = [s for s in self.active_sessions.values() if not s.is_finalized]
         if not candidates:
             return None
@@ -269,47 +248,33 @@ class SessionManager:
             self.current_session_id = session_id
     
     def delete_session(self, session_id: str, force: bool = False) -> bool:
-        """
-        Exclui permanentemente uma sessão e seus dados.
-        SEM restrição: permite deletar qualquer sessão, mesmo com rotas ativas ou não finalizadas.
-        """
+        """Exclui permanentemente uma sessão e seus dados"""
         try:
             from .session_persistence import session_store
 
             session = self.active_sessions.get(session_id)
             if not session:
-                # Ainda tenta remover da persistência mesmo que não esteja na memória
                 return session_store.delete_session(session_id)
 
-            # Remove da memória
             if session_id in self.active_sessions:
                 del self.active_sessions[session_id]
 
-            # Se era a sessão atual, limpa
             if self.current_session_id == session_id:
                 self.current_session_id = None
 
-            # Remove da persistência (DB/Disco)
             return session_store.delete_session(session_id)
         except Exception as e:
             print(f"⚠️ Erro ao excluir sessão {session_id}: {e}")
             raise
 
     def release_session_from_analysis(self, session_id: str) -> bool:
-        """
-        Libera a aba 'Análise' sem deletar a sessão.
-
-        Apenas desassocia a sessão do foco atual (`current_session_id`) para que o
-        frontend possa iniciar um novo romaneio/analise, mantendo a sessão
-        ativa para mapa/separação/entregadores.
-        """
+        """Libera a aba 'Análise' sem deletar a sessão"""
         session = self.active_sessions.get(session_id)
         if not session:
             return False
 
         if self.current_session_id == session_id:
             self.current_session_id = None
-            # salva estado (não finaliza a sessão)
             try:
                 self._auto_save(session)
             except Exception:
@@ -319,55 +284,38 @@ class SessionManager:
     def list_sessions(self, finalized_only: bool = False) -> List[DailySession]:
         """Lista todas as sessões carregadas"""
         sessions = list(self.active_sessions.values())
-        
         if finalized_only:
             sessions = [s for s in sessions if s.is_finalized]
-        
-        # Ordena por data de criação (mais recente primeiro)
         sessions.sort(key=lambda x: x.created_at, reverse=True)
         return sessions
-        def get_all_sessions(self, start_date: Optional[str] = None, end_date: Optional[str] = None) -> List[DailySession]:
-            """
-            Retorna todas as sessões, opcionalmente filtradas por data
+
+    def get_all_sessions(self, start_date: Optional[str] = None, end_date: Optional[str] = None) -> List[DailySession]:
+        """Retorna todas as sessões, opcionalmente filtradas por data"""
+        from datetime import datetime as dt
+        sessions = list(self.active_sessions.values())
         
-            Args:
-                start_date: Data inicial (YYYY-MM-DD), inclusive
-                end_date: Data final (YYYY-MM-DD), inclusive
+        if start_date or end_date:
+            try:
+                start_dt = dt.strptime(start_date, '%Y-%m-%d') if start_date else dt.min
+                end_dt = dt.strptime(end_date, '%Y-%m-%d') if end_date else dt.max
+                sessions = [
+                    s for s in sessions
+                    if start_dt <= dt.strptime(s.date, '%Y-%m-%d') <= end_dt
+                ]
+            except ValueError as e:
+                print(f"⚠️ Erro ao parsear datas: {e}")
+                return []
         
-            Returns:
-                Lista de DailySession ordenadas por data (mais recente primeiro)
-            """
-            from datetime import datetime as dt
-        
-            sessions = list(self.active_sessions.values())
-        
-            # Filtrar por data se especificada
-            if start_date or end_date:
-                try:
-                    start_dt = dt.strptime(start_date, '%Y-%m-%d') if start_date else dt.min
-                    end_dt = dt.strptime(end_date, '%Y-%m-%d') if end_date else dt.max
-                
-                    sessions = [
-                        s for s in sessions
-                        if start_dt <= dt.strptime(s.date, '%Y-%m-%d') <= end_dt
-                    ]
-                except ValueError as e:
-                    print(f"⚠️ Erro ao parsear datas: {e}")
-                    return []
-        
-            # Ordena por data de criação (mais recente primeiro)
-            sessions.sort(key=lambda x: x.created_at, reverse=True)
-            return sessions
-    
+        sessions.sort(key=lambda x: x.created_at, reverse=True)
+        return sessions
     
     @property
     def sessions(self) -> List[DailySession]:
-        """Alias para compatibilidade - retorna lista de sessões"""
+        """Alias para compatibilidade"""
         return list(self.active_sessions.values())
     
     @sessions.setter
     def sessions(self, value: List[DailySession]):
-        """Permite setar sessions diretamente (usado ao deletar)"""
         self.active_sessions = {s.session_id: s for s in value}
     
     def add_romaneio(self, romaneio: Romaneio, session_id: Optional[str] = None):
@@ -394,7 +342,7 @@ class SessionManager:
             self._auto_save(session)
     
     def finalize_session(self, session_id: Optional[str] = None):
-        """Fecha sessão (não pode adicionar mais romaneios)"""
+        """Fecha sessão"""
         session = self.get_session(session_id) if session_id else self.get_current_session()
         if session:
             session.is_finalized = True
@@ -410,7 +358,6 @@ class SessionManager:
         for route in session.routes:
             if route.id == route_id:
                 route.assigned_to_telegram_id = deliverer_id
-                # Tenta carregar nome do entregador
                 try:
                     from .services.deliverer_service import DelivererService
                     deliverer = DelivererService.get_deliverer(deliverer_id)
@@ -418,10 +365,8 @@ class SessionManager:
                         route.assigned_to_name = deliverer.name
                 except Exception:
                     pass
-                
                 self._auto_save(session)
                 return True
-        
         return False
     
     def get_route_for_deliverer(self, telegram_id: int, session_id: Optional[str] = None) -> Optional[Route]:
@@ -429,17 +374,15 @@ class SessionManager:
         session = self.get_session(session_id) if session_id else self.get_current_session()
         if not session:
             return None
-        
         return next((r for r in session.routes if r.assigned_to_telegram_id == telegram_id), None)
     
     def mark_package_delivered(self, telegram_id: int, package_id: str, session_id: Optional[str] = None) -> bool:
-        """Marca pacote como entregue e finaliza sessão automaticamente se todos os pacotes baixados"""
+        """Marca pacote como entregue"""
         route = self.get_route_for_deliverer(telegram_id, session_id)
         if route:
             route.mark_as_delivered(package_id)
             session = self.get_session(session_id) if session_id else self.get_current_session()
             if session:
-                # Verifica se todos os pacotes de todas as rotas estão baixados (entregue, insucesso ou transferido)
                 all_finalized = all(r.delivered_count >= r.total_packages for r in session.routes)
                 if all_finalized and not session.is_finalized:
                     session.is_finalized = True
@@ -448,7 +391,6 @@ class SessionManager:
             return True
         return False
     
-    # Estados de admin
     def set_admin_state(self, telegram_id: int, state: str):
         self.admin_state[telegram_id] = state
     
@@ -466,7 +408,6 @@ class SessionManager:
     
     def get_temp_data(self, telegram_id: int, key: str):
         return self.temp_data.get(telegram_id, {}).get(key)
-
 
 # Instância global (singleton)
 session_manager = SessionManager()
