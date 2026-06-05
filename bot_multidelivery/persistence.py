@@ -231,8 +231,7 @@ class DataStore:
         }
         
         with open(self.packages_file, 'a', encoding='utf-8') as f:
-            f.write(json.dumps(data, ensure_ascii=False) + '
-')
+            f.write(json.dumps(data, ensure_ascii=False) + '\n')
     
     def get_packages_by_date(self, date: datetime) -> List[Package]:
         """Carrega pacotes de uma data específica"""

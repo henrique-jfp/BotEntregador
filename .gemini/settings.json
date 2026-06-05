@@ -38,10 +38,8 @@
       ]
     },
     "railway": {
-      "command": "railway",
-      "args": [
-        "mcp"
-      ]
+      "url": "https://mcp.railway.com",
+      "type": "http"
     }
   }
 }

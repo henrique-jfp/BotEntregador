@@ -51,8 +51,10 @@ class SessionDB(Base):
     is_finalized = Column(Boolean, default=False)
     finalized_at = Column(DateTime, nullable=True)
     
+    # JSON fields para dados complexos
     romaneios_data = Column(JSON, nullable=True)
     
+    # Relacionamentos
     routes = relationship("RouteDB", back_populates="session", cascade="all, delete-orphan")
     packages = relationship("PackageDB", back_populates="session", cascade="all, delete-orphan")
 
@@ -68,9 +70,11 @@ class RouteDB(Base):
     color = Column(String(20))
     map_file = Column(String(200))
     
+    # JSON fields
     optimized_order = Column(JSON, nullable=True)
     delivered_packages = Column(JSON, default=list)
     
+    # Relacionamentos
     session = relationship("SessionDB", back_populates="routes")
     deliverer = relationship("DelivererDB", back_populates="routes")
     packages = relationship("PackageDB", back_populates="route")
@@ -97,6 +101,7 @@ class PackageDB(Base):
     notes = Column(Text)
     created_at = Column(DateTime, default=datetime.now)
     
+    # Relacionamentos
     session = relationship("SessionDB", back_populates="packages")
     route = relationship("RouteDB", back_populates="packages")
     deliverer = relationship("DelivererDB", back_populates="packages")
@@ -187,8 +192,7 @@ class DatabaseManager:
         self.engine = None
         self.SessionLocal = None
         
-        print("
-" + "="*50)
+        print("\n" + "="*50)
         print("🔍 INICIANDO CONEXÃO COM BANCO DE DADOS")
         print("="*50)
         
@@ -237,8 +241,7 @@ class DatabaseManager:
             print("❌ DATABASE_URL NÃO CONFIGURADA!")
             print("📁 Usando arquivos JSON locais")
         
-        print("="*50 + "
-")
+        print("="*50 + "\n")
     
     @property
     def is_connected(self) -> bool:
