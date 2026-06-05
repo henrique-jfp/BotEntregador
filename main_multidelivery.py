@@ -102,7 +102,7 @@ scanner_app.include_router(health_router)
 
 # --- 🚀 LOAD MODULAR API ROUTERS ---
 from fastapi import APIRouter
-from bot_multidelivery.routers import admin, auth, financial, session, logistic, romaneio, routes, separation, deliverer, neighborhoods, analytics, history
+from bot_multidelivery.routers import admin, auth, session, logistic, romaneio, routes, separation, deliverer, neighborhoods, analytics, history
 
 api_router = APIRouter(prefix="/api")
 
@@ -112,7 +112,6 @@ async def ping():
 
 api_router.include_router(admin.router)
 api_router.include_router(auth.router)
-api_router.include_router(financial.router)
 api_router.include_router(session.router)
 api_router.include_router(logistic.router)
 api_router.include_router(romaneio.router)

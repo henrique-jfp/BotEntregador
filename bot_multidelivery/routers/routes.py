@@ -45,124 +45,98 @@ async def assign_multiple_routes(request: AssignRoutesRequest = Body(...)):
     if not session:
         raise HTTPException(status_code=404, detail="Sessão não encontrada")
     if not session.routes:
-        raise HTTPException(status_code=400, detail="Nenhuma rota criada ainda")
+        raise HTTPException(status_code=400, detail="Nenhuma rota criada ainda para esta sessão")
 
-
-    # Fallback: garante que exista um endpoint POST `/routes/assign-multiple` no router final
-    # Alguns refactors anteriores redefiniram `router` no mesmo arquivo e podem ter deixado
-    # a versão que continha o handler original fora do router incluído pela aplicação.
-    @router.post("/assign-multiple", status_code=200)
-    async def assign_multiple_routes_fallback(request: AssignRoutesRequest = Body(...)):
-        """Handler redundante/compatível para aceitar batch de atribuições.
-        Faz a atribuição e tenta notificar; rollback em caso de erro.
-        """
-        try:
-            session = session_manager.get_session(request.session_id)
-            if not session:
-                raise HTTPException(status_code=404, detail="Sessão não encontrada")
-            if not session.routes:
-                raise HTTPException(status_code=400, detail="Nenhuma rota criada ainda")
-
-            original_assignments = {r.id: (r.assigned_to_telegram_id, r.assigned_to_name) for r in session.routes}
-            results = {}
-            for route_id, deliverer_id in request.assignments.items():
-                route = next((r for r in session.routes if str(r.id) == str(route_id)), None)
-                if not route:
-                    raise HTTPException(status_code=404, detail=f"Rota {route_id} não encontrada")
-                deliverer = data_store.get_deliverer(deliverer_id)
-                if not deliverer:
-                    raise HTTPException(status_code=404, detail=f"Entregador {deliverer_id} não encontrado")
-                route.assigned_to_telegram_id = deliverer_id
-                route.assigned_to_name = deliverer.name
-                results[route_id] = {"deliverer_id": deliverer_id, "deliverer_name": deliverer.name}
-
-            # Notifica (não bloqueante para todas falhas individuais)
-            from bot_multidelivery.services.telegram_notifier import notify_route_assigned
-            notify_results = {}
-            for route_id, deliverer_id in request.assignments.items():
-                route = next((r for r in session.routes if str(r.id) == str(route_id)), None)
-                if not route:
-                    notify_results[route_id] = False
-                    continue
-                try:
-                    success = await notify_route_assigned(
-                        telegram_id=deliverer_id,
-                        route_color=route.color,
-                        total_packages=route.total_packages,
-                        distance_km=route.total_distance_km or 0,
-                        addresses=[p.address for p in route.points],
-                        webapp_url=None,
-                        coordinates=route.geometry if hasattr(route, 'geometry') else None
-                    )
-                    notify_results[route_id] = bool(success)
-                except Exception:
-                    notify_results[route_id] = False
-
-            return JSONResponse(status_code=status.HTTP_200_OK, content={"status": "success", "assignments": results, "notifications": notify_results})
-
-        except HTTPException:
-            raise
-        except Exception as e:
-            # rollback
-            for r in session.routes:
-                if r.id in original_assignments:
-                    r.assigned_to_telegram_id, r.assigned_to_name = original_assignments[r.id]
-            logger.error(f"Erro na atribuição batch (fallback): {e}")
-            raise HTTPException(status_code=500, detail=f"Erro na atribuição batch: {e}")
-
-    # Backup do estado atual para rollback
+    # Backup do estado atual para rollback em caso de erro de atribuição
     original_assignments = {r.id: (r.assigned_to_telegram_id, r.assigned_to_name) for r in session.routes}
     results = {}
+    
     try:
-        # 1. Atribuir todas as rotas
+        # Etapa 1: Validar e atribuir rotas na memória
         for route_id, deliverer_id in request.assignments.items():
             route = next((r for r in session.routes if str(r.id) == str(route_id)), None)
             if not route:
                 raise HTTPException(status_code=404, detail=f"Rota {route_id} não encontrada")
+            
             deliverer = data_store.get_deliverer(deliverer_id)
             if not deliverer:
                 raise HTTPException(status_code=404, detail=f"Entregador {deliverer_id} não encontrado")
+
             route.assigned_to_telegram_id = deliverer_id
             route.assigned_to_name = deliverer.name
             results[route_id] = {"deliverer_id": deliverer_id, "deliverer_name": deliverer.name}
+            logger.info(f"Atribuição em memória: Rota {route.id} -> {deliverer.name}")
 
-        # 2. Disparar notificações para todos
+        # Persistir as atribuições antes de notificar
+        session_manager.save_session(session)
+
+        # Etapa 2: Disparar notificações para todos
         from bot_multidelivery.services.telegram_notifier import notify_route_assigned
+        
         notify_results = {}
         for route_id, deliverer_id in request.assignments.items():
             route = next((r for r in session.routes if str(r.id) == str(route_id)), None)
             if not route:
+                notify_results[route_id] = {"success": False, "error": "Rota não encontrada após atribuição."}
                 continue
+
+            logger.info(f"📱 Tentando notificar entregador {deliverer_id} para rota {route.id} ({route.color})...")
+            
             try:
+                # Otimização: Preparar dados para notificação
+                coordinates = None
+                if hasattr(route, 'optimized_order') and route.optimized_order:
+                     coordinates = [(p.lat, p.lng) for p in route.optimized_order if hasattr(p, 'lat') and p.lat]
+                
+                addresses = [p.address for p in route.points] if hasattr(route, 'points') else []
+
+
                 success = await notify_route_assigned(
                     telegram_id=deliverer_id,
                     route_color=route.color,
                     total_packages=route.total_packages,
                     distance_km=route.total_distance_km or 0,
-                    addresses=[p.address for p in route.points],
-                    webapp_url=None,  # Pode customizar se necessário
-                    coordinates=route.geometry if hasattr(route, 'geometry') else None
+                    addresses=addresses,
+                    webapp_url=None,
+                    coordinates=coordinates
                 )
-                notify_results[route_id] = bool(success)
+                
+                if success:
+                    logger.info(f"✅ Notificação para rota {route_id} enviada com sucesso para {deliverer_id}.")
+                    notify_results[route_id] = {"success": True}
+                else:
+                    logger.error(f"❌ Falha SILENCIOSA ao notificar rota {route_id} para {deliverer_id}.")
+                    notify_results[route_id] = {"success": False, "error": "A API do Telegram recusou o envio."}
+
             except Exception as e:
-                notify_results[route_id] = False
-                logger.error(f"Erro ao notificar entregador {deliverer_id} para rota {route_id}: {e}")
+                logger.error(f"🚨 EXCEÇÃO ao notificar rota {route_id} para {deliverer_id}: {e}", exc_info=True)
+                notify_results[route_id] = {"success": False, "error": str(e)}
 
         return JSONResponse(
             status_code=status.HTTP_200_OK,
             content={
                 "status": "success",
+                "message": "Atribuições processadas. Verifique o status das notificações.",
                 "assignments": results,
                 "notifications": notify_results
             }
         )
-    except Exception as e:
-        # Rollback em caso de erro
+        
+    except HTTPException as http_exc:
+        # Rollback em caso de erro de validação/atribuição
+        logger.warning(f"Rollback de atribuições devido a erro: {http_exc.detail}")
         for r in session.routes:
             if r.id in original_assignments:
                 r.assigned_to_telegram_id, r.assigned_to_name = original_assignments[r.id]
-        logger.error(f"Erro na atribuição batch: {e}")
-        raise HTTPException(status_code=500, detail=f"Erro na atribuição batch: {e}")
+        raise http_exc
+        
+    except Exception as e:
+        # Rollback para exceções inesperadas
+        logger.error(f"Erro inesperado na atribuição batch, fazendo rollback: {e}", exc_info=True)
+        for r in session.routes:
+            if r.id in original_assignments:
+                r.assigned_to_telegram_id, r.assigned_to_name = original_assignments[r.id]
+        raise HTTPException(status_code=500, detail=f"Erro interno no servidor: {e}")
 """
 Router para Gestão Completa de Rotas
 Divisão por entregadores, coloração, sequenciação e envio

@@ -76,11 +76,14 @@ class TelegramNotifier:
                             logger.info(f"✅ Mensagem enviada para {chat_id}")
                             return True
                         else:
-                            logger.error(f"❌ Telegram API erro: {result}")
+                            # Log detalhado do erro da API
+                            error_desc = result.get('description', 'No description provided.')
+                            logger.error(f"❌ Telegram API Error (Chat ID: {chat_id}): {error_desc}")
+                            logger.debug(f"Full Telegram error response: {result}")
                             return False
                     else:
                         error_text = await response.text()
-                        logger.error(f"❌ HTTP {response.status}: {error_text}")
+                        logger.error(f"❌ Telegram HTTP Error (Chat ID: {chat_id}): Status {response.status} - Response: {error_text}")
                         return False
                         
         except aiohttp.ClientError as e:
@@ -140,7 +143,9 @@ class TelegramNotifier:
                             logger.info(f"✅ Foto (arquivo) enviada para {chat_id}")
                             return True
                         else:
-                            logger.error(f"❌ HTTP {response.status}: {result}")
+                            error_desc = result.get('description', 'No description provided.')
+                            logger.error(f"❌ Telegram API Error on send_photo (file): {error_desc}")
+                            logger.debug(f"Full Telegram error response: {result}")
                             return False
                 
                 # ✅ Caso 2: Enviar bytes diretamente
@@ -162,7 +167,9 @@ class TelegramNotifier:
                             logger.info(f"✅ Foto (bytes) enviada para {chat_id}")
                             return True
                         else:
-                            logger.error(f"❌ HTTP {response.status}: {result}")
+                            error_desc = result.get('description', 'No description provided.')
+                            logger.error(f"❌ Telegram API Error on send_photo (bytes): {error_desc}")
+                            logger.debug(f"Full Telegram error response: {result}")
                             return False
                 
                 # ✅ Caso 3: Enviar por URL (mais rápido, Telegram baixa)
@@ -183,7 +190,9 @@ class TelegramNotifier:
                             logger.info(f"✅ Foto (URL) enviada para {chat_id}")
                             return True
                         else:
-                            logger.error(f"❌ HTTP {response.status}: {result}")
+                            error_desc = result.get('description', 'No description provided.')
+                            logger.error(f"❌ Telegram API Error on send_photo (url): {error_desc}")
+                            logger.debug(f"Full Telegram error response: {result}")
                             return False
                         
         except Exception as e:

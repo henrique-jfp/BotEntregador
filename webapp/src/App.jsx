@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react'
-import { LayoutDashboard, Package, Map as MapIcon, Users, RefreshCw, Navigation, DollarSign, Sparkles, Zap, TrendingUp, Award, Moon, Sun, Archive, Trash2, Laptop } from 'lucide-react'
+import { LayoutDashboard, Package, Map as MapIcon, Users, RefreshCw, Navigation, Sparkles, Zap, TrendingUp, Award, Moon, Sun, Archive, Trash2, Laptop } from 'lucide-react'
 import MapCircuitPremium from './pages/MapCircuitPremium.jsx'
 import MapRealtimeView from './components/MapRealtimeView'
-import FinancialView from './FinancialView'
 import FinancialClosureView from './pages/FinancialClosureView'
 import TeamView from './TeamView'
 import RouteAnalysisView from './RouteAnalysisView'
@@ -26,7 +25,6 @@ function App() {
   const [roleInfo, setRoleInfo] = useState({ role: 'loading' })
   const [routeInfo, setRouteInfo] = useState(null)
   const [adminStats, setAdminStats] = useState(null)
-  const [financialData, setFinancialData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [darkMode, setDarkMode] = useState(false)
   const [loadingProgress, setLoadingProgress] = useState(0)
@@ -122,13 +120,6 @@ function App() {
       // Fetch paralelo dependendo da role
       const promises = []
       
-      // Financial (Todos têm acesso, mas dados diferentes)
-      promises.push(
-          fetchWithAuth(`/financial/balance?user_id=${id}`)
-        .then(r => r.json())
-        .then(data => setFinancialData(data))
-        .catch(err => console.error("Erro Finanças", err))
-      )
 
       if (authData.role === 'admin') {
         promises.push(
@@ -290,9 +281,6 @@ function App() {
   }
 
   const renderAdminDashboard = () => {
-    // Calcular resumo financeiro
-    const todayRevenue = financialData?.company_stats?.revenue || financialData?.balance || 0;
-    const todayProfit = financialData?.company_stats?.profit || 0;
     
     return (
     <div className={`${responsive.isDesktop ? 'space-y-6' : 'space-y-4'} animate-fade-in`}>
@@ -350,39 +338,6 @@ function App() {
       {/* Grid Principal - 2 colunas em desktop */}
       <div className={`grid gap-4 ${responsive.isDesktop ? 'grid-cols-2' : 'grid-cols-1'}`}>
         
-        {/* Resumo Financeiro */}
-        <div className="card-premium p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                <DollarSign className="w-4 h-4 text-green-600 dark:text-green-400" />
-              </div>
-              <h3 className="font-bold text-gray-900 dark:text-white text-sm">Financeiro Hoje</h3>
-            </div>
-            <button 
-              onClick={() => setActiveTab('financial')}
-              className="text-xs text-primary-600 dark:text-primary-400 hover:underline font-medium"
-            >
-              Ver mais →
-            </button>
-          </div>
-          
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-3">
-              <p className="text-xs text-green-600 dark:text-green-400 font-medium mb-1">Receita</p>
-              <p className="text-xl font-black text-green-700 dark:text-green-300">
-                R$ {todayRevenue.toFixed(0)}
-              </p>
-            </div>
-            <div className={`${todayProfit >= 0 ? 'bg-blue-50 dark:bg-blue-900/20' : 'bg-red-50 dark:bg-red-900/20'} rounded-xl p-3`}>
-              <p className={`text-xs font-medium mb-1 ${todayProfit >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400'}`}>Lucro</p>
-              <p className={`text-xl font-black ${todayProfit >= 0 ? 'text-blue-700 dark:text-blue-300' : 'text-red-700 dark:text-red-300'}`}>
-                R$ {todayProfit.toFixed(0)}
-              </p>
-            </div>
-          </div>
-        </div>
-
         {/* Card da Equipe */}
         <div className="card-premium p-4">
           <div className="flex items-center justify-between mb-3">
@@ -519,13 +474,6 @@ function App() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 gap-3">
-        <StatCard 
-          icon={<DollarSign className="w-5 h-5" />}
-          label="Saldo Semana"
-          value={`R$ ${financialData?.balance ? financialData.balance.toFixed(0) : '...'}`}
-          color="green"
-          onClick={() => setActiveTab('financial')}
-        />
         <StatCard 
           icon={<MapIcon className="w-5 h-5" />}
           label="Mapa / Rota"
@@ -767,10 +715,6 @@ function App() {
         </div>
       )
     }
-
-    if (activeTab === 'financial') {
-      return <FinancialView data={financialData} adminStats={adminStats} />
-    }
     
     if (activeTab === 'closure') {
       return <FinancialClosureView />
@@ -849,7 +793,6 @@ function App() {
                 { id: 'heatmap', icon: <TrendingUp size={20} />, label: 'Cérebro Geográfico' },
                 { id: 'separation', icon: <Navigation size={20} />, label: 'Separação' },
                 { id: 'map', icon: <MapIcon size={20} />, label: 'Mapa' },
-                { id: 'financial', icon: <DollarSign size={20} />, label: 'Financeiro' },
                 { id: 'closure', icon: <Zap size={20} />, label: 'Fechamento' },
                 { id: 'team', icon: <Users size={20} />, label: 'Equipe' },
                 { id: 'history', icon: <Archive size={20} />, label: 'Histórico' },
@@ -1045,12 +988,6 @@ function App() {
                 label="Separação" 
                 isActive={activeTab === 'separation'} 
                 onClick={() => setActiveTab('separation')} 
-              />
-              <TabButton 
-                icon={<DollarSign size={22} />} 
-                label="Financeiro"
-                isActive={activeTab === 'financial'} 
-                onClick={() => setActiveTab('financial')} 
               />
               <TabButton 
                 icon={<Archive size={22} />} 
