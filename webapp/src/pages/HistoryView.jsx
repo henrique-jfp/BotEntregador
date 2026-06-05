@@ -397,13 +397,35 @@ const HistoryView = () => {
                           📊 Estatísticas
                         </h4>
                         <div className="bg-white dark:bg-gray-800 p-4 rounded-lg text-sm space-y-2 table-responsive">
-                          {Object.entries(session.statistics).map(([key, value]) => (
+                          {Object.entries(session.statistics)
+                            .filter(([key]) => key !== 'failure_reasons')
+                            .map(([key, value]) => (
                             <div key={key} className="flex justify-between">
                               <span className="text-gray-600 dark:text-gray-400 capitalize">
                                 {key.replace(/_/g, ' ')}:
                               </span>
                               <span className="font-medium text-gray-900 dark:text-white">
-                                {typeof value === 'number' ? value.toFixed(2) : value}
+                                {typeof value === 'number' ? value.toFixed(0) : value}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Motivos de Falha */}
+                    {session.statistics?.failure_reasons && Object.keys(session.statistics.failure_reasons).length > 0 && (
+                      <div className="mb-6">
+                        <h4 className="font-bold text-red-600 dark:text-red-400 mb-4 flex items-center gap-2">
+                          <XCircle className="w-5 h-5" />
+                          Motivos de Insucesso
+                        </h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {Object.entries(session.statistics.failure_reasons).map(([reason, count]) => (
+                            <div key={reason} className="bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 p-3 rounded-xl flex justify-between items-center">
+                              <span className="text-sm font-semibold text-red-700 dark:text-red-300">{reason}</span>
+                              <span className="bg-red-200 dark:bg-red-900/50 text-red-800 dark:text-red-200 px-2 py-0.5 rounded-lg text-xs font-bold">
+                                {count} {count === 1 ? 'pacote' : 'pacotes'}
                               </span>
                             </div>
                           ))}

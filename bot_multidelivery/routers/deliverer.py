@@ -186,6 +186,8 @@ async def complete_stop(
     route_id: str = Query(...),
     stop_index: int = Query(...),
     status: str = Query("delivered"),  # delivered, failed, returned
+    reason: str = Query(None), # Motivo da falha
+    status_detail: str = Query(None), # Observações
     lat: float = Query(None),
     lng: float = Query(None)
 ):
@@ -217,13 +219,13 @@ async def complete_stop(
         for pkg_id in stop_packages:
             if pkg_id:
                 if status == "delivered":
-                    route.mark_as_delivered(pkg_id)
+                    route.mark_as_delivered(pkg_id, detail=status_detail)
                 elif status == "failed":
-                    route.mark_as_failed(pkg_id)
+                    route.mark_as_failed(pkg_id, reason=reason, detail=status_detail)
                 elif status == "returned":
-                    route.mark_as_returned(pkg_id)
+                    route.mark_as_returned(pkg_id, reason=reason, detail=status_detail)
         
-        logger.info(f"✅ Parada {stop_index + 1} marcada como {status} na rota {route.color}")
+        logger.info(f"✅ Parada {stop_index + 1} marcada como {status} ({reason or ''}) na rota {route.color}")
         
         # Salvar sessão
         session_manager.save_session(session)

@@ -3,7 +3,8 @@ import MapCircuitPremium from './MapCircuitPremium.jsx';
 import { 
   Navigation, Check, X, MapPin, Locate, 
   AlertTriangle, Package, Phone, ChevronUp, WifiOff, 
-  ArrowRightLeft, CheckCircle2, XCircle, Maximize, Minimize 
+  ArrowRightLeft, CheckCircle2, XCircle, Maximize, Minimize,
+  AlertCircle, MessageSquare
 } from 'lucide-react';
 import { fetchWithAuth } from '../api_client'
 
@@ -11,6 +12,15 @@ import { fetchWithAuth } from '../api_client'
 
 // Estilo do Mapa (Clean/Muted)
 const MAP_TILES_URL = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
+
+const FAILURE_REASONS = [
+  "Cliente Ausente",
+  "Recusado",
+  "Pacote Avariado",
+  "Endereço Inexistente",
+  "Area de Risco",
+  "Tempo Insuficiente"
+];
 
 // Função para criar ícones personalizados (L.divIcon)
 const createStopIcon = (index, status, isSelected) => {
@@ -99,6 +109,7 @@ export default function DelivererRouteView() {
   const [isOffline, setIsOffline] = useState(!navigator.onLine)
   const [bottomSheetOpen, setBottomSheetOpen] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [failureModalOpen, setFailureModalOpen] = useState(false)
   
   const pollIntervalRef = useRef(null)
   const mapRef = useRef(null)
@@ -223,9 +234,15 @@ export default function DelivererRouteView() {
     setBottomSheetOpen(false);
   };
 
-  const handleStatusChange = async (status) => {
+  const handleStatusChange = async (status, reason = null) => {
     if (!selectedStop || isUpdating || !routeInfo) return;
     
+    // Se for falha e não tiver motivo ainda, abre o modal
+    if (status === 'failed' && !reason) {
+      setFailureModalOpen(true);
+      return;
+    }
+
     try {
       setIsUpdating(true)
       const stopIndex = routeInfo.stops.findIndex(s => s.id === selectedStop.id);
@@ -239,6 +256,10 @@ export default function DelivererRouteView() {
         status: status
       })
       
+      if (reason) {
+        params.append('reason', reason);
+      }
+      
       if (userLocation) {
         params.append('lat', userLocation[0].toString())
         params.append('lng', userLocation[1].toString())
@@ -249,6 +270,7 @@ export default function DelivererRouteView() {
       })
       
       if (res.ok) {
+        setFailureModalOpen(false);
         // Atualizar imediatamente após sucesso
         const pathParts = window.location.pathname.split('/');
         const isPublicLink = window.location.pathname.includes('/public/deliverer');
@@ -421,6 +443,47 @@ export default function DelivererRouteView() {
                   </button>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 5. MODAL DE MOTIVO DE FALHA */}
+      {failureModalOpen && (
+        <div className="fixed inset-0 z-[2000] flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-800 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom duration-300">
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-3 bg-red-100 dark:bg-red-900/30 rounded-full text-red-600 dark:text-red-400">
+                  <AlertCircle size={24} />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white">Motivo do Insucesso</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Por que esta entrega não foi realizada?</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-2 mb-8">
+                {FAILURE_REASONS.map(reason => (
+                  <button
+                    key={reason}
+                    onClick={() => handleStatusChange('failed', reason)}
+                    className="flex items-center justify-between p-4 rounded-xl border-2 border-gray-100 dark:border-gray-700 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all text-left group"
+                  >
+                    <span className="font-semibold text-gray-700 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400">
+                      {reason}
+                    </span>
+                    <ArrowRightLeft size={16} className="text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={() => setFailureModalOpen(false)}
+                className="w-full py-4 text-gray-500 dark:text-gray-400 font-bold hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+              >
+                Cancelar
+              </button>
             </div>
           </div>
         </div>

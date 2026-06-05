@@ -81,7 +81,7 @@ class GeographicBrain:
             query = text("""
                 SELECT 
                     p.lat, p.lng, p.status, p.delivered_at, p.created_at,
-                    p.notes, p.assigned_to_telegram_id,
+                    p.failure_reason, p.assigned_to_telegram_id,
                     d.name as deliverer_name
                 FROM packages p
                 LEFT JOIN deliverers d ON p.assigned_to_telegram_id = d.telegram_id
@@ -108,7 +108,7 @@ class GeographicBrain:
             })
             
             for pkg in packages:
-                lat, lng, status, delivered_at, created_at, notes, tg_id, deliverer_name = pkg
+                lat, lng, status, delivered_at, created_at, failure_reason, tg_id, deliverer_name = pkg
                 
                 neighborhood = self.get_neighborhood_from_coords(lat, lng)
                 data = neighborhood_data[neighborhood]
@@ -131,8 +131,8 @@ class GeographicBrain:
                     data['failure'] += 1
                     
                     # Registrar motivo de falha
-                    if notes:
-                        data['failure_reasons'][notes] += 1
+                    reason_key = failure_reason or "Não especificado"
+                    data['failure_reasons'][reason_key] += 1
                     
                     # Registrar entregador com falha
                     if deliverer_name:

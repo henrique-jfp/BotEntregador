@@ -94,6 +94,8 @@ class PackageDB(Base):
     lng = Column(Float, nullable=False)
     priority = Column(String(20), default='normal')
     status = Column(String(20), default='pending')
+    failure_reason = Column(String(100), nullable=True) # Ex: "Cliente Ausente", "Area de Risco"
+    status_detail = Column(Text, nullable=True) # Observações adicionais
     assigned_to_telegram_id = Column(BigInteger, ForeignKey('deliverers.telegram_id'), nullable=True)
     delivered_at = Column(DateTime, nullable=True)
     delivery_time_minutes = Column(Integer, nullable=True)

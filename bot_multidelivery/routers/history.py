@@ -36,6 +36,20 @@ async def list_history_sessions(limit: int = 100):
         else:
             status = "active"
 
+        # Contabilizar motivos de falha
+        failure_stats = {}
+        total_failed = 0
+        total_delivered = 0
+        
+        for route in (s.routes or []):
+            for point in (route.optimized_order or []):
+                if point.status == 'failed':
+                    total_failed += 1
+                    reason = point.failure_reason or "Não especificado"
+                    failure_stats[reason] = failure_stats.get(reason, 0) + 1
+                elif point.status == 'delivered':
+                    total_delivered += 1
+
         result.append({
             "id": s.session_id,
             "session_name": s.session_name,
@@ -45,7 +59,10 @@ async def list_history_sessions(limit: int = 100):
             "deliverers_count": s.num_deliverers or len(s.routes or []),
             "statistics": {
                 "step": s.current_step,
-                "is_finalized": is_completed
+                "is_finalized": is_completed,
+                "total_delivered": total_delivered,
+                "total_failed": total_failed,
+                "failure_reasons": failure_stats
             },
             "status": status,
             "last_updated": (s.finalized_at or s.created_at).isoformat() if (s.finalized_at or s.created_at) else None,

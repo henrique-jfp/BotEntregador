@@ -104,7 +104,6 @@ def run_bot():
         return
 
     max_retries = 10
-...
     retry_count = 0
     # Permitir desabilitar o bot em ambientes onde não queremos polling (ex: production com webhook)
     telegram_enabled = os.getenv('TELEGRAM_ENABLED', '1').lower()

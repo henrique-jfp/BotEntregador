@@ -11,7 +11,7 @@ from .session import DailySession, Route, Romaneio, DeliveryPoint
 
 # Import database - verificação de conexão será feita dinamicamente
 try:
-    from .database import db_manager, SessionDB, RouteDB
+    from .database import db_manager, SessionDB, RouteDB, PackageDB
     HAS_DATABASE_MODULE = True
 except Exception as e:
     print(f"⚠️ Database import failed: {e}")
@@ -112,7 +112,10 @@ class SessionStore:
                                     'lat': p.lat,
                                     'lng': p.lng,
                                     'priority': p.priority,
-                                    'bairro': getattr(p, 'bairro', '')
+                                    'bairro': getattr(p, 'bairro', ''),
+                                    'status': getattr(p, 'status', 'pending'),
+                                    'failure_reason': getattr(p, 'failure_reason', None),
+                                    'status_detail': getattr(p, 'status_detail', None)
                                 } for p in r.points
                             ]
                         } for r in session.romaneios
@@ -171,12 +174,44 @@ class SessionStore:
                                     'lat': p.lat,
                                     'lng': p.lng,
                                     'priority': p.priority,
-                                    'bairro': getattr(p, 'bairro', '')
+                                    'bairro': getattr(p, 'bairro', ''),
+                                    'status': getattr(p, 'status', 'pending'),
+                                    'failure_reason': getattr(p, 'failure_reason', None),
+                                    'status_detail': getattr(p, 'status_detail', None)
                                 } for p in route.optimized_order
                             ],
                             delivered_packages=route.delivered_packages
                         )
                         db_session.add(route_db)
+                        
+                        # Salva/Atualiza pacotes individuais para análise
+                        for p in route.optimized_order:
+                            package_db = db_session.query(PackageDB).filter_by(id=p.package_id).first()
+                            if package_db:
+                                package_db.status = getattr(p, 'status', 'pending')
+                                package_db.failure_reason = getattr(p, 'failure_reason', None)
+                                package_db.status_detail = getattr(p, 'status_detail', None)
+                                package_db.route_id = route.id
+                                package_db.assigned_to_telegram_id = route.assigned_to_telegram_id
+                                if package_db.status == 'delivered' and not package_db.delivered_at:
+                                    package_db.delivered_at = datetime.now()
+                            else:
+                                package_db = PackageDB(
+                                    id=p.package_id,
+                                    session_id=session.session_id,
+                                    romaneio_id=p.romaneio_id,
+                                    route_id=route.id,
+                                    address=p.address,
+                                    lat=p.lat,
+                                    lng=p.lng,
+                                    priority=p.priority,
+                                    status=getattr(p, 'status', 'pending'),
+                                    failure_reason=getattr(p, 'failure_reason', None),
+                                    status_detail=getattr(p, 'status_detail', None),
+                                    assigned_to_telegram_id=route.assigned_to_telegram_id,
+                                    delivered_at=datetime.now() if getattr(p, 'status', 'pending') == 'delivered' else None
+                                )
+                                db_session.add(package_db)
                     
                 print(f"💾 Sessão {session.session_name} salva no PostgreSQL")
                 return
@@ -218,7 +253,10 @@ class SessionStore:
                                 'address': p.address,
                                 'lat': p.lat,
                                 'lng': p.lng,
-                                'priority': p.priority
+                                'priority': p.priority,
+                                'status': getattr(p, 'status', 'pending'),
+                                'failure_reason': getattr(p, 'failure_reason', None),
+                                'status_detail': getattr(p, 'status_detail', None)
                             } for p in r.points
                         ]
                     } for r in session.romaneios
@@ -236,7 +274,10 @@ class SessionStore:
                                 'address': p.address,
                                 'lat': p.lat,
                                 'lng': p.lng,
-                                'priority': p.priority
+                                'priority': p.priority,
+                                'status': getattr(p, 'status', 'pending'),
+                                'failure_reason': getattr(p, 'failure_reason', None),
+                                'status_detail': getattr(p, 'status_detail', None)
                             } for p in r.optimized_order
                         ],
                         'delivered_packages': r.delivered_packages,
@@ -275,7 +316,10 @@ class SessionStore:
                                 lat=p['lat'],
                                 lng=p['lng'],
                                 priority=p.get('priority', 'normal'),
-                                bairro=p.get('bairro', '')
+                                bairro=p.get('bairro', ''),
+                                status=p.get('status', 'pending'),
+                                failure_reason=p.get('failure_reason'),
+                                status_detail=p.get('status_detail')
                             ) for p in r_data['points']
                         ]
                         romaneios.append(Romaneio(
@@ -296,7 +340,10 @@ class SessionStore:
                                 lat=p['lat'],
                                 lng=p['lng'],
                                 priority=p.get('priority', 'normal'),
-                                bairro=p.get('bairro', '')
+                                bairro=p.get('bairro', ''),
+                                status=p.get('status', 'pending'),
+                                failure_reason=p.get('failure_reason'),
+                                status_detail=p.get('status_detail')
                             ) for p in (route_db.optimized_order or [])
                         ]
                         
@@ -350,7 +397,10 @@ class SessionStore:
                     lat=p['lat'],
                     lng=p['lng'],
                     priority=p.get('priority', 'normal'),
-                    bairro=p.get('bairro', '')
+                    bairro=p.get('bairro', ''),
+                    status=p.get('status', 'pending'),
+                    failure_reason=p.get('failure_reason'),
+                    status_detail=p.get('status_detail')
                 ) for p in r_data['points']
             ]
             romaneios.append(Romaneio(
@@ -370,7 +420,10 @@ class SessionStore:
                     lat=p['lat'],
                     lng=p['lng'],
                     priority=p.get('priority', 'normal'),
-                    bairro=p.get('bairro', '')
+                    bairro=p.get('bairro', ''),
+                    status=p.get('status', 'pending'),
+                    failure_reason=p.get('failure_reason'),
+                    status_detail=p.get('status_detail')
                 ) for p in r_data['optimized_order']
             ]
             

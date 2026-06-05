@@ -83,31 +83,43 @@ class Route:
             distance += haversine_distance(prev.lat, prev.lng, curr.lat, curr.lng)
         return round(distance, 2)
     
-    def mark_as_delivered(self, package_id: str):
+    def mark_as_delivered(self, package_id: str, detail: Optional[str] = None):
+        """Marca pacote como entregue com sucesso"""
         if package_id not in self.delivered_packages:
             self.delivered_packages.append(package_id)
+        
+        for point in self.optimized_order:
+            if (hasattr(point, 'package_id') and point.package_id == package_id) or \
+               (hasattr(point, 'id') and point.id == package_id):
+                point.status = 'delivered'
+                point.status_detail = detail
+                point.failure_reason = None
     
-    def mark_as_failed(self, package_id: str):
+    def mark_as_failed(self, package_id: str, reason: Optional[str] = None, detail: Optional[str] = None):
         """Marca pacote como insucesso (não entregue)"""
         # Remove de delivered se estava lá
         if package_id in self.delivered_packages:
             self.delivered_packages.remove(package_id)
+        
         # Atualiza status do ponto
         for point in self.optimized_order:
-            if hasattr(point, 'package_id') and point.package_id == package_id:
+            if (hasattr(point, 'package_id') and point.package_id == package_id) or \
+               (hasattr(point, 'id') and point.id == package_id):
                 point.status = 'failed'
-            elif hasattr(point, 'id') and point.id == package_id:
-                point.status = 'failed'
+                point.failure_reason = reason
+                point.status_detail = detail
     
-    def mark_as_returned(self, package_id: str):
+    def mark_as_returned(self, package_id: str, reason: Optional[str] = None, detail: Optional[str] = None):
         """Marca pacote como devolvido"""
         if package_id in self.delivered_packages:
             self.delivered_packages.remove(package_id)
+        
         for point in self.optimized_order:
-            if hasattr(point, 'package_id') and point.package_id == package_id:
+            if (hasattr(point, 'package_id') and point.package_id == package_id) or \
+               (hasattr(point, 'id') and point.id == package_id):
                 point.status = 'returned'
-            elif hasattr(point, 'id') and point.id == package_id:
-                point.status = 'returned'
+                point.failure_reason = reason
+                point.status_detail = detail
 
 
 @dataclass

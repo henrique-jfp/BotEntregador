@@ -17,6 +17,9 @@ class DeliveryPoint:
     package_id: str
     priority: str = "normal"  # low, normal, high, urgent
     bairro: str = ""  # bairro/colonia opcional (melhora o geocoding)
+    status: str = "pending"  # pending, delivered, failed, returned
+    failure_reason: Optional[str] = None
+    status_detail: Optional[str] = None
 
 @dataclass
 class DeliveryStop:
