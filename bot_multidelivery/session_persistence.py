@@ -131,6 +131,7 @@ class SessionStore:
                         session_db.base_lng = session.base_lng
                         session_db.is_finalized = session.is_finalized
                         session_db.finalized_at = session.finalized_at
+                        session_db.current_step = session.current_step
                         session_db.romaneios_data = romaneios_data
                         
                         # Remove rotas antigas
@@ -148,6 +149,7 @@ class SessionStore:
                             base_lng=session.base_lng,
                             is_finalized=session.is_finalized,
                             finalized_at=session.finalized_at,
+                            current_step=session.current_step,
                             romaneios_data=romaneios_data
                         )
                         db_session.add(session_db)
@@ -203,6 +205,7 @@ class SessionStore:
                 'base_lng': session.base_lng,
                 'is_finalized': session.is_finalized,
                 'finalized_at': session.finalized_at.isoformat() if session.finalized_at else None,
+                'current_step': session.current_step,
                 'romaneios': [
                     {
                         'id': r.id,
@@ -321,7 +324,8 @@ class SessionStore:
                         romaneios=romaneios,
                         routes=routes,
                         is_finalized=session_db.is_finalized,
-                        finalized_at=session_db.finalized_at
+                        finalized_at=session_db.finalized_at,
+                        current_step=session_db.current_step or 'idle'
                     )
             except Exception as e:
                 print(f"⚠️ Erro ao carregar sessão do PostgreSQL: {e}, tentando JSON")
@@ -394,7 +398,8 @@ class SessionStore:
             romaneios=romaneios,
             routes=routes,
             is_finalized=data.get('is_finalized', False),
-            finalized_at=datetime.fromisoformat(data['finalized_at']) if data.get('finalized_at') else None
+            finalized_at=datetime.fromisoformat(data['finalized_at']) if data.get('finalized_at') else None,
+            current_step=data.get('current_step', 'idle')
         )
         
         return session

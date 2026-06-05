@@ -14,13 +14,15 @@ import logging
 
 
 class GeocodingCache:
-    """Cache persistente de geocoding"""
+    """Cache persistente de geocoding (PostgreSQL com fallback JSON)"""
     
     def __init__(self, cache_file: str = "data/geocoding_cache.json"):
         self.cache_file = Path(cache_file)
         self.cache_file.parent.mkdir(parents=True, exist_ok=True)
         self.cache = self._load_cache()
         self.ttl_days = 90  # Cache válido por 90 dias
+        from ..database import db_manager
+        self.db_manager = db_manager
     
     def _load_cache(self) -> dict:
         if self.cache_file.exists():
@@ -32,35 +34,80 @@ class GeocodingCache:
         return {}
     
     def _save_cache(self):
-        with open(self.cache_file, 'w', encoding='utf-8') as f:
-            json.dump(self.cache, f, indent=2, ensure_ascii=False)
+        try:
+            with open(self.cache_file, 'w', encoding='utf-8') as f:
+                json.dump(self.cache, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            logging.error(f"Erro ao salvar cache JSON: {e}")
     
     def _get_key(self, address: str) -> str:
         """Gera hash MD5 do endereço normalizado"""
         normalized = address.lower().strip()
+        # Para o DB usamos o próprio endereço como PK, para o JSON usamos hash
         return hashlib.md5(normalized.encode()).hexdigest()
     
     def get(self, address: str) -> Optional[Tuple[float, float]]:
-        """Busca coordenadas no cache"""
-        key = self._get_key(address)
+        """Busca coordenadas no cache (DB -> JSON)"""
+        normalized = address.lower().strip()
         
+        # 1. Tenta PostgreSQL
+        if self.db_manager.is_connected:
+            try:
+                from ..database import GeocodingCacheDB
+                with self.db_manager.get_session() as session:
+                    cached = session.query(GeocodingCacheDB).filter(GeocodingCacheDB.address == normalized).first()
+                    if cached:
+                        # Verifica TTL
+                        if datetime.now() - cached.cached_at < timedelta(days=self.ttl_days):
+                            return (cached.lat, cached.lng)
+            except Exception as e:
+                logging.warning(f"Erro ao buscar cache no DB: {e}")
+        
+        # 2. Fallback JSON
+        key = self._get_key(address)
         if key in self.cache:
             entry = self.cache[key]
             cached_date = datetime.fromisoformat(entry['cached_at'])
-            
-            # Verifica se cache ainda é válido
             if datetime.now() - cached_date < timedelta(days=self.ttl_days):
                 return (entry['lat'], entry['lng'])
         
         return None
     
-    def set(self, address: str, lat: float, lng: float):
-        """Salva coordenadas no cache"""
+    def set(self, address: str, lat: float, lng: float, provider: str = None):
+        """Salva coordenadas no cache (DB e JSON)"""
+        normalized = address.lower().strip()
+        
+        # 1. Salva no PostgreSQL
+        if self.db_manager.is_connected:
+            try:
+                from ..database import GeocodingCacheDB
+                with self.db_manager.get_session() as session:
+                    cached = session.query(GeocodingCacheDB).filter(GeocodingCacheDB.address == normalized).first()
+                    if cached:
+                        cached.lat = lat
+                        cached.lng = lng
+                        cached.provider = provider
+                        cached.cached_at = datetime.now()
+                    else:
+                        new_entry = GeocodingCacheDB(
+                            address=normalized,
+                            lat=lat,
+                            lng=lng,
+                            provider=provider,
+                            cached_at=datetime.now()
+                        )
+                        session.add(new_entry)
+                    session.commit()
+            except Exception as e:
+                logging.error(f"Erro ao salvar cache no DB: {e}")
+        
+        # 2. Salva no JSON
         key = self._get_key(address)
         self.cache[key] = {
             'address': address,
             'lat': lat,
             'lng': lng,
+            'provider': provider,
             'cached_at': datetime.now().isoformat()
         }
         self._save_cache()
@@ -206,7 +253,7 @@ class GeocodingService:
         if self.locationiq_key and self.api_calls_today < 5000:
             coords = self._geocode_locationiq(query, expected_bairro)
             if coords:
-                self.cache.set(query, coords[0], coords[1])
+                self.cache.set(query, coords[0], coords[1], "LocationIQ")
                 self._increment_api_call()
                 logging.info(f"✅ Geocoded via LocationIQ: {address[:60]} -> {coords}")
                 return coords
@@ -215,7 +262,7 @@ class GeocodingService:
         if self.geoapify_key and self.api_calls_today < 3000:
             coords = self._geocode_geoapify(query, expected_bairro)
             if coords:
-                self.cache.set(query, coords[0], coords[1])
+                self.cache.set(query, coords[0], coords[1], "Geoapify")
                 self._increment_api_call()
                 logging.info(f"✅ Geocoded via Geoapify: {address[:60]} -> {coords}")
                 return coords
@@ -223,7 +270,7 @@ class GeocodingService:
         # 4. Fallback: OpenStreetMap Nominatim (GRÁTIS mas lento)
         coords = self._geocode_osm(query, raw_addr, bairro)
         if coords:
-            self.cache.set(query, coords[0], coords[1])
+            self.cache.set(query, coords[0], coords[1], "OSM")
             logging.info(f"✅ Geocoded via OSM: {address[:60]} -> {coords}")
             return coords
 
@@ -231,7 +278,7 @@ class GeocodingService:
         if self.google_api_key and self.api_calls_today < 2500:
             coords = self._geocode_google(query, expected_bairro)
             if coords:
-                self.cache.set(query, coords[0], coords[1])
+                self.cache.set(query, coords[0], coords[1], "Google")
                 self._increment_api_call()
                 logging.info(f"✅ Geocoded via Google Maps (último recurso): {address[:60]} -> {coords}")
                 return coords

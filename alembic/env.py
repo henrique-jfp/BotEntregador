@@ -2,6 +2,12 @@
 
 from logging.config import fileConfig
 import os
+import sys
+from pathlib import Path
+
+# Add project root to path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from alembic import context

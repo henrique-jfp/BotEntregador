@@ -50,6 +50,7 @@ class SessionDB(Base):
     base_lng = Column(Float)
     is_finalized = Column(Boolean, default=False)
     finalized_at = Column(DateTime, nullable=True)
+    current_step = Column(String(50), default='idle')
     
     # JSON fields para dados complexos
     romaneios_data = Column(JSON, nullable=True)
@@ -113,11 +114,13 @@ class GeocodingCacheDB(Base):
     """Tabela de cache de geocodificação"""
     __tablename__ = 'geocoding_cache'
     
-    address = Column(String(500), primary_key=True)
+    address = Column(String(500), primary_key=True, index=True)
     lat = Column(Float, nullable=False)
     lng = Column(Float, nullable=False)
     formatted_address = Column(Text)
+    provider = Column(String(50), nullable=True) # Ex: "LocationIQ", "Geoapify"
     cached_at = Column(DateTime, default=datetime.now)
+    created_at = Column(DateTime, server_default=text('NOW()'))
 
 
 class BotConfigDB(Base):

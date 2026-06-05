@@ -51,12 +51,60 @@ def create_application():
     # app.add_handler(CommandHandler("ping", common.cmd_ping)) # Futuro
 
     return app
+# Singleton para a aplicação do bot
+_bot_app = None
+
+def get_telegram_app():
+    """Retorna ou cria a instância singleton da aplicação Telegram"""
+    global _bot_app
+    if _bot_app is None:
+        _bot_app = create_application()
+    return _bot_app
+
+async def setup_webhook():
+    """Configura o webhook no Telegram se a URL base estiver disponível"""
+    app = get_telegram_app()
+    if not app:
+        return
+
+    # URL base do sistema (Railway ou similar)
+    webapp_url = os.getenv("WEBAPP_URL") or os.getenv("RAILWAY_STATIC_URL")
+    if not webapp_url:
+        logger.warning("⚠️ WEBAPP_URL não configurada. Webhook não será definido automaticamente.")
+        return
+
+    if not webapp_url.startswith("http"):
+        webapp_url = f"https://{webapp_url}"
+
+    # Remove barra final se existir
+    webapp_url = webapp_url.rstrip("/")
+    webhook_url = f"{webapp_url}/api/webhook/telegram"
+    secret_token = os.getenv("TELEGRAM_WEBHOOK_SECRET", "minha-chave-secreta-v2")
+
+    try:
+        logger.info(f"🌐 Configurando Webhook do Telegram para: {webhook_url}")
+        await app.bot.set_webhook(
+            url=webhook_url,
+            secret_token=secret_token,
+            drop_pending_updates=True,
+            allowed_updates=["message", "callback_query"]
+        )
+        logger.info("✅ Webhook do Telegram configurado com sucesso!")
+    except Exception as e:
+        logger.error(f"❌ Erro ao configurar Webhook: {e}")
 
 def run_bot():
-    """Loop principal de execução do bot"""
+    """Loop principal de execução do bot (Polling)"""
     logger.info("🚀 Iniciando Bot em Modo SLIM (WebApp Only)...")
-    
+
+    # Se estivermos em produção (Railway) e Webhooks habilitados, ignoramos run_polling
+    webhook_enabled = os.getenv('TELEGRAM_WEBHOOK_ENABLED', '0').lower() in ('1', 'true', 'yes')
+    if webhook_enabled:
+        logger.info("ℹ️ Modo WEBHOOK detectado. run_bot() apenas inicializa e aguarda via FastAPI.")
+        return
+
     max_retries = 10
+...
     retry_count = 0
     # Permitir desabilitar o bot em ambientes onde não queremos polling (ex: production com webhook)
     telegram_enabled = os.getenv('TELEGRAM_ENABLED', '1').lower()

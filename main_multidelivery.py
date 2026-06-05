@@ -9,6 +9,7 @@ import threading
 import uvicorn
 import time
 from pathlib import Path
+from contextlib import asynccontextmanager
 
 # Carrega variáveis do .env
 try:
@@ -25,20 +26,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 def run_migrations():
     """Executa migrações do Alembic se necessário"""
     try:
-        project_root = Path(__file__).resolve().parent
-        removed_paths = []
-
-        for entry in list(sys.path):
-            if entry in ("", ".", str(project_root)):
-                removed_paths.append(entry)
-                sys.path.remove(entry)
-
-        try:
-            from alembic.config import Config
-            from alembic import command
-        finally:
-            for entry in reversed(removed_paths):
-                sys.path.insert(0, entry)
+        from alembic.config import Config
+        from alembic import command
         
         alembic_cfg = Config("alembic.ini")
         print("🔄 Verificando migrações do banco...")
@@ -48,23 +37,60 @@ def run_migrations():
         print(f"⚠️ Alembic não disponível (migrations skipped): {e}")
     except Exception as e:
         print(f"⚠️ Erro ao executar migrações: {e}")
-        # Não falha - continua mesmo se migrations falharem
 
 # Executa migrations primeiro
 run_migrations()
 
-from bot_multidelivery.bot import run_bot
+from bot_multidelivery.bot import get_telegram_app, setup_webhook, run_bot
 from bot_multidelivery.services.web_scanner import scanner_app
+from fastapi import FastAPI, Request, HTTPException, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse, JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 import logging
+
+# --- Gerenciamento de Vida do App (Bot + FastAPI) ---
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Controla inicialização e desligamento do sistema"""
+    print("🚀 Iniciando BotEntregador V2...")
+    
+    # 1. Inicializa App do Telegram
+    bot_app = get_telegram_app()
+    if bot_app:
+        await bot_app.initialize()
+        await bot_app.start()
+        
+        # 2. Configura Webhook se habilitado
+        webhook_enabled = os.getenv('TELEGRAM_WEBHOOK_ENABLED', '0').lower() in ('1', 'true', 'yes')
+        if webhook_enabled:
+            await setup_webhook()
+        else:
+            # Se não for webhook, inicia polling em background
+            print("ℹ️ Modo Polling: Iniciando bot em thread separada...")
+            threading.Thread(target=run_bot, daemon=True).start()
+
+    yield # Servidor rodando...
+
+    # 3. Desligamento Limpo
+    print("🛑 Desligando sistema...")
+    if bot_app:
+        # Se estiver em polling, o python-telegram-bot lida com o stop no run_polling
+        # Mas aqui paramos a aplicação se necessário
+        await bot_app.stop()
+        await bot_app.shutdown()
+
+# Reaplica lifespan ao app existente (definido em web_scanner.py)
+scanner_app.router.lifespan_context = lifespan
+
 # --- CORS GLOBAL PARA API E FRONTEND ---
 ALLOWED_ORIGINS = [
     "https://maestrofin-production.up.railway.app",
-    "https://maestrofin-production.up.railway.app/",
     "https://jackqueline-inversive-materially.ngrok-free.dev",
     "http://localhost:5173",
     "http://localhost:8080",
-    "*"  # Remova em produção se quiser restringir
+    "*"
 ]
 scanner_app.add_middleware(
     CORSMiddleware,
@@ -74,35 +100,11 @@ scanner_app.add_middleware(
     allow_headers=["*"],
 )
 
-# Middleware de inspeção: detecta quando uma rota /api está retornando HTML (index.html)
-logger = logging.getLogger("ApiInspector")
-
-@scanner_app.middleware("http")
-async def api_response_inspector(request, call_next):
-    response = await call_next(request)
-    try:
-        path = request.url.path or ''
-        ctype = response.headers.get('content-type', '')
-        if path.startswith('/api') and 'text/html' in ctype:
-            logger.warning(f"[/api] resposta HTML inesperada para {path} (Content-Type: {ctype})")
-    except Exception as e:
-        logger.exception(f"Erro no middleware de inspeção: {e}")
-    return response
+# Injeta Health Check e Routers Modulares
 from bot_multidelivery.health import router as health_router
-from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
-import os
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-from fastapi import Request, HTTPException
-from starlette.exceptions import HTTPException as StarletteHTTPException
-from fastapi.responses import JSONResponse
+from bot_multidelivery.routers import admin, auth, session, logistic, romaneio, routes, separation, deliverer, neighborhoods, analytics, history, webhook, map_realtime
 
-# Injeta Health Check (Observabilidade)
 scanner_app.include_router(health_router)
-
-# --- 🚀 LOAD MODULAR API ROUTERS ---
-from fastapi import APIRouter
-from bot_multidelivery.routers import admin, auth, session, logistic, romaneio, routes, separation, deliverer, neighborhoods, analytics, history
 
 api_router = APIRouter(prefix="/api")
 
@@ -121,104 +123,32 @@ api_router.include_router(deliverer.router)
 api_router.include_router(neighborhoods.router)
 api_router.include_router(analytics.router)
 api_router.include_router(history.router)
-from bot_multidelivery.routers import map_realtime
+api_router.include_router(webhook.router)
 api_router.include_router(map_realtime.router)
 
 scanner_app.include_router(api_router)
 print("✅ Routers Modulares incluídos com sucesso.")
-# -------------------------------------
 
-# Servir Frontend (SPA) se existir build
+# Servir Frontend (SPA)
 frontend_path = Path("webapp/dist")
 if frontend_path.exists():
     print(f"✅ Servindo frontend estático de: {frontend_path}")
     scanner_app.mount("/", StaticFiles(directory=str(frontend_path), html=True), name="static")
 
-    # Força a rota do entregador a carregar o React App (SPA)
-    # Isso garante que não caia em rotas antigas ou 404
-    @scanner_app.get("/public/deliverer/{token}")
-    async def public_deliverer_spa(token: str, request: Request):
-        print(f"🌐 Servindo SPA para entregador: {token}")
-        index_file = frontend_path / "index.html"
-        return FileResponse(index_file)
-
-    # Rota explícita para o dashboard (SPA)
     @scanner_app.get("/dashboard")
     async def dashboard_spa(request: Request):
         index_file = frontend_path / "index.html"
-        if index_file.exists():
-            return FileResponse(index_file)
-        raise HTTPException(status_code=404, detail="Frontend build (index.html) not found.")
+        return FileResponse(index_file)
 
-    @scanner_app.get("/public/{full_path:path}")
-    async def public_paths(full_path: str, request: Request):
-        index_file = frontend_path / "index.html"
-        if index_file.exists():
-            return FileResponse(index_file)
-        raise HTTPException(status_code=404, detail="Not Found")
-
-    # Handler global para 404: se a rota não for encontrada (e não for API), servir o index.html (SPA fallback)
-    # Isso permite que rotas como /deliverer/123 funcionem com React Router
     @scanner_app.exception_handler(StarletteHTTPException)
     async def spa_404_handler(request: Request, exc: StarletteHTTPException):
-        try:
-            # Se não for uma chamada de API, tenta servir o index.html
-            if exc.status_code == 404 and not request.url.path.startswith('/api'):
-                index_file = frontend_path / "index.html"
-                if index_file.exists():
-                    return FileResponse(index_file)
-        except Exception:
-            pass
+        if exc.status_code == 404 and not request.url.path.startswith('/api'):
+            index_file = frontend_path / "index.html"
+            if index_file.exists():
+                return FileResponse(index_file)
         return JSONResponse(status_code=exc.status_code, content={"detail": str(exc.detail)})
 
-# --- Metrics endpoint (Prometheus) ---
-if os.environ.get('PROMETHEUS_ENABLED', '0') == '1':
-    @scanner_app.get('/metrics')
-    async def metrics_endpoint():
-        data = generate_latest()
-        return JSONResponse(content=data.decode('utf-8'), media_type=CONTENT_TYPE_LATEST)
-
-# --- WEB SERVER PARA SCANNER + HEALTH CHECK ---
-def start_web_server():
-    """Inicia servidor FastAPI com scanner em /scanner"""
-    port = int(os.environ.get("PORT", 8080))
-    
-    print(f"🌐 Web server iniciando na porta {port}")
-    print(f"📱 Acesse o scanner em: http://localhost:{port}/scanner")
-    
-    try:
-        # Configura uvicorn
-        config = uvicorn.Config(
-            scanner_app,
-            host="0.0.0.0",
-            port=port,
-            log_level="info",
-            access_log=False
-        )
-        server = uvicorn.Server(config)
-        server.run()
-    except Exception as e:
-        print(f"⚠️ Erro ao iniciar web server: {e}")
-
 if __name__ == "__main__":
-    # Inicia web server em thread separada
-    threading.Thread(target=start_web_server, daemon=True).start()
-
-    print("🔥 Iniciando Bot Multi-Entregador...")
-    print("🎯 Pressione CTRL+C para parar\n")
-    
-    try:
-        telegram_enabled = os.environ.get('TELEGRAM_ENABLED', '1').lower()
-        if telegram_enabled in ('1', 'true', 'yes'):
-            run_bot()
-        else:
-            print('⛔ TELEGRAM_ENABLED is false — bot polling skipped. Running only web server.')
-            # Keep main thread alive so daemon threads (web server) keep running
-            while True:
-                time.sleep(60)
-    except KeyboardInterrupt:
-        print("\n⚠️ Processo interrompido pelo usuário")
-    except Exception as e:
-        print(f"\n❌ Erro fatal: {e}")
-        import traceback
-        traceback.print_exc()
+    port = int(os.environ.get("PORT", 8080))
+    print(f"🔥 Iniciando Servidor na porta {port}")
+    uvicorn.run(scanner_app, host="0.0.0.0", port=port, log_level="info")
