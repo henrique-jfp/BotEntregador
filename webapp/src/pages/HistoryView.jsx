@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Archive, MapPin, Users, DollarSign, Calendar, ChevronDown, Download, Clock, Package, TrendingUp, ChevronRight, History, FolderOpen, Trash2 } from 'lucide-react';
+import { fetchSafe } from '../api_client';
 
 const HistoryView = () => {
   const [sessions, setSessions] = useState([]);

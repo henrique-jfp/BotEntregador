@@ -9,7 +9,6 @@ export default function TeamView() {
   const [showMemberModal, setShowMemberModal] = useState(null);
   const [newMember, setNewMember] = useState({ name: '', telegram_id: '', is_partner: false });
   const [pendingTransfers, setPendingTransfers] = useState([]);
-  const [expandedMember, setExpandedMember] = useState(null);
 
   // Fetch Team
   const refreshTeam = () => {
@@ -24,7 +23,6 @@ export default function TeamView() {
 
   useEffect(() => {
     refreshTeam();
-    refreshTransfers();
   }, []);
 
   const handleAdd = async (e) => {
@@ -54,41 +52,6 @@ export default function TeamView() {
     await fetchSafe(`/admin/team/${id}`, { method: 'DELETE' });
     setShowMemberModal(null);
     refreshTeam();
-  };
-
-  const refreshTransfers = async () => {
-    try {
-      const res = await fetchSafe('/delivery/pending-transfers');
-      if (res.ok) setPendingTransfers(res.json.transfers || []);
-    } catch (err) {
-      console.error('Erro ao buscar transferências:', err);
-    }
-  };
-
-  const handleApproveTransfer = async (transferId, approved, rejectionReason = '') => {
-    try {
-      const adminId = 123456; // TODO: pegar do contexto
-      const adminName = 'Admin'; // TODO: pegar do contexto
-      
-      const res = await fetchSafe('/delivery/transfer-approve', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          transfer_id: transferId,
-          approved,
-          admin_id: adminId,
-          admin_name: adminName,
-          rejection_reason: rejectionReason
-        })
-      });
-
-      if (res.ok) {
-        alert(approved ? 'Transferência aprovada!' : 'Transferência rejeitada!');
-        refreshTransfers();
-      }
-    } catch (err) {
-      alert('Erro ao processar transferência');
-    }
   };
 
   // Função para abrir modal do membro
@@ -123,7 +86,6 @@ export default function TeamView() {
             ))}
           </div>
         ) : team.length === 0 ? (
-          /* Empty State Premium */
           <div className="card-premium">
             <div className="empty-state">
               <div className="empty-state-icon">
@@ -167,7 +129,6 @@ export default function TeamView() {
                       <Star size={10} className="fill-current" /> SÓCIO
                     </span>
                   )}
-                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${member.is_online ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} />
                 </div>
                 <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
                   <span className="flex items-center gap-1">
@@ -177,56 +138,11 @@ export default function TeamView() {
                 </div>
               </div>
               
-              {/* Seta indicando que é clicável */}
               <ChevronRight size={20} className="list-item-arrow flex-shrink-0" />
             </div>
           ))
         )}
       </div>
-
-      {/* Painel de Transferências Pendentes */}
-      {pendingTransfers.length > 0 && (
-        <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-xl p-6 border border-yellow-200 dark:border-yellow-800">
-          <h3 className="text-lg font-bold flex items-center gap-2 mb-4 text-yellow-800 dark:text-yellow-200">
-            <AlertCircle size={20} /> Solicitações de Transferência Pendentes ({pendingTransfers.length})
-          </h3>
-          <div className="space-y-3">
-            {pendingTransfers.map((transfer) => (
-              <div key={transfer.id} className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <p className="font-semibold text-sm">
-                      {transfer.from_deliverer.name} → {transfer.to_deliverer.name}
-                    </p>
-                    <p className="text-xs text-gray-500">{transfer.package_count} pacote(s)</p>
-                  </div>
-                  <span className="badge badge-warning">Pendente</span>
-                </div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                  <strong>Motivo:</strong> {transfer.reason}
-                </p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleApproveTransfer(transfer.id, true)}
-                    className="flex-1 btn-success !py-2 text-sm flex items-center justify-center gap-2"
-                  >
-                    <CheckCircle size={16} /> Aprovar
-                  </button>
-                  <button
-                    onClick={() => {
-                      const reason = prompt('Motivo da rejeição (opcional):');
-                      handleApproveTransfer(transfer.id, false, reason || '');
-                    }}
-                    className="flex-1 btn-danger !py-2 text-sm flex items-center justify-center gap-2"
-                  >
-                    <XCircle size={16} /> Rejeitar
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Modal de Detalhes do Membro */}
       {showMemberModal && (
@@ -247,8 +163,6 @@ export default function TeamView() {
                       ) : (
                         <><Truck size={14} /> Entregador</>
                       )}
-                      <span className={`w-2 h-2 rounded-full ${showMemberModal.is_online ? 'bg-green-400' : 'bg-gray-400'}`} />
-                      {showMemberModal.is_online ? 'Online' : 'Offline'}
                     </p>
                   </div>
                 </div>
@@ -278,16 +192,10 @@ export default function TeamView() {
               {/* Ações */}
               <div className="space-y-2 pt-2">
                 <button 
-                  onClick={() => window.open(`https://t.me/${showMemberModal.username || showMemberModal.id}`, '_blank')}
+                  onClick={() => window.open(`https://t.me/${showMemberModal.id}`, '_blank')}
                   className="w-full btn-primary flex items-center justify-center gap-2"
                 >
                   <Phone size={18} /> Contatar no Telegram
-                </button>
-                <button 
-                  onClick={() => alert(`📊 Histórico de ${showMemberModal.name}: Em desenvolvimento`)}
-                  className="w-full btn-secondary flex items-center justify-center gap-2"
-                >
-                  <BarChart2 size={18} /> Ver Histórico
                 </button>
                 <button 
                   onClick={() => handleRemove(showMemberModal.id)}
