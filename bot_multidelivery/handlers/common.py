@@ -135,37 +135,39 @@ async def cmd_saldo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         all_sessions = session_manager.get_all_sessions()
         
         total_packages_week = 0
-        total_earned_week = 0.0
-        salary_per_delivery = 5.0  # Valor padrão, será customizável depois
+        total_failed_week = 0
         
         # Procurar todas as sessões ativas/finalizadas dessa semana
         for session in all_sessions:
-            # Verificar se sessão está no intervalo da semana
             if not (monday <= session.created_at <= sunday):
                 continue
             
-            # Procurar rota do entregador nesta sessão
             for route in session.routes:
                 if route.assigned_to_telegram_id == tg_id:
-                    # Somar pacotes entregues com sucesso
-                    total_packages_week += route.delivered_count
-                    total_earned_week += route.delivered_count * salary_per_delivery
+                    # Contagem detalhada por status nos pontos da rota
+                    for point in (route.optimized_order or []):
+                        if point.status == 'delivered':
+                            total_packages_week += 1
+                        elif point.status in ('failed', 'returned'):
+                            total_failed_week += 1
         
         # 4. Montar resposta
         monday_str = monday.strftime("%d/%m")
         sunday_str = sunday.strftime("%d/%m")
         
-        message = f"""💰 **Seu Saldo da Semana**
+        success_rate = (total_packages_week / (total_packages_week + total_failed_week) * 100) if (total_packages_week + total_failed_week) > 0 else 100
+        
+        message = f"""📊 **Seu Desempenho da Semana**
 
 📅 **Período:** {monday_str} a {sunday_str}
-📦 **Pacotes Entregues:** {total_packages_week}
-💵 **Valor por Pacote:** R$ {salary_per_delivery:.2f}
-💸 **Total da Semana:** R$ {total_earned_week:.2f}
+✅ **Entregues com Sucesso:** {total_packages_week}
+❌ **Insucessos/Devoluções:** {total_failed_week}
+📈 **Taxa de Eficiência:** {success_rate:.1f}%
 
-✅ Continue entregando para aumentar seu ganho!"""
+🚀 Continue com o ótimo trabalho!"""
         
         await update.message.reply_text(message)
-        logger.info(f"✅ Saldo semanal enviado para {deliverer.name}: R$ {total_earned_week:.2f}")
+        logger.info(f"✅ Desempenho semanal enviado para {deliverer.name}: {total_packages_week} entregues")
     
     except Exception as e:
         logger.error(f"❌ Erro ao processar /saldo: {str(e)}")

@@ -10,8 +10,6 @@ from .dashboard_service import dashboard_ws
 from .ml_predictor import predictor
 from .scooter_optimizer import scooter_optimizer
 from .export_service import export_service
-from .bank_inter_service import bank_inter_service
-from .projection_service import projection_service
 from .barcode_separator import barcode_separator
 
 __all__ = [
@@ -23,7 +21,5 @@ __all__ = [
     'predictor',
     'scooter_optimizer',
     'export_service',
-    'bank_inter_service',
-    'projection_service',
     'barcode_separator'
 ]

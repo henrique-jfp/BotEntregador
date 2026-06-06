@@ -17,8 +17,7 @@ async def get_team():
             "id": d.telegram_id,
             "name": d.name,
             "is_partner": d.is_partner,
-            "deliveries": d.total_deliveries,
-            "earnings": d.total_earnings
+            "deliveries": d.total_deliveries
         }
         for d in deliverers
     ]
