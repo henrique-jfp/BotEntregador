@@ -211,6 +211,10 @@ class DatabaseManager:
                 for attempt in range(1, max_retries + 1):
                     try:
                         Base.metadata.create_all(self.engine)
+                        
+                        # Executa migrações manuais para garantir colunas novas (Robustez para Railway)
+                        self.run_manual_migrations()
+
                         with self.get_session() as session:
                             session.execute(text('SELECT 1'))
                         print(f"✅ PostgreSQL conectado com sucesso! (tentativa {attempt}/{max_retries})")
@@ -234,6 +238,37 @@ class DatabaseManager:
             print("📁 Usando arquivos JSON locais")
         
         print("="*50 + "\n")
+
+    def run_manual_migrations(self):
+        """Executa comandos SQL manuais para garantir que o schema está atualizado"""
+        migrations = [
+            # Colunas para Sessions
+            "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS current_step VARCHAR(50) DEFAULT 'idle';",
+            "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS romaneios_data JSON;",
+            
+            # Colunas para Packages
+            "ALTER TABLE packages ADD COLUMN IF NOT EXISTS failure_reason VARCHAR(100);",
+            "ALTER TABLE packages ADD COLUMN IF NOT EXISTS status_detail TEXT;",
+            "ALTER TABLE packages ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMP;",
+            
+            # Colunas para Geocoding Cache
+            "ALTER TABLE geocoding_cache ADD COLUMN IF NOT EXISTS provider VARCHAR(50);",
+            "ALTER TABLE geocoding_cache ADD COLUMN IF NOT EXISTS formatted_address TEXT;",
+            "ALTER TABLE geocoding_cache ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW();"
+        ]
+        
+        try:
+            # Usamos uma conexão direta fora do sessionmaker para DDL
+            with self.engine.begin() as conn:
+                for sql in migrations:
+                    try:
+                        conn.execute(text(sql))
+                    except Exception as e:
+                        # Logamos erro mas não travamos, pois algumas versões de postgres 
+                        # ou configurações de driver podem dar falso-positivo
+                        print(f"ℹ️ Migração [{sql[:40]}...]: {e}")
+        except Exception as e:
+            print(f"❌ Erro ao executar migrações manuais: {e}")
     
     @property
     def is_connected(self) -> bool:
