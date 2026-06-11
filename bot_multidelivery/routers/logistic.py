@@ -2,9 +2,9 @@
 import os
 from fastapi import APIRouter, HTTPException
 from typing import List, Dict
-from bot_multidelivery.schemas_models import OptimizeInput, AssignRouteInput
-from bot_multidelivery.session import session_manager, Route
-from bot_multidelivery.models import DeliveryPoint
+from bot_multidelivery.schemas_models import OptimizeInput, AssignRouteInput, SaveCreativeRoutesInput
+from bot_multidelivery.session import session_manager, Route, RouteStatus
+from bot_multidelivery.models import DeliveryPoint, Cluster
 from bot_multidelivery.clustering import TerritoryDivider
 from bot_multidelivery.services import deliverer_service
 
@@ -91,4 +91,65 @@ async def assign_route(data: AssignRouteInput):
          raise HTTPException(status_code=404, detail="Rota não encontrada")
          
     return {"status": "success", "assigned_to": data.deliverer_id}
+
+@router.post("/creative/save")
+async def save_creative_routes(data: SaveCreativeRoutesInput):
+    """
+    Salva as rotas criadas manualmente no Modo Criativo.
+    """
+    session = session_manager.get_session(data.session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Sessão não encontrada")
+    
+    # Coletar todos os pontos disponíveis na sessão
+    all_points_map = {}
+    for rom in session.romaneios:
+        for point in rom.points:
+            all_points_map[point.package_id] = point
+
+    divider = TerritoryDivider(session.base_lat or -22.9068, session.base_lng or -43.1729)
+    
+    new_routes = []
+    
+    for c_route in data.routes:
+        route_points = []
+        for pkg_id in c_route.package_ids:
+            if pkg_id in all_points_map:
+                route_points.append(all_points_map[pkg_id])
+                
+        if not route_points:
+            continue
+            
+        # Cria um cluster dummy para a rota
+        cluster = Cluster(
+            id=len(new_routes),
+            center_lat=sum(p.lat for p in route_points) / len(route_points) if route_points else 0.0,
+            center_lng=sum(p.lng for p in route_points) / len(route_points) if route_points else 0.0,
+            points=route_points
+        )
+        
+        # Otimiza a ordem dos pontos dessa rota manual usando a mesma lógica do auto
+        optimized_order = divider.optimize_cluster_route(cluster)
+        
+        new_route = Route(
+            id=c_route.id,
+            cluster=cluster,
+            color=c_route.color,
+            assigned_to_telegram_id=c_route.assigned_to_telegram_id,
+            assigned_to_name=c_route.assigned_to_name,
+            status=RouteStatus.PENDING,
+            optimized_order=optimized_order
+        )
+        new_routes.append(new_route)
+
+    session.routes = new_routes
+    session.current_step = 'routes_created'
+    session.num_deliverers = len(new_routes)
+    session_manager.save_session(session)
+
+    return {
+        "status": "success",
+        "message": f"{len(new_routes)} rotas salvas com sucesso.",
+        "session_id": session.session_id
+    }
 

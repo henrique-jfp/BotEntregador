@@ -4,14 +4,15 @@ import { useResponsive } from './hooks/useResponsive';
 import BarcodeScanner from './components/BarcodeScanner';
 import RoutePreviewMap from './components/RoutePreviewMap';
 import BaseLocationSelector from './components/BaseLocationSelector';
+import CreativeMode from './components/CreativeMode';
 import { fetchWithAuth } from './api_client';
 
 export default function RouteAnalysisView() {
   const responsive = useResponsive();
   
   
-  // ===== ANÁLISE SIMPLES (por lista de endereços) =====
-  const [viewMode, setViewMode] = useState('simple');  // 'simple' ou 'import'
+  // Roteirizador: 'creative' ou 'automatic'
+  const [roteirizadorMode, setRoteirizadorMode] = useState('automatic');
   
   // Simple Analysis
   const [addressesText, setAddressesText] = useState('');
@@ -59,7 +60,7 @@ export default function RouteAnalysisView() {
         if (data.active) {
           console.log("Restaurando sessão:", data);
           if (data.has_romaneio) {
-            setViewMode('import');
+            setRoteirizadorMode('automatic');
             setHasRomaneio(true);
             setSessionId(data.session_id);
             if (data.route_value) setImportRouteValue(data.route_value);
@@ -195,7 +196,7 @@ export default function RouteAnalysisView() {
       
       // Atualizar estados imediatamente
       setHasRomaneio(true);
-      setViewMode('import');
+      setRoteirizadorMode('automatic');
       if (data.session_id) setSessionId(data.session_id);
       
       // Mostrar feedback imediato com dados do response
@@ -431,7 +432,7 @@ export default function RouteAnalysisView() {
         setAssignments({});
         setImportRouteValue('');
         setFile(null);
-        setViewMode('simple');
+        setRoteirizadorMode('creative');
       } catch (err) {
         setError('Erro ao liberar: ' + err.message);
       } finally {
@@ -455,7 +456,7 @@ export default function RouteAnalysisView() {
       setAssignments({});
       setImportRouteValue('');
       setFile(null);
-      setViewMode('simple'); // Volta por padrão
+      setRoteirizadorMode('creative'); // Volta por padrão
     } catch (err) {
       setError('Erro ao cancelar: ' + err.message);
     } finally {
@@ -512,7 +513,7 @@ export default function RouteAnalysisView() {
           setAssignments({});
           setImportRouteValue('');
           setFile(null);
-          setViewMode('simple');
+          setRoteirizadorMode('creative');
           console.log('✅ Aba Análise liberada automaticamente após envio de rotas');
         } else {
           console.warn('⚠️ Falha ao liberar sessão automaticamente:', await rel.text().catch(() => ''));
@@ -560,26 +561,26 @@ export default function RouteAnalysisView() {
       {/* Abas Principais */}
       <div className={`grid gap-3 ${responsive.isDesktop ? 'grid-cols-4' : 'grid-cols-2'}`}>
         <button
-          onClick={() => setViewMode('simple')}
+          onClick={() => setRoteirizadorMode('creative')}
           className={`${responsive.isDesktop ? 'py-4 px-6' : 'py-3 px-4'} rounded-xl font-bold transition-all flex items-center justify-center ${
-            viewMode === 'simple'
+            roteirizadorMode === 'creative'
               ? 'bg-purple-600 text-white shadow-lg scale-105'
               : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
           }`}
         >
           <Sparkles size={responsive.isDesktop ? 20 : 18} className="mr-2" />
-          {responsive.isDesktop ? 'Análise Manual' : 'Colar'}
+          {responsive.isDesktop ? 'Roteirizador Manual' : 'Manual'}
         </button>
         <button
-          onClick={() => setViewMode('import')}
+          onClick={() => setRoteirizadorMode('automatic')}
           className={`${responsive.isDesktop ? 'py-4 px-6' : 'py-3 px-4'} rounded-xl font-bold transition-all flex items-center justify-center ${
-            viewMode === 'import'
+            roteirizadorMode === 'automatic'
               ? 'bg-blue-600 text-white shadow-lg scale-105'
               : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
           }`}
         >
           <FileUp size={responsive.isDesktop ? 20 : 18} className="mr-2" />
-          {responsive.isDesktop ? 'Importar Arquivo' : 'Importar'}
+          {responsive.isDesktop ? 'Roteirizador Automático' : 'Automático'}
         </button>
       </div>
 
@@ -608,256 +609,38 @@ export default function RouteAnalysisView() {
         </div>
       )}
 
-      {/* ===== ABA 1: COLAR ENDEREÇOS ===== */}
-      {viewMode === 'simple' && (
+      {/* ===== ABA 1: MODO CRIATIVO ===== */}
+      {roteirizadorMode === 'creative' && (
         <div className="space-y-4">
-          {/* Input Area */}
-          <div className={`bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 ${responsive.isDesktop ? 'p-6' : 'p-4'}`}>
-            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 flex justify-between">
-              <span>📝 Cola os Endereços (um por linha)</span>
-              <span className="text-xs font-normal text-gray-400">{addressesText.trim() ? addressesText.trim().split('\n').length : 0} linhas</span>
-            </label>
-            <textarea
-              value={addressesText}
-              onChange={(e) => setAddressesText(e.target.value)}
-              placeholder={`Rua Principado de Mônaco, 37, Apt 501
-Rua Mena Barreto, 161, Loja BMRIO
-Rua General Polidoro, 322, 301
-...`}
-              className={`w-full border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all outline-none resize-none ${responsive.isDesktop ? 'h-48 p-4' : 'h-40 p-3'}`}
+          {!hasRomaneio ? (
+            <div className="bg-white dark:bg-gray-800 p-8 rounded-xl border border-gray-200 dark:border-gray-700 text-center shadow-sm">
+              <Sparkles className="mx-auto text-purple-500 mb-4" size={48} />
+              <h3 className="font-bold text-xl text-gray-800 dark:text-white mb-2">Bem-vindo ao Modo Criativo</h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-6">
+                Para começar a criar suas rotas manualmente com filtros inteligentes e mapa interativo, primeiro importe um romaneio.
+              </p>
+              <button 
+                onClick={() => setRoteirizadorMode('automatic')}
+                className="btn-primary"
+              >
+                Ir para Importação
+              </button>
+            </div>
+          ) : (
+            <CreativeMode 
+              sessionId={sessionId} 
+              sessionBase={{lat: baseLat, lng: baseLng}} 
+              onSaved={() => {
+                setRoteirizadorMode('automatic');
+                handleSessionReport();
+              }} 
             />
-          </div>
-
-          {/* Value Input e Ações */}
-          <div className={`grid gap-4 ${responsive.isDesktop ? 'grid-cols-2' : 'grid-cols-1'}`}>
-            <div className={`bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 ${responsive.isDesktop ? 'p-6' : 'p-4'}`}>
-              <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
-                💰 Valor Total da Rota (R$)
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">R$</span>
-                <input
-                  type="number"
-                  value={simpleRouteValue}
-                  onChange={(e) => setSimpleRouteValue(e.target.value)}
-                  placeholder="150.00"
-                  className="w-full pl-10 p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-bold text-lg outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={handleAnalyzeAddresses}
-                disabled={simpleLoading || !addressesText.trim() || !simpleRouteValue}
-                className="col-span-1 btn-primary flex flex-col items-center justify-center gap-1 !py-4"
-              >
-                {simpleLoading ? (
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
-                ) : (
-                  <>
-                    <Sparkles size={24} />
-                    <span>Analisar</span>
-                  </>
-                )}
-              </button>
-              
-              <button
-                onClick={handleClearSimple}
-                className="col-span-1 btn-secondary flex flex-col items-center justify-center gap-1 !py-4"
-              >
-                <FileUp size={24} className="rotate-180" /> 
-                <span>Limpar</span>
-              </button>
-            </div>
-          </div>
-          {/* Resultado */}
-          {simpleAnalysis && (
-            <div className="space-y-4">
-              {/* Header com destaque */}
-              <div className={`bg-gradient-to-r rounded-xl p-6 text-white ${
-                simpleAnalysis.header?.['📊 SCORE'] >= 7
-                  ? 'from-green-500 to-emerald-600'
-                  : simpleAnalysis.header?.['📊 SCORE'] >= 5
-                  ? 'from-yellow-500 to-orange-600'
-                  : 'from-red-500 to-pink-600'
-              }`}>
-                <div className={`grid gap-4 ${responsive.isDesktop ? 'grid-cols-3' : 'grid-cols-1'}`}>
-                  <div>
-                    <p className="text-sm opacity-80">Tipo de Rota</p>
-                    <p className={`font-bold ${String(simpleAnalysis.header?.['⭐ TIPO'] || '').length > 10 ? 'text-xl' : 'text-2xl'}`}>{simpleAnalysis.header?.['⭐ TIPO']}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm opacity-80">Score Logístico</p>
-                    <p className="text-3xl font-bold">{simpleAnalysis.header?.['📊 SCORE']}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm opacity-80">Tempo Estimado</p>
-                    <p className="text-2xl font-bold">{simpleAnalysis.metrics?.estimated_time || '---'}</p>
-                  </div>
-                </div>
-                <p className="mt-4 text-sm font-semibold">{simpleAnalysis.header?.['✅ RECOMENDAÇÃO']}</p>
-              </div>
-
-              {/* Top Drops - Estilo Melhorado */}
-              {simpleAnalysis.top_drops && simpleAnalysis.top_drops.length > 0 && (
-                <div className="bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 rounded-xl p-5 border-2 border-orange-200 dark:border-orange-700">
-                  <h4 className="font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2 text-lg">
-                    <TrendingUp size={22} className="text-orange-600" />
-                    🔥 Top Drops (Ruas com Maior Concentração)
-                  </h4>
-                  <div className="space-y-3">
-                    {simpleAnalysis.top_drops.map((drop, i) => (
-                      <div 
-                        key={i} 
-                        className={`flex items-center justify-between p-4 rounded-lg border-2 transition-all transform hover:scale-102 ${
-                          i === 0 
-                            ? 'bg-gradient-to-r from-yellow-100 to-orange-100 dark:from-yellow-900/30 dark:to-orange-900/30 border-yellow-300 dark:border-yellow-600 shadow-md' 
-                            : i === 1
-                            ? 'bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 border-blue-300 dark:border-blue-600'
-                            : 'bg-gradient-to-r from-gray-100 to-slate-100 dark:from-gray-700 dark:to-slate-700 border-gray-300 dark:border-gray-600'
-                        }`}
-                      >
-                        <div className="flex items-center gap-4">
-                          <span className="text-4xl">{drop.emoji}</span>
-                          <div>
-                            <p className="font-bold text-gray-900 dark:text-white text-lg">{drop.street}</p>
-                            <p className="text-xs text-gray-600 dark:text-gray-400 font-semibold">{drop.count} endereços</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-lg font-bold text-orange-600 dark:text-orange-400">{drop.percentage}</p>
-                          <p className="text-xs text-gray-500">concentração</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Perfil da Rota - Expandido */}
-              <div className="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-200 dark:border-gray-700 shadow-sm">
-                <h4 className="font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                  📊 Perfil Detalhado da Rota
-                </h4>
-                <div className={`grid gap-3 ${responsive.isDesktop ? 'grid-cols-6' : 'grid-cols-3'}`}>
-                  <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-800/30 p-3 rounded-xl border border-purple-200 dark:border-purple-700">
-                    <p className="text-xs text-purple-600 dark:text-purple-400 font-semibold">Tipo</p>
-                    <p className="font-bold text-purple-900 dark:text-purple-200 text-sm">{simpleAnalysis.profile?.type || '---'}</p>
-                  </div>
-                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 p-3 rounded-xl border border-blue-200 dark:border-blue-700">
-                    <p className="text-xs text-blue-600 dark:text-blue-400 font-semibold">Pacotes</p>
-                    <p className="font-bold text-blue-900 dark:text-blue-200 text-lg">{simpleAnalysis.profile?.total_packages || 0}</p>
-                  </div>
-                  <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/30 p-3 rounded-xl border border-green-200 dark:border-green-700">
-                    <p className="text-xs text-green-600 dark:text-green-400 font-semibold">Paradas</p>
-                    <p className="font-bold text-green-900 dark:text-green-200 text-lg">{simpleAnalysis.profile?.unique_stops || 0}</p>
-                  </div>
-                  <div className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/30 dark:to-orange-800/30 p-3 rounded-xl border border-orange-200 dark:border-orange-700">
-                    <p className="text-xs text-orange-600 dark:text-orange-400 font-semibold">Comercial</p>
-                    <p className="font-bold text-orange-900 dark:text-orange-200 text-sm">{simpleAnalysis.profile?.commercial_pct || '0%'}</p>
-                  </div>
-                  <div className="bg-gradient-to-br from-cyan-50 to-cyan-100 dark:from-cyan-900/30 dark:to-cyan-800/30 p-3 rounded-xl border border-cyan-200 dark:border-cyan-700">
-                    <p className="text-xs text-cyan-600 dark:text-cyan-400 font-semibold">Tempo Est.</p>
-                    <p className="font-bold text-cyan-900 dark:text-cyan-200 text-sm">{simpleAnalysis.metrics?.estimated_time || '---'}</p>
-                  </div>
-                  <div className="bg-gradient-to-br from-pink-50 to-pink-100 dark:from-pink-900/30 dark:to-pink-800/30 p-3 rounded-xl border border-pink-200 dark:border-pink-700">
-                    <p className="text-xs text-pink-600 dark:text-pink-400 font-semibold">Aptos</p>
-                    <p className="font-bold text-pink-900 dark:text-pink-200 text-lg">{simpleAnalysis.metrics?.vertical_count || 0}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Análise Qualitativa - Prós e Contras lado a lado */}
-              <div className={`grid gap-4 ${responsive.isDesktop ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                {/* PRÓS */}
-                <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl p-5 border-2 border-green-200 dark:border-green-700">
-                  <h4 className="font-bold text-green-800 dark:text-green-300 mb-4 flex items-center gap-2 text-lg">
-                    ✅ Pontos Positivos
-                  </h4>
-                  <ul className="space-y-3">
-                    {(simpleAnalysis.analysis?.pros || []).map((pro, i) => (
-                      <li key={i} className="flex items-start gap-3 text-sm text-green-800 dark:text-green-300 bg-white/50 dark:bg-green-900/30 p-3 rounded-lg border border-green-100 dark:border-green-800">
-                        <span className="text-green-500 font-bold text-lg">✓</span>
-                        <span className="flex-1">{pro}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                {/* CONTRAS */}
-                <div className="bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20 rounded-xl p-5 border-2 border-red-200 dark:border-red-700">
-                  <h4 className="font-bold text-red-800 dark:text-red-300 mb-4 flex items-center gap-2 text-lg">
-                    ⚠️ Pontos de Atenção
-                  </h4>
-                  <ul className="space-y-3">
-                    {(simpleAnalysis.analysis?.cons || []).map((con, i) => (
-                      <li key={i} className="flex items-start gap-3 text-sm text-red-800 dark:text-red-300 bg-white/50 dark:bg-red-900/30 p-3 rounded-lg border border-red-100 dark:border-red-800">
-                        <span className="text-red-500 font-bold text-lg">!</span>
-                        <span className="flex-1">{con}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-
-              {/* Comentário IA - Com formatação Markdown */}
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 border-2 border-blue-200 dark:border-blue-700 rounded-xl p-5 shadow-sm">
-                <h4 className="font-bold text-blue-900 dark:text-blue-300 mb-3 flex items-center gap-2 text-lg">
-                  🤖 Análise Inteligente
-                </h4>
-                <div className="text-sm text-blue-900 dark:text-blue-200 leading-relaxed space-y-3">
-                  {simpleAnalysis.ai_comment?.split('\n\n').map((paragraph, i) => (
-                    <p key={i} className="text-blue-800 dark:text-blue-300" 
-                       dangerouslySetInnerHTML={{ 
-                         __html: paragraph
-                           .replace(/\*\*(.*?)\*\*/g, '<strong class="text-blue-900 dark:text-blue-100">$1</strong>')
-                           .replace(/\n/g, '<br/>')
-                       }} 
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* MAPA - Lazy Load */}
-              <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div className="bg-gradient-to-r from-purple-500 to-pink-500 p-4 text-white font-bold flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Map size={20} />
-                    🗺️ Minimapa da Rota
-                  </div>
-                  {mapLoading && <span className="text-sm">⏳ Gerando...</span>}
-                </div>
-                
-                {mapUrl ? (
-                  <iframe
-                    src={mapUrl}
-                    className="w-full h-96 border-0"
-                    title="Mapa da Rota"
-                    allowFullScreen=""
-                  />
-                ) : (
-                  <div className="p-6 text-center">
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                      ⚠️ Geocodificação lenta (3-5 seg por endereço)
-                    </p>
-                    <button
-                      onClick={handleGenerateMap}
-                      disabled={mapLoading}
-                      className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white font-bold py-2 px-6 rounded-lg transition-colors"
-                    >
-                      {mapLoading ? '⏳ Gerando Mapa...' : '🗺️ Gerar Mapa'}
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
           )}
         </div>
       )}
 
       {/* ===== ABA 2: IMPORTAR ROMANEIO ===== */}
-      {viewMode === 'import' && (
+      {roteirizadorMode === 'automatic' && (
         <div className="space-y-4">
           {/* Upload File */}
           <div className={`bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 ${responsive.isDesktop ? 'p-6' : 'p-4'}`}>

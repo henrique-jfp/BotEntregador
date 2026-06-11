@@ -37,6 +37,17 @@ class AssignRouteInput(BaseModel):
     deliverer_id: int
     session_id: Optional[str] = None
 
+class CreativeRouteInput(BaseModel):
+    id: str
+    color: str
+    package_ids: List[str]
+    assigned_to_telegram_id: Optional[int] = None
+    assigned_to_name: Optional[str] = None
+
+class SaveCreativeRoutesInput(BaseModel):
+    session_id: str
+    routes: List[CreativeRouteInput]
+
 # ==================== SEPARATION ====================
 class SeparationScanInput(BaseModel):
     barcode: str
