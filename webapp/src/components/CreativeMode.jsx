@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, LayersControl } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Filter, MapPin, CheckSquare, Square, Save, Palette, Layers, PaintBucket } from 'lucide-react';
+import { Filter, MapPin, CheckSquare, Square, Save, Palette, Layers, PaintBucket, Eye, EyeOff, Navigation2, Crosshair } from 'lucide-react';
 import { fetchWithAuth } from '../api_client';
 
 // Palette Colors
@@ -56,7 +56,7 @@ function MapUpdater({ center, zoom, bounds }) {
   const map = useMap();
   useEffect(() => {
     if (bounds && bounds.isValid()) {
-      map.fitBounds(bounds, { padding: [20, 20], maxZoom: 16 });
+      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 16 });
     } else if (center) {
       map.setView(center, zoom);
     }
@@ -75,10 +75,12 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
   const [selectedIds, setSelectedIds] = useState(new Set());
   
   // State: Filters & Grouping
-  const [groupMode, setGroupMode] = useState('none'); // 'none', 'bairro', 'street', 'cep'
+  const [groupMode, setGroupMode] = useState('bairro'); // Default to bairro grouping as requested
+  const [hiddenGroups, setHiddenGroups] = useState(new Set());
   const [numberSideFilter, setNumberSideFilter] = useState('all'); // 'all', 'even', 'odd'
   const [anchorId, setAnchorId] = useState(null);
   const [radiusFilter, setRadiusFilter] = useState('');
+  const [proximityMode, setGroupProximityMode] = useState('anchor'); // 'anchor' or 'selection'
 
   // Refs for scrolling
   const listRef = useRef({});
@@ -106,24 +108,36 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
              let bairro = 'Desconhecido';
              let cep = 'Sem CEP';
 
-             // Regex extractions
+             // 1. Extract CEP (standard BR format)
              const cepMatch = addr.match(/\b\d{5}-?\d{3}\b/);
              if (cepMatch) cep = cepMatch[0];
 
-             const numMatch = addr.match(/\b\d+\b/);
-             if (numMatch) number = parseInt(numMatch[0], 10);
-
-             // Heuristic splitting
-             const parts = addr.split(',');
-             if (parts.length >= 3) {
-                 street = parts[0].trim();
-                 bairro = /\d/.test(parts[1]) && parts[2] ? parts[2].trim() : parts[1].trim();
-                 bairro = bairro.split('-')[0].trim(); // Remove state if trailing
-             } else if (parts.length === 2) {
-                 street = parts[0].trim();
-                 bairro = parts[1].replace(cep, '').trim() || 'Desconhecido';
+             // 2. Extract House Number - BETTER HEURISTIC
+             // Usually follows a comma: "Rua tal, 123"
+             const numberAfterComma = addr.match(/,\s*(\d+)/);
+             if (numberAfterComma) {
+                 number = parseInt(numberAfterComma[1], 10);
              } else {
-                 street = addr.replace(/\b\d+\b/g, '').replace(cep, '').trim();
+                 // Fallback: last number in the first part before major separators
+                 const firstPart = addr.split('-')[0].split('(')[0];
+                 const allNums = firstPart.match(/\b\d+\b/g);
+                 if (allNums) number = parseInt(allNums[allNums.length - 1], 10);
+             }
+
+             // 3. Heuristic splitting for Bairro and Street
+             const parts = addr.split(',');
+             if (parts.length >= 2) {
+                 street = parts[0].trim();
+                 // Bairro is often the part after number or in the next segment
+                 let secondPart = parts[1].trim();
+                 // Remove number from second part if it's there
+                 secondPart = secondPart.replace(/^\d+\s*/, '').trim();
+                 
+                 if (parts.length >= 3) {
+                     bairro = parts[2].split('-')[0].trim();
+                 } else {
+                     bairro = secondPart.split('-')[0].replace(cep, '').trim() || 'Desconhecido';
+                 }
              }
 
              if (street.length > 40) street = street.substring(0, 40) + '...';
@@ -149,10 +163,17 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
     }
   };
 
-  // --- Filtering Logic ---
+  // --- Filtering Logic (Cumulative) ---
   const filteredPackages = useMemo(() => {
     return packages.filter(pkg => {
-      // Even/Odd
+      // 1. Hidden Groups
+      let groupKey = 'none';
+      if (groupMode === 'bairro') groupKey = pkg.bairro;
+      if (groupMode === 'street') groupKey = pkg.street;
+      if (groupMode === 'cep') groupKey = pkg.cep;
+      if (hiddenGroups.has(groupKey)) return false;
+
+      // 2. Even/Odd Side
       if (numberSideFilter !== 'all') {
         if (pkg.number === null || isNaN(pkg.number)) return false;
         const isEven = pkg.number % 2 === 0;
@@ -160,21 +181,29 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
         if (numberSideFilter === 'odd' && isEven) return false;
       }
 
-      // Proximity
-      if (anchorId && radiusFilter) {
-        const anchorPkg = packages.find(p => p.id === anchorId);
-        if (anchorPkg && anchorPkg.lat && pkg.lat) {
-          const dist = haversineDistance(
-            { lat: anchorPkg.lat, lng: anchorPkg.lng },
-            { lat: pkg.lat, lng: pkg.lng }
-          );
-          if (dist > parseFloat(radiusFilter)) return false;
-        }
+      // 3. Proximity (Anchor or Selection)
+      if (radiusFilter) {
+          const radius = parseFloat(radiusFilter);
+          if (proximityMode === 'anchor' && anchorId) {
+              const anchorPkg = packages.find(p => p.id === anchorId);
+              if (anchorPkg && anchorPkg.lat && pkg.lat) {
+                  const dist = haversineDistance(anchorPkg, pkg);
+                  if (dist > radius) return false;
+              }
+          } else if (proximityMode === 'selection' && selectedIds.size > 0) {
+              // RADIUS FROM SELECTION: Show only packages near ANY selected package
+              const selectedPkgs = packages.filter(p => selectedIds.has(p.id));
+              const isNearAny = selectedPkgs.some(sp => {
+                  const dist = haversineDistance(sp, pkg);
+                  return dist <= radius;
+              });
+              if (!isNearAny) return false;
+          }
       }
 
       return true;
     });
-  }, [packages, numberSideFilter, anchorId, radiusFilter]);
+  }, [packages, numberSideFilter, anchorId, radiusFilter, proximityMode, selectedIds, groupMode, hiddenGroups]);
 
   // --- Grouping Logic ---
   const groupedPackages = useMemo(() => {
@@ -191,7 +220,6 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
         groups[key].push(pkg);
     });
     
-    // Sort alphabetically
     const sortedGroups = {};
     Object.keys(groups).sort().forEach(k => {
         sortedGroups[k] = groups[k];
@@ -203,9 +231,7 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
   const mapBounds = useMemo(() => {
     const pointsWithCoords = filteredPackages.filter(p => p.lat && p.lng);
     if (pointsWithCoords.length === 0) return null;
-    
-    const bounds = L.latLngBounds(pointsWithCoords.map(p => [p.lat, p.lng]));
-    return bounds;
+    return L.latLngBounds(pointsWithCoords.map(p => [p.lat, p.lng]));
   }, [filteredPackages]);
 
   const mapCenter = useMemo(() => {
@@ -226,15 +252,9 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
 
   const handleSelectGroup = (pkgsInGroup) => {
     const newSelected = new Set(selectedIds);
-    let allSelected = true;
-    for (const pkg of pkgsInGroup) {
-      if (!newSelected.has(pkg.id)) {
-        allSelected = false;
-        break;
-      }
-    }
+    const allInGroupSelected = pkgsInGroup.every(p => newSelected.has(p.id));
 
-    if (allSelected) {
+    if (allInGroupSelected) {
       pkgsInGroup.forEach(p => newSelected.delete(p.id));
     } else {
       pkgsInGroup.forEach(p => newSelected.add(p.id));
@@ -242,9 +262,18 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
     setSelectedIds(newSelected);
   };
 
+  const toggleGroupVisibility = (groupKey) => {
+      const newHidden = new Set(hiddenGroups);
+      if (newHidden.has(groupKey)) {
+          newHidden.delete(groupKey);
+      } else {
+          newHidden.add(groupKey);
+      }
+      setHiddenGroups(newHidden);
+  };
+
   const handleColorClick = (hex) => {
     setActiveColor(hex);
-    // Instant Paint!
     if (selectedIds.size > 0) {
         const newPackages = packages.map(pkg => {
           if (selectedIds.has(pkg.id)) {
@@ -253,7 +282,7 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
           return pkg;
         });
         setPackages(newPackages);
-        setSelectedIds(new Set()); // Auto clear after painting for rapid workflow
+        setSelectedIds(new Set()); 
     }
   };
 
@@ -285,7 +314,7 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
         }));
 
         if (creativeRoutes.length === 0) {
-            throw new Error("Nenhuma rota foi pintada! Associe cores aos pacotes antes de salvar.");
+            throw new Error("Pinte as rotas no mapa antes de salvar!");
         }
 
         const res = await fetchWithAuth('/api/routes/creative/save', {
@@ -296,11 +325,9 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
             })
         });
 
-        if (!res.ok) throw new Error("Erro ao salvar rotas manuais.");
-        
-        alert("Rotas manuais consolidadas com sucesso!");
+        if (!res.ok) throw new Error("Erro ao salvar rotas.");
+        alert("Rotas salvas com sucesso!");
         if (onSaved) onSaved();
-
     } catch (e) {
         alert(e.message);
     } finally {
@@ -312,207 +339,198 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
       handleToggleSelect(id);
       if (listRef.current[id]) {
           listRef.current[id].scrollIntoView({ behavior: 'smooth', block: 'center' });
-          listRef.current[id].classList.add('bg-blue-100', 'dark:bg-blue-900/40');
-          setTimeout(() => {
-              if (listRef.current[id]) listRef.current[id].classList.remove('bg-blue-100', 'dark:bg-blue-900/40');
-          }, 1500);
       }
   };
 
-  if (loading) return <div className="p-8 text-center text-gray-500 font-semibold animate-pulse">Carregando mapa logístico...</div>;
+  if (loading) return <div className="p-8 text-center text-gray-500 font-semibold animate-pulse">Carregando painel criativo...</div>;
 
   return (
-    <div className="flex flex-col md:flex-row gap-6 h-[80vh]">
-      {/* LEFT PANEL: Filters & List */}
+    <div className="flex flex-col md:flex-row gap-4 h-[85vh]">
+      {/* LEFT PANEL */}
       <div className="w-full md:w-1/3 flex flex-col bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden h-full">
         
-        {/* Color Palette Header */}
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-           <div className="flex items-center justify-between mb-3">
-               <span className="font-bold text-gray-700 dark:text-gray-300 text-sm flex items-center gap-2">
-                   <Palette size={16}/> Paleta de Cores
+        {/* Palette */}
+        <div className="p-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+           <div className="flex items-center justify-between mb-2">
+               <span className="font-bold text-gray-700 dark:text-gray-300 text-xs flex items-center gap-1">
+                   <Palette size={14}/> PINCEL DE ROTAS
                </span>
-               <span className="text-xs text-gray-500">Selecione e clique na cor</span>
+               {selectedIds.size > 0 && (
+                   <span className="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
+                       {selectedIds.size} selecionados
+                   </span>
+               )}
            </div>
-           <div className="flex flex-wrap gap-2">
+           <div className="flex flex-wrap gap-1.5">
              {COLORS.map(c => (
                  <button
                     key={c.id}
                     onClick={() => handleColorClick(c.hex)}
-                    className="w-10 h-10 rounded-full border-2 transition-transform relative group"
+                    className="w-8 h-8 rounded-full border-2 transition-all relative"
                     style={{ 
                         backgroundColor: c.hex, 
                         borderColor: activeColor === c.hex ? '#FFF' : 'transparent',
-                        transform: activeColor === c.hex ? 'scale(1.15)' : 'scale(1)',
+                        transform: activeColor === c.hex ? 'scale(1.1)' : 'scale(1)',
                         boxShadow: activeColor === c.hex ? '0 0 0 2px ' + c.hex : 'none'
                     }}
                     title={c.label}
-                 >
-                     {/* Indicator if active and packages are selected */}
-                     {activeColor === c.hex && selectedIds.size > 0 && (
-                         <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-md animate-bounce">
-                             Pintar
-                         </span>
-                     )}
-                 </button>
+                 />
              ))}
            </div>
         </div>
 
-        {/* Grouping and Filters */}
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700 space-y-4">
-            <div className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
-                <Layers size={16}/> Agrupar Visualmente por:
-            </div>
-            
-            <div className="grid grid-cols-4 gap-2">
-                {['none', 'bairro', 'street', 'cep'].map(mode => (
-                    <button
-                        key={mode}
-                        onClick={() => setGroupMode(mode)}
-                        className={`text-xs py-2 px-1 rounded-lg font-bold transition-colors border ${
-                            groupMode === mode 
-                                ? 'bg-blue-100 border-blue-500 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-600' 
-                                : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300'
-                        }`}
-                    >
-                        {mode === 'none' && 'Lista'}
-                        {mode === 'bairro' && 'Bairro'}
-                        {mode === 'street' && 'Rua'}
-                        {mode === 'cep' && 'CEP'}
-                    </button>
-                ))}
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 mt-2">
-                <select 
-                    value={numberSideFilter} onChange={e => setNumberSideFilter(e.target.value)}
-                    className="w-full text-xs font-bold p-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                >
-                    <option value="all">Lado da Via (Todos)</option>
-                    <option value="even">Apenas Par</option>
-                    <option value="odd">Apenas Ímpar</option>
-                </select>
-                <div className="flex gap-2">
-                    <input 
-                        type="number" placeholder="Raio âncora (m)" value={radiusFilter} onChange={e => setRadiusFilter(e.target.value)}
-                        className="w-full text-xs font-bold p-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                        title="Distância máxima a partir do pacote âncora"
-                    />
+        {/* Advanced Filters */}
+        <div className="p-3 border-b border-gray-200 dark:border-gray-700 space-y-3">
+            <div>
+                <p className="text-[10px] font-bold text-gray-400 uppercase mb-2 flex items-center gap-1"><Layers size={12}/> Agrupamento Visual</p>
+                <div className="flex bg-gray-100 dark:bg-gray-700 p-1 rounded-lg">
+                    {['bairro', 'street', 'cep', 'none'].map(mode => (
+                        <button
+                            key={mode}
+                            onClick={() => setGroupMode(mode)}
+                            className={`flex-1 text-[10px] py-1.5 rounded-md font-bold transition-all ${
+                                groupMode === mode 
+                                    ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-300' 
+                                    : 'text-gray-500 hover:text-gray-700'
+                            }`}
+                        >
+                            {mode === 'bairro' ? 'Bairro' : mode === 'street' ? 'Rua' : mode === 'cep' ? 'CEP' : 'Lista'}
+                        </button>
+                    ))}
                 </div>
             </div>
-            {anchorId && (
-                <div className="bg-blue-50 dark:bg-blue-900/30 p-2 rounded text-xs flex justify-between items-center text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-                    <span>⚓ Âncora Ativa: {packages.find(p=>p.id === anchorId)?.street?.substring(0,20)}...</span>
-                    <button onClick={() => setAnchorId(null)} className="font-bold hover:text-red-500">✕ Remover</button>
+
+            <div className="grid grid-cols-2 gap-2">
+                <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Lado da Via</p>
+                    <select 
+                        value={numberSideFilter} onChange={e => setNumberSideFilter(e.target.value)}
+                        className="w-full text-xs font-bold p-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700"
+                    >
+                        <option value="all">Ambos os Lados</option>
+                        <option value="even">Lado PAR</option>
+                        <option value="odd">Lado ÍMPAR</option>
+                    </select>
+                </div>
+                <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Raio de Busca (m)</p>
+                    <div className="relative">
+                        <input 
+                            type="number" placeholder="Distância..." value={radiusFilter} onChange={e => setRadiusFilter(e.target.value)}
+                            className="w-full text-xs font-bold p-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 pr-8"
+                        />
+                        <button 
+                            onClick={() => setGroupProximityMode(proximityMode === 'anchor' ? 'selection' : 'anchor')}
+                            className={`absolute right-2 top-1/2 -translate-y-1/2 ${proximityMode === 'selection' ? 'text-purple-600' : 'text-gray-400'}`}
+                            title={proximityMode === 'selection' ? 'Buscando vizinhos da seleção' : 'Buscando vizinhos da âncora'}
+                        >
+                            {proximityMode === 'selection' ? <Crosshair size={14}/> : <MapPin size={14}/>}
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            {anchorId && proximityMode === 'anchor' && (
+                <div className="bg-blue-50 dark:bg-blue-900/20 p-2 rounded flex justify-between items-center text-[10px] text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-800">
+                    <span className="truncate">⚓ Âncora: {packages.find(p=>p.id === anchorId)?.street}</span>
+                    <button onClick={() => setAnchorId(null)} className="font-bold hover:text-red-500">✕</button>
+                </div>
+            )}
+            {proximityMode === 'selection' && selectedIds.size > 0 && (
+                <div className="bg-purple-50 dark:bg-purple-900/20 p-2 rounded flex justify-between items-center text-[10px] text-purple-700 dark:text-purple-300 border border-purple-100 dark:border-purple-800">
+                    <span>🎯 Buscando vizinhos de {selectedIds.size} pacotes</span>
+                    <button onClick={() => setSelectedIds(new Set())} className="font-bold">Limpar</button>
                 </div>
             )}
         </div>
 
-        {/* List Header */}
-        <div className="px-4 py-2 bg-gray-100 dark:bg-gray-900 flex justify-between items-center border-b border-gray-200 dark:border-gray-700">
-            <span className="text-xs font-bold text-gray-500 uppercase">{filteredPackages.length} Pacotes Exibidos</span>
-            <button onClick={() => handleSelectGroup(filteredPackages)} className="text-blue-600 dark:text-blue-400 text-xs font-bold flex items-center gap-1 hover:underline">
-                <CheckSquare size={14}/> Selecionar Exibidos
-            </button>
-        </div>
-
-        {/* List (Grouped) */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-4 bg-gray-50 dark:bg-gray-800/20">
+        {/* Package List */}
+        <div className="flex-1 overflow-y-auto p-2 space-y-4 bg-gray-50/50 dark:bg-gray-900/20">
             {Object.entries(groupedPackages).map(([groupName, pkgs]) => (
-                <div key={groupName} className="space-y-2">
-                    {/* Group Header */}
+                <div key={groupName} className="space-y-1">
                     {groupMode !== 'none' && (
-                        <div className="sticky top-0 bg-gray-200/90 dark:bg-gray-700/90 backdrop-blur-sm px-3 py-2 font-bold text-sm text-gray-800 dark:text-gray-200 rounded-lg flex justify-between items-center shadow-sm z-10">
-                           <span className="truncate pr-2">{groupName}</span>
-                           <div className="flex items-center gap-3 shrink-0">
-                               <span className="bg-white dark:bg-gray-800 px-2 py-0.5 rounded text-xs shadow-sm">{pkgs.length} pct</span>
-                               <button onClick={() => handleSelectGroup(pkgs)} className="text-blue-600 hover:text-blue-800">
-                                  <CheckSquare size={16}/>
+                        <div className="sticky top-0 z-20 flex items-center justify-between bg-white/80 dark:bg-gray-800/80 backdrop-blur-md px-2 py-1.5 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 mb-2">
+                           <div className="flex items-center gap-2 overflow-hidden">
+                               <button onClick={() => toggleGroupVisibility(groupName)} className="text-gray-400">
+                                   {hiddenGroups.has(groupName) ? <EyeOff size={14}/> : <Eye size={14}/>}
                                </button>
+                               <span className="text-xs font-bold text-gray-700 dark:text-gray-200 truncate">{groupName}</span>
+                               <span className="text-[10px] text-gray-400 font-bold bg-gray-100 dark:bg-gray-700 px-1.5 rounded">{pkgs.length}</span>
                            </div>
+                           <button onClick={() => handleSelectGroup(pkgs)} className="text-blue-600 hover:scale-110 transition-transform">
+                              <CheckSquare size={16}/>
+                           </button>
                         </div>
                     )}
                     
-                    {/* Packages in Group */}
-                    {pkgs.map(pkg => (
+                    {!hiddenGroups.has(groupName) && pkgs.map(pkg => (
                         <div 
                             key={pkg.id} 
                             ref={el => listRef.current[pkg.id] = el}
                             onClick={() => handleToggleSelect(pkg.id)}
-                            className={`p-3 rounded-xl border transition-all cursor-pointer flex gap-3 items-center shadow-sm
-                                ${selectedIds.has(pkg.id) ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-400' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-gray-300'}
+                            className={`group p-2 rounded-lg border transition-all cursor-pointer flex gap-3 items-center
+                                ${selectedIds.has(pkg.id) ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-400' : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:border-gray-300'}
                             `}
                         >
-                            <div className="flex-shrink-0 mt-1 self-start">
-                               {selectedIds.has(pkg.id) ? <CheckSquare className="text-blue-600"/> : <Square className="text-gray-400"/>}
+                            <div className="flex-shrink-0">
+                               {selectedIds.has(pkg.id) ? <CheckSquare size={18} className="text-blue-600"/> : <Square size={18} className="text-gray-300"/>}
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm font-bold text-gray-900 dark:text-white leading-tight">{pkg.address}</p>
-                                <div className="flex items-center gap-2 mt-1">
-                                    <span className="text-xs text-gray-500 font-mono">#{pkg.id.substring(0,6)}</span>
-                                    {pkg.cep && <span className="text-[10px] bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded text-gray-500">{pkg.cep}</span>}
-                                    {pkg.number && <span className="text-[10px] bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 px-1.5 py-0.5 rounded border border-blue-100 dark:border-blue-800">Nº {pkg.number}</span>}
+                                <p className="text-xs font-bold text-gray-800 dark:text-gray-100 truncate">{pkg.address}</p>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                    {pkg.number && <span className="text-[9px] font-bold text-blue-500 bg-blue-50 dark:bg-blue-900/30 px-1 rounded">Nº {pkg.number}</span>}
+                                    <span className="text-[9px] text-gray-400">{pkg.cep}</span>
                                 </div>
                             </div>
-                            
-                            {/* Ferramentas do Pacote: Âncora e Pintura Rápida */}
-                            <div className="flex-shrink-0 flex flex-col items-center justify-between gap-2 h-full">
-                                <button 
-                                    onClick={(e) => { e.stopPropagation(); setAnchorId(pkg.id); }}
-                                    className={`p-1.5 rounded-full transition-colors ${anchorId === pkg.id ? 'bg-blue-100 text-blue-600' : 'text-gray-400 hover:bg-gray-100 hover:text-blue-600'}`}
-                                    title="Usar como Ponto Âncora"
-                                >
-                                   <MapPin size={14}/>
-                                </button>
-
-                                <button 
-                                    onClick={(e) => { e.stopPropagation(); handleQuickPaint(pkg.id); }}
-                                    className="w-6 h-6 rounded-full border border-gray-300 hover:scale-110 transition-transform flex items-center justify-center relative overflow-hidden shadow-inner"
-                                    style={{ backgroundColor: pkg.assignedColor || 'transparent' }}
-                                    title="Pintar com a cor atual"
-                                >
-                                    {!pkg.assignedColor && <PaintBucket size={12} className="text-gray-300"/>}
-                                </button>
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button onClick={(e) => { e.stopPropagation(); setAnchorId(pkg.id); setGroupProximityMode('anchor'); }} className="p-1 hover:text-blue-600 text-gray-400"><MapPin size={14}/></button>
+                                <button onClick={(e) => { e.stopPropagation(); handleQuickPaint(pkg.id); }} className="w-5 h-5 rounded-full border shadow-sm" style={{ backgroundColor: pkg.assignedColor || '#eee' }}></button>
                             </div>
                         </div>
                     ))}
                 </div>
             ))}
-            {filteredPackages.length === 0 && (
-                <div className="text-center p-8 text-gray-500">Nenhum pacote corresponde aos filtros.</div>
-            )}
         </div>
         
-        {/* Footer Actions */}
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+        <div className="p-3 border-t border-gray-200 dark:border-gray-700">
            <button 
                onClick={handleSaveCreativeRoutes}
                disabled={saving || !packages.some(p => p.assignedColor)}
-               className="w-full btn-success flex items-center justify-center gap-2 py-3"
+               className="w-full btn-success flex items-center justify-center gap-2 py-2.5 text-sm font-bold shadow-lg"
            >
-               {saving ? 'Consolidando Rotas...' : <><Save size={20}/> Confirmar Manchas e Continuar</>}
+               {saving ? 'Salvando...' : <><Save size={18}/> Finalizar e Roteirizar</>}
            </button>
         </div>
       </div>
 
-      {/* RIGHT PANEL: Map */}
-      <div className="w-full md:w-2/3 h-[50vh] md:h-full bg-gray-100 rounded-xl overflow-hidden shadow-inner relative border border-gray-200 dark:border-gray-700">
+      {/* RIGHT PANEL - MAP */}
+      <div className="w-full md:w-2/3 bg-gray-100 dark:bg-gray-900 rounded-xl overflow-hidden relative shadow-inner border border-gray-200 dark:border-gray-700">
         <MapContainer center={mapCenter} zoom={13} style={{ height: '100%', width: '100%' }}>
-            <TileLayer
-                url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            />
+            <LayersControl position="topright">
+                <LayersControl.BaseLayer name="Mapa Suave (Voyager)" checked>
+                    <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
+                </LayersControl.BaseLayer>
+                <LayersControl.BaseLayer name="Mapa Detalhado (OSM - Direções)">
+                    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                </LayersControl.BaseLayer>
+                <LayersControl.BaseLayer name="Satélite">
+                    <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" />
+                </LayersControl.BaseLayer>
+                <LayersControl.Overlay name="Sentido das Vias" checked>
+                    {/* OSM Standard usually has arrows at high zoom, adding it as a forced overlay helps */}
+                    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" opacity={0.4} />
+                </LayersControl.Overlay>
+            </LayersControl>
+
             <MapUpdater center={mapCenter} zoom={13} bounds={mapBounds} />
 
-            {/* Render all points, highlight filtered, colorize assigned */}
-            {packages.filter(p => p.lat && p.lng).map(pkg => {
+            {packages.map(pkg => {
                 const isFiltered = filteredPackages.some(fp => fp.id === pkg.id);
                 const isSelected = selectedIds.has(pkg.id);
-                const color = pkg.assignedColor || (isFiltered ? '#9CA3AF' : '#E5E7EB');
-                
-                // Opacidade para destacar o que está no filtro atual
-                const opacity = (isFiltered || pkg.assignedColor) ? 1.0 : 0.3;
+                const color = pkg.assignedColor || (isFiltered ? '#3B82F6' : '#E5E7EB');
+                const opacity = (isFiltered || pkg.assignedColor) ? 1.0 : 0.2;
+
+                if (!pkg.lat || !pkg.lng) return null;
 
                 return (
                     <Marker 
@@ -520,27 +538,24 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
                         position={[pkg.lat, pkg.lng]}
                         icon={createMarkerIcon(color, isSelected)}
                         opacity={opacity}
-                        eventHandlers={{
-                            click: () => handleMarkerClick(pkg.id)
-                        }}
+                        eventHandlers={{ click: () => handleMarkerClick(pkg.id) }}
                     >
                         <Popup>
-                            <div className="p-1">
-                                <p className="font-bold text-sm mb-1">{pkg.address}</p>
-                                <p className="text-xs text-gray-500 mb-2">ID: {pkg.id.substring(0,8)}... | {pkg.cep}</p>
-                                <div className="flex gap-2">
+                            <div className="p-1 min-w-[150px]">
+                                <p className="font-bold text-xs mb-1">{pkg.address}</p>
+                                <div className="flex gap-1.5 mt-2">
                                     <button 
                                         onClick={() => handleToggleSelect(pkg.id)}
-                                        className="bg-blue-100 text-blue-700 px-3 py-1.5 rounded text-xs font-bold"
+                                        className="flex-1 bg-gray-100 text-gray-700 px-2 py-1 rounded text-[10px] font-bold"
                                     >
                                         {isSelected ? 'Desmarcar' : 'Selecionar'}
                                     </button>
                                     <button 
                                         onClick={() => handleQuickPaint(pkg.id)}
-                                        className="text-white px-3 py-1.5 rounded text-xs font-bold flex items-center gap-1"
+                                        className="flex-1 text-white px-2 py-1 rounded text-[10px] font-bold flex items-center justify-center gap-1"
                                         style={{ backgroundColor: activeColor }}
                                     >
-                                        <PaintBucket size={12} /> Pintar
+                                        <PaintBucket size={10} /> Pintar
                                     </button>
                                 </div>
                             </div>
@@ -550,15 +565,10 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
             })}
         </MapContainer>
         
-        {/* Floating Indicator */}
-        <div className="absolute top-4 right-4 z-[1000] bg-white dark:bg-gray-800 p-3 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 pointer-events-none">
-            <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full border-4 shadow-inner" style={{ borderColor: activeColor, backgroundColor: activeColor + '40' }}></div>
-                <div>
-                   <p className="text-xs text-gray-500 font-bold uppercase">Cor Ativa (Pincel)</p>
-                   <p className="font-bold" style={{color: activeColor}}>{COLORS.find(c => c.hex === activeColor)?.label}</p>
-                </div>
-            </div>
+        {/* Help Overlay */}
+        <div className="absolute bottom-4 left-4 z-[1000] bg-white/90 dark:bg-gray-800/90 p-2 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 text-[10px] pointer-events-none">
+            <p className="font-bold text-gray-500 mb-1 flex items-center gap-1"><Navigation2 size={10}/> DICA LOGÍSTICA</p>
+            <p className="text-gray-400">Use o mapa **OSM** para ver setas de sentido único em zoom alto.</p>
         </div>
       </div>
     </div>
