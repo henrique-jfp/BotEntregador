@@ -52,6 +52,16 @@ function haversineDistance(coords1, coords2) {
   return R * c * 1000; // meters
 }
 
+function normalizeStreet(street) {
+    if (!street) return 'RUA DESCONHECIDA';
+    let s = street.toUpperCase().trim();
+    // Remove prefixes
+    s = s.replace(/^(RUA|R\.|R\s|AVENIDA|AV\.|AV\s|TRAVESSA|TRV\.|TRV\s|PRAÇA|PRC\.|PRC\s|ALAMEDA|AL\.|AL\s)\s+/i, '');
+    // Remove trailing numbers that might be leaked
+    s = s.replace(/\s+\d+.*$/, '');
+    return s.trim() || 'RUA DESCONHECIDA';
+}
+
 function MapUpdater({ center, zoom, bounds }) {
   const map = useMap();
   useEffect(() => {
@@ -106,12 +116,14 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
              const addr = p.address || '';
              let street = addr;
              let number = null;
-             let bairro = 'Desconhecido';
-             let cep = 'Sem CEP';
+             let bairro = p.bairro || 'Desconhecido';
+             let cep = p.cep || 'Sem CEP';
 
-             // 1. Extract CEP (standard BR format)
-             const cepMatch = addr.match(/\b\d{5}-?\d{3}\b/);
-             if (cepMatch) cep = cepMatch[0];
+             // 1. Extract CEP (fallback if not in backend)
+             if (cep === 'Sem CEP') {
+                const cepMatch = addr.match(/\b\d{5}-?\d{3}\b/);
+                if (cepMatch) cep = cepMatch[0];
+             }
 
              // 2. Extract House Number - BETTER HEURISTIC
              const numberAfterComma = addr.match(/,\s*(\d+)/);
@@ -123,34 +135,23 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
                  if (allNums) number = parseInt(allNums[allNums.length - 1], 10);
              }
 
-             // 3. Heuristic splitting for Bairro and Street
+             // 3. Heuristic splitting for Street (fallback)
              const parts = addr.split(',');
              if (parts.length >= 2) {
                  street = parts[0].trim();
-                 let secondPart = parts[1].trim();
-                 secondPart = secondPart.replace(/^\d+\s*/, '').trim();
-                 
-                 if (parts.length >= 3) {
-                     bairro = parts[2].split('-')[0].trim();
-                 } else {
-                     bairro = secondPart.split('-')[0].replace(cep, '').trim() || 'Desconhecido';
-                 }
              } else {
                  street = addr.replace(/\s+\d+.*$/, '').trim();
              }
 
-             // Normalize for better grouping
-             street = street.toUpperCase();
-             bairro = bairro.toUpperCase();
-
-             if (street.length > 40) street = street.substring(0, 40) + '...';
-             if (bairro.length > 25) bairro = bairro.substring(0, 25);
+             // Final Normalization
+             const cleanStreet = normalizeStreet(street);
+             const cleanBairro = (bairro || 'Desconhecido').toUpperCase();
 
              return {
                  ...p,
-                 street,
+                 street: cleanStreet,
                  number,
-                 bairro,
+                 bairro: cleanBairro,
                  cep,
                  assignedColor: p.route_id !== 'unassigned' ? p.route_color : null,
                  assignedRouteId: p.route_id !== 'unassigned' ? p.route_id : null
@@ -225,7 +226,6 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
   // --- Map Bounds Calculation ---
   const mapBounds = useMemo(() => {
     const pointsWithCoords = filteredPackages.filter(p => p.lat && p.lng);
-    // Also respect hiddenGroups for bounds
     const visiblePoints = pointsWithCoords.filter(pkg => {
         let groupKey = 'none';
         if (groupMode === 'bairro') groupKey = pkg.bairro;
@@ -446,7 +446,7 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
             
             {anchorId && proximityMode === 'anchor' && (
                 <div className="bg-blue-50 dark:bg-blue-900/20 p-2 rounded flex justify-between items-center text-[10px] text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-800">
-                    <span className="truncate">⚓ Âncora: {packages.find(p=>p.id === anchorId)?.street}</span>
+                    <span className="truncate">⚓ Âncora: {packages.find(p=>p.id === anchorId)?.address}</span>
                     <button onClick={() => setAnchorId(null)} className="font-bold hover:text-red-500">✕</button>
                 </div>
             )}
