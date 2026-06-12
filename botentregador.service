@@ -1,0 +1,15 @@
+[Unit]
+Description=BotEntregador - Gestão Logística IA
+After=network.target postgresql.service
+
+[Service]
+User=pvserver
+WorkingDirectory=/home/pvserver/BotEntregador
+Environment="PATH=/home/pvserver/BotEntregador/venv/bin"
+Environment="PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python"
+ExecStart=/home/pvserver/BotEntregador/venv/bin/python "/home/pvserver/BotEntregador/main_multidelivery.py"
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -107,6 +107,8 @@ async def get_map_realtime(session_id: str):
                             "address": point.address,
                             "lat": point.lat,
                             "lng": point.lng,
+                            "bairro": getattr(point, 'bairro', ''),
+                            "cep": getattr(point, 'cep', ''),
                             "color": "#9ca3af", # Cinza (pendente)
                             "route_color": "#e5e7eb",
                             "route_id": "unassigned",

@@ -107,6 +107,10 @@ def parse_shopee_excel(file_obj) -> list:
                             headers['bairro'] = col
                             if header_row is None:
                                 header_row = row
+                        elif any(x in cell_lower for x in ['zipcode', 'postal', 'cep']):
+                            headers['cep'] = col
+                            if header_row is None:
+                                header_row = row
                         elif 'city' in cell_lower or 'cidade' in cell_lower:
                             headers['city'] = col
                         elif 'latitude' in cell_lower or (cell_lower == 'lat'):
