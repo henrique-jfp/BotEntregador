@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, LayersControl } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Filter, MapPin, CheckSquare, Square, Save, Palette, Layers, PaintBucket, Eye, EyeOff, Navigation2, Crosshair } from 'lucide-react';
+import { Filter, MapPin, CheckSquare, Square, Save, Palette, Layers, PaintBucket, Eye, EyeOff, Navigation2, Crosshair, ChevronDown, ChevronRight } from 'lucide-react';
 import { fetchWithAuth } from '../api_client';
 
 // Palette Colors
@@ -77,6 +77,7 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
   // State: Filters & Grouping
   const [groupMode, setGroupMode] = useState('bairro'); // Default to bairro grouping as requested
   const [hiddenGroups, setHiddenGroups] = useState(new Set());
+  const [collapsedGroups, setCollapsedGroups] = useState(new Set());
   const [numberSideFilter, setNumberSideFilter] = useState('all'); // 'all', 'even', 'odd'
   const [anchorId, setAnchorId] = useState(null);
   const [radiusFilter, setRadiusFilter] = useState('');
@@ -113,12 +114,10 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
              if (cepMatch) cep = cepMatch[0];
 
              // 2. Extract House Number - BETTER HEURISTIC
-             // Usually follows a comma: "Rua tal, 123"
              const numberAfterComma = addr.match(/,\s*(\d+)/);
              if (numberAfterComma) {
                  number = parseInt(numberAfterComma[1], 10);
              } else {
-                 // Fallback: last number in the first part before major separators
                  const firstPart = addr.split('-')[0].split('(')[0];
                  const allNums = firstPart.match(/\b\d+\b/g);
                  if (allNums) number = parseInt(allNums[allNums.length - 1], 10);
@@ -128,9 +127,7 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
              const parts = addr.split(',');
              if (parts.length >= 2) {
                  street = parts[0].trim();
-                 // Bairro is often the part after number or in the next segment
                  let secondPart = parts[1].trim();
-                 // Remove number from second part if it's there
                  secondPart = secondPart.replace(/^\d+\s*/, '').trim();
                  
                  if (parts.length >= 3) {
@@ -142,7 +139,7 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
                  street = addr.replace(/\s+\d+.*$/, '').trim();
              }
 
-             // Normalize for better grouping (avoid splitting same street due to casing)
+             // Normalize for better grouping
              street = street.toUpperCase();
              bairro = bairro.toUpperCase();
 
@@ -172,14 +169,7 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
   // --- Filtering Logic (Cumulative) ---
   const filteredPackages = useMemo(() => {
     return packages.filter(pkg => {
-      // 1. Hidden Groups
-      let groupKey = 'none';
-      if (groupMode === 'bairro') groupKey = pkg.bairro;
-      if (groupMode === 'street') groupKey = pkg.street;
-      if (groupMode === 'cep') groupKey = pkg.cep;
-      if (hiddenGroups.has(groupKey)) return false;
-
-      // 2. Even/Odd Side
+      // 1. Even/Odd Side
       if (numberSideFilter !== 'all') {
         if (pkg.number === null || isNaN(pkg.number)) return false;
         const isEven = pkg.number % 2 === 0;
@@ -187,7 +177,7 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
         if (numberSideFilter === 'odd' && isEven) return false;
       }
 
-      // 3. Proximity (Anchor or Selection)
+      // 2. Proximity (Anchor or Selection)
       if (radiusFilter) {
           const radius = parseFloat(radiusFilter);
           if (proximityMode === 'anchor' && anchorId) {
@@ -197,7 +187,6 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
                   if (dist > radius) return false;
               }
           } else if (proximityMode === 'selection' && selectedIds.size > 0) {
-              // RADIUS FROM SELECTION: Show only packages near ANY selected package
               const selectedPkgs = packages.filter(p => selectedIds.has(p.id));
               const isNearAny = selectedPkgs.some(sp => {
                   const dist = haversineDistance(sp, pkg);
@@ -209,7 +198,7 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
 
       return true;
     });
-  }, [packages, numberSideFilter, anchorId, radiusFilter, proximityMode, selectedIds, groupMode, hiddenGroups]);
+  }, [packages, numberSideFilter, anchorId, radiusFilter, proximityMode, selectedIds]);
 
   // --- Grouping Logic ---
   const groupedPackages = useMemo(() => {
@@ -219,7 +208,7 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
     filteredPackages.forEach(pkg => {
         let key = 'Outros';
         if (groupMode === 'bairro') key = pkg.bairro || 'Desconhecido';
-        if (groupMode === 'street') key = pkg.street || 'Rua Desconhecida';
+        if (groupMode === 'street') key = pkg.street || 'RUA DESCONHECIDA';
         if (groupMode === 'cep') key = pkg.cep || 'Sem CEP';
         
         if (!groups[key]) groups[key] = [];
@@ -236,9 +225,18 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
   // --- Map Bounds Calculation ---
   const mapBounds = useMemo(() => {
     const pointsWithCoords = filteredPackages.filter(p => p.lat && p.lng);
-    if (pointsWithCoords.length === 0) return null;
-    return L.latLngBounds(pointsWithCoords.map(p => [p.lat, p.lng]));
-  }, [filteredPackages]);
+    // Also respect hiddenGroups for bounds
+    const visiblePoints = pointsWithCoords.filter(pkg => {
+        let groupKey = 'none';
+        if (groupMode === 'bairro') groupKey = pkg.bairro;
+        if (groupMode === 'street') groupKey = pkg.street;
+        if (groupMode === 'cep') groupKey = pkg.cep;
+        return !hiddenGroups.has(groupKey);
+    });
+
+    if (visiblePoints.length === 0) return null;
+    return L.latLngBounds(visiblePoints.map(p => [p.lat, p.lng]));
+  }, [filteredPackages, groupMode, hiddenGroups]);
 
   const mapCenter = useMemo(() => {
       if (sessionBase && sessionBase.lat) return [sessionBase.lat, sessionBase.lng];
@@ -276,6 +274,16 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
           newHidden.add(groupKey);
       }
       setHiddenGroups(newHidden);
+  };
+
+  const toggleGroupCollapse = (groupKey) => {
+      const newCollapsed = new Set(collapsedGroups);
+      if (newCollapsed.has(groupKey)) {
+          newCollapsed.delete(groupKey);
+      } else {
+          newCollapsed.add(groupKey);
+      }
+      setCollapsedGroups(newCollapsed);
   };
 
   const handleColorClick = (hex) => {
@@ -456,20 +464,32 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
                 <div key={groupName} className="space-y-1">
                     {groupMode !== 'none' && (
                         <div className="sticky top-0 z-20 flex items-center justify-between bg-white/80 dark:bg-gray-800/80 backdrop-blur-md px-2 py-1.5 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 mb-2">
-                           <div className="flex items-center gap-2 overflow-hidden">
-                               <button onClick={() => toggleGroupVisibility(groupName)} className="text-gray-400">
+                           <div className="flex items-center gap-2 overflow-hidden flex-1">
+                               <button 
+                                   onClick={() => toggleGroupCollapse(groupName)} 
+                                   className="text-gray-500 hover:text-blue-600 transition-colors"
+                               >
+                                   {collapsedGroups.has(groupName) ? <ChevronRight size={16}/> : <ChevronDown size={16}/>}
+                               </button>
+                               <button 
+                                   onClick={() => toggleGroupVisibility(groupName)} 
+                                   className={`${hiddenGroups.has(groupName) ? 'text-red-400' : 'text-blue-400'} hover:scale-110 transition-transform`}
+                                   title={hiddenGroups.has(groupName) ? "Mostrar no mapa" : "Esconder do mapa"}
+                               >
                                    {hiddenGroups.has(groupName) ? <EyeOff size={14}/> : <Eye size={14}/>}
                                </button>
-                               <span className="text-xs font-bold text-gray-700 dark:text-gray-200 truncate">{groupName}</span>
+                               <span className={`text-xs font-bold truncate ${hiddenGroups.has(groupName) ? 'text-gray-400 line-through' : 'text-gray-700 dark:text-gray-200'}`}>
+                                   {groupName}
+                               </span>
                                <span className="text-[10px] text-gray-400 font-bold bg-gray-100 dark:bg-gray-700 px-1.5 rounded">{pkgs.length}</span>
                            </div>
-                           <button onClick={() => handleSelectGroup(pkgs)} className="text-blue-600 hover:scale-110 transition-transform">
+                           <button onClick={() => handleSelectGroup(pkgs)} className="text-blue-600 hover:scale-110 transition-transform ml-2">
                               <CheckSquare size={16}/>
                            </button>
                         </div>
                     )}
                     
-                    {!hiddenGroups.has(groupName) && pkgs.map(pkg => (
+                    {!collapsedGroups.has(groupName) && pkgs.map(pkg => (
                         <div 
                             key={pkg.id} 
                             ref={el => listRef.current[pkg.id] = el}
@@ -523,7 +543,6 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
                     <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" />
                 </LayersControl.BaseLayer>
                 <LayersControl.Overlay name="Sentido das Vias" checked>
-                    {/* OSM Standard usually has arrows at high zoom, adding it as a forced overlay helps */}
                     <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" opacity={0.4} />
                 </LayersControl.Overlay>
             </LayersControl>
@@ -531,6 +550,15 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
             <MapUpdater center={mapCenter} zoom={13} bounds={mapBounds} />
 
             {packages.map(pkg => {
+                // Determine if markers should be hidden based on group
+                let groupKey = 'none';
+                if (groupMode === 'bairro') groupKey = pkg.bairro;
+                if (groupMode === 'street') groupKey = pkg.street;
+                if (groupMode === 'cep') groupKey = pkg.cep;
+                
+                const isHiddenByGroup = hiddenGroups.has(groupKey);
+                if (isHiddenByGroup) return null;
+
                 const isFiltered = filteredPackages.some(fp => fp.id === pkg.id);
                 const isSelected = selectedIds.has(pkg.id);
                 const color = pkg.assignedColor || (isFiltered ? '#3B82F6' : '#E5E7EB');
