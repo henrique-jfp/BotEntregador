@@ -138,7 +138,13 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
                  } else {
                      bairro = secondPart.split('-')[0].replace(cep, '').trim() || 'Desconhecido';
                  }
+             } else {
+                 street = addr.replace(/\s+\d+.*$/, '').trim();
              }
+
+             // Normalize for better grouping (avoid splitting same street due to casing)
+             street = street.toUpperCase();
+             bairro = bairro.toUpperCase();
 
              if (street.length > 40) street = street.substring(0, 40) + '...';
              if (bairro.length > 25) bairro = bairro.substring(0, 25);
