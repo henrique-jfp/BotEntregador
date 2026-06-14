@@ -198,6 +198,12 @@ def parse_shopee_excel(file_obj) -> list:
                 phone = ""
                 if 'phone' in headers:
                     phone = str(ws.cell(row, headers['phone']).value or '').strip()
+                cep = ""
+                if 'cep' in headers:
+                    cep_cell = ws.cell(row, headers['cep'])
+                    if cep_cell.value:
+                        cep = str(cep_cell.value).strip()
+
                 if address:
                     cleaned_address = clean_destination_address(address)
                     addresses.append({
@@ -211,6 +217,7 @@ def parse_shopee_excel(file_obj) -> list:
                         'city': city,
                         'customer': customer,
                         'phone': phone,
+                        'cep': cep,
                         'tracking': tracking
                     })
                     logger.info(f"Shopee: Linha {row} importada - id={tracking}, endereço={cleaned_address}")

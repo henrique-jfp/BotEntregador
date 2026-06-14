@@ -289,6 +289,7 @@ async def import_romaneio(
 
             # Adaptação para o Dataclass DeliveryPoint
             # Usa coordenadas do Excel se disponíveis, senão será geocodificado depois
+            addr_cep = point_data.get('cep', '')
             try:
                 point = DeliveryPoint(
                     address=addr_text,
@@ -297,7 +298,8 @@ async def import_romaneio(
                     romaneio_id=rom_id,
                     package_id=pkg_id,
                     priority=prio,
-                    bairro=addr_bairro
+                    bairro=addr_bairro,
+                    cep=addr_cep
                 )
             except TypeError:
                 # Fallback para definição antiga se houver mismatch de campos
@@ -314,6 +316,8 @@ async def import_romaneio(
                 # Garantir bairro no fallback
                 if not hasattr(point, 'bairro'):
                     point.bairro = addr_bairro
+                if not hasattr(point, 'cep'):
+                    point.cep = addr_cep
 
             delivery_points.append(point)
         

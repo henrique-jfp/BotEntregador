@@ -55,10 +55,26 @@ function haversineDistance(coords1, coords2) {
 function normalizeStreet(street) {
     if (!street) return 'RUA DESCONHECIDA';
     let s = street.toUpperCase().trim();
-    // Remove prefixes
-    s = s.replace(/^(RUA|R\.|R\s|AVENIDA|AV\.|AV\s|TRAVESSA|TRV\.|TRV\s|PRAÇA|PRC\.|PRC\s|ALAMEDA|AL\.|AL\s)\s+/i, '');
+    
+    // Remove any parens and what's inside/after them, e.g., "(( PORTARIA)", "(PORTARIA)"
+    s = s.replace(/\(+.*$/i, '');
+    
+    // Remove common prefixes
+    s = s.replace(/^(RUA|R\.|R\s+|AVENIDA|AV\.|AV\s+|TRAVESSA|TRV\.|TRV\s+|PRAÇA|PRC\.|PRC\s+|ALAMEDA|AL\.|AL\s+|LADEIRA|ESTRADA|EST\.|EST\s+|BECO|VILA|RODOVIA|ROD\.|ROD\s+)\s+/i, '');
+    
+    // Remove prepositions at the start "DO ", "DA ", "DOS " to group "HUMAITÁ" and "DO HUMAITÁ" together
+    s = s.replace(/^(DO|DA|DE|DOS|DAS)\s+/i, '');
+    
+    // Remove generic terms at the end like " Nº", " N°", " NO", " N.", " NUMERO"
+    s = s.replace(/\s+(Nº|N°|N\.|NUMERO|NO|N\s*)$/i, '');
+    s = s.replace(/\s*N[Oº°]\s*$/i, ''); // just in case
+    
     // Remove trailing numbers that might be leaked
     s = s.replace(/\s+\d+.*$/, '');
+    
+    // Remove accents so "GUIMARAES" and "GUIMARÃES" become exactly the same
+    s = s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    
     return s.trim() || 'RUA DESCONHECIDA';
 }
 
