@@ -242,6 +242,7 @@ async def import_romaneio(
             addr_lat = 0.0
             addr_lng = 0.0
             addr_bairro = ""
+            addr_cep = ""
             
             if isinstance(addr, dict):
                 addr_text = addr.get('address', '')
@@ -260,6 +261,9 @@ async def import_romaneio(
                 # Pega bairro para geocoding
                 if addr.get('bairro'):
                     addr_bairro = addr['bairro']
+                # Pega CEP do arquivo
+                if addr.get('cep'):
+                    addr_cep = addr['cep']
             
             if not addr_text:
                 continue
@@ -289,7 +293,6 @@ async def import_romaneio(
 
             # Adaptação para o Dataclass DeliveryPoint
             # Usa coordenadas do Excel se disponíveis, senão será geocodificado depois
-            addr_cep = point_data.get('cep', '')
             try:
                 point = DeliveryPoint(
                     address=addr_text,
