@@ -3,7 +3,7 @@ Router para Gestão Completa de Rotas
 Divisão por entregadores, coloração, sequenciação e envio
 """
 import logging
-from fastapi import APIRouter, HTTPException, Query, Body, Form, status
+from fastapi import APIRouter, HTTPException, Query, Body, Form, status, BackgroundTasks
 from fastapi.responses import JSONResponse
 from typing import List, Dict, Optional
 from pydantic import BaseModel
@@ -32,14 +32,52 @@ class AssignRoutesRequest(BaseModel):
     assignments: Dict[str, int]  # {route_id: deliverer_telegram_id}
 
 # ============================================
+# FUNÇÃO AUXILIAR DE NOTIFICAÇÃO (BACKGROUND)
+# ============================================
+async def process_notifications(session_id: str, assignments: Dict[str, int]):
+    """Processa o envio de notificações em segundo plano para não travar a UI"""
+    from bot_multidelivery.services.telegram_notifier import notify_route_assigned
+    
+    session = session_manager.get_session(session_id)
+    if not session:
+        logger.error(f"❌ Sessão {session_id} não encontrada para notificações")
+        return
+
+    for route_id, deliverer_id in assignments.items():
+        route = next((r for r in session.routes if str(r.id) == str(route_id)), None)
+        if not route:
+            continue
+
+        logger.info(f"📱 Notificando entregador {deliverer_id} para rota {route.id}...")
+        
+        try:
+            # Preparar dados
+            coordinates = None
+            if hasattr(route, 'optimized_order') and route.optimized_order:
+                 coordinates = [(p.lat, p.lng) for p in route.optimized_order if hasattr(p, 'lat') and p.lat]
+            
+            addresses = [p.address for p in route.points] if hasattr(route, 'points') else []
+
+            await notify_route_assigned(
+                telegram_id=deliverer_id,
+                route_color=route.color,
+                total_packages=route.total_packages,
+                distance_km=route.total_distance_km or 0,
+                addresses=addresses,
+                webapp_url=None,
+                coordinates=coordinates
+            )
+        except Exception as e:
+            logger.error(f"🚨 Erro ao notificar rota {route_id}: {e}", exc_info=True)
+
+# ============================================
 # ENDPOINT BATCH: ATRIBUIR MULTIPLAS ROTAS
 # ============================================
 @router.post("/assign-multiple", status_code=200)
-async def assign_multiple_routes(request: AssignRoutesRequest = Body(...)):
+async def assign_multiple_routes(background_tasks: BackgroundTasks, request: AssignRoutesRequest = Body(...)):
     """
     Atribui múltiplas rotas a entregadores de uma vez (batch).
-    Garante atomicidade: se uma falhar, nenhuma é aplicada.
-    Dispara notificações para todos os entregadores.
+    Agora usa BackgroundTasks para notificações, tornando a resposta instantânea.
     """
     session = session_manager.get_session(request.session_id)
     if not session:
@@ -47,8 +85,6 @@ async def assign_multiple_routes(request: AssignRoutesRequest = Body(...)):
     if not session.routes:
         raise HTTPException(status_code=400, detail="Nenhuma rota criada ainda para esta sessão")
 
-    # Backup do estado atual para rollback em caso de erro de atribuição
-    original_assignments = {r.id: (r.assigned_to_telegram_id, r.assigned_to_name) for r in session.routes}
     results = {}
     
     try:
@@ -65,62 +101,29 @@ async def assign_multiple_routes(request: AssignRoutesRequest = Body(...)):
             route.assigned_to_telegram_id = deliverer_id
             route.assigned_to_name = deliverer.name
             results[route_id] = {"deliverer_id": deliverer_id, "deliverer_name": deliverer.name}
-            logger.info(f"Atribuição em memória: Rota {route.id} -> {deliverer.name}")
+            logger.info(f"✅ Rota {route.id} atribuída a {deliverer.name}")
 
-        # Persistir as atribuições antes de notificar
+        # Persistir as atribuições
         session_manager.save_session(session)
 
-        # Etapa 2: Disparar notificações para todos
-        from bot_multidelivery.services.telegram_notifier import notify_route_assigned
-        
-        notify_results = {}
-        for route_id, deliverer_id in request.assignments.items():
-            route = next((r for r in session.routes if str(r.id) == str(route_id)), None)
-            if not route:
-                notify_results[route_id] = {"success": False, "error": "Rota não encontrada após atribuição."}
-                continue
-
-            logger.info(f"📱 Tentando notificar entregador {deliverer_id} para rota {route.id} ({route.color})...")
-            
-            try:
-                # Otimização: Preparar dados para notificação
-                coordinates = None
-                if hasattr(route, 'optimized_order') and route.optimized_order:
-                     coordinates = [(p.lat, p.lng) for p in route.optimized_order if hasattr(p, 'lat') and p.lat]
-                
-                addresses = [p.address for p in route.points] if hasattr(route, 'points') else []
-
-
-                success = await notify_route_assigned(
-                    telegram_id=deliverer_id,
-                    route_color=route.color,
-                    total_packages=route.total_packages,
-                    distance_km=route.total_distance_km or 0,
-                    addresses=addresses,
-                    webapp_url=None,
-                    coordinates=coordinates
-                )
-                
-                if success:
-                    logger.info(f"✅ Notificação para rota {route_id} enviada com sucesso para {deliverer_id}.")
-                    notify_results[route_id] = {"success": True}
-                else:
-                    logger.error(f"❌ Falha SILENCIOSA ao notificar rota {route_id} para {deliverer_id}.")
-                    notify_results[route_id] = {"success": False, "error": "A API do Telegram recusou o envio."}
-
-            except Exception as e:
-                logger.error(f"🚨 EXCEÇÃO ao notificar rota {route_id} para {deliverer_id}: {e}", exc_info=True)
-                notify_results[route_id] = {"success": False, "error": str(e)}
+        # Etapa 2: Agendar notificações em background
+        background_tasks.add_task(process_notifications, request.session_id, request.assignments)
 
         return JSONResponse(
             status_code=status.HTTP_200_OK,
             content={
                 "status": "success",
-                "message": "Atribuições processadas. Verifique o status das notificações.",
-                "assignments": results,
-                "notifications": notify_results
+                "message": "Atribuições salvas. Notificações sendo enviadas em background.",
+                "assignments": results
             }
         )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"🚨 Erro crítico em assign_multiple_routes: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
         
     except HTTPException as http_exc:
         # Rollback em caso de erro de validação/atribuição
