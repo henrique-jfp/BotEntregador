@@ -502,6 +502,11 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
         </div>
         
         <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+           <div className="mb-2 text-center">
+               <p className="text-[10px] text-blue-500 font-bold flex items-center justify-center gap-1">
+                   <Navigation2 size={10}/> O Bot irá sequenciar as entregas automaticamente
+               </p>
+           </div>
            <button 
                onClick={handleSaveCreativeRoutes}
                disabled={saving || !packages.some(p => p.assignedColor)}

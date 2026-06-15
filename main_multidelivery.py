@@ -53,7 +53,7 @@ import logging
 # --- Gerenciamento de Vida do App (Bot + FastAPI) ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Controla inicialização e desligamento do sistema"""
+    """Controla inicialização e deslocamento do sistema"""
     print("🚀 Iniciando BotEntregador V2...")
     
     # 1. Inicializa App do Telegram
@@ -76,8 +76,6 @@ async def lifespan(app: FastAPI):
     # 3. Desligamento Limpo
     print("🛑 Desligando sistema...")
     if bot_app:
-        # Se estiver em polling, o python-telegram-bot lida com o stop no run_polling
-        # Mas aqui paramos a aplicação se necessário
         await bot_app.stop()
         await bot_app.shutdown()
 
@@ -102,7 +100,7 @@ scanner_app.add_middleware(
 
 # Injeta Health Check e Routers Modulares
 from bot_multidelivery.health import router as health_router
-from bot_multidelivery.routers import admin, auth, session, logistic, romaneio, routes, separation, deliverer, neighborhoods, analytics, history, webhook, map_realtime
+from bot_multidelivery.routers import admin, auth, session, logistic, romaneio, separation, deliverer, neighborhoods, analytics, history, webhook, map_realtime
 
 scanner_app.include_router(health_router)
 
@@ -117,7 +115,6 @@ api_router.include_router(auth.router)
 api_router.include_router(session.router)
 api_router.include_router(logistic.router)
 api_router.include_router(romaneio.router)
-api_router.include_router(routes.router)
 api_router.include_router(separation.router)
 api_router.include_router(deliverer.router)
 api_router.include_router(neighborhoods.router)
