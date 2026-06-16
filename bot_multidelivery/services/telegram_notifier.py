@@ -334,44 +334,61 @@ class TelegramNotifier:
         
         color_name = color_names.get(route_color.upper(), route_color)
         
-        # Formatar endereços (primeiros 5)
+        # Formatar endereços (pegar ruas únicas e limpas)
+        clean_addresses = []
+        for addr in addresses:
+            # Pega só a parte da rua antes da vírgula ou traço para o resumo
+            clean = addr.split('-')[0].split(',')[0].strip()
+            if clean and clean not in clean_addresses:
+                clean_addresses.append(clean)
+            if len(clean_addresses) >= 5:
+                break
+                
         address_list = ""
-        for i, addr in enumerate(addresses[:5]):
-            address_list += f"  {i+1}. {addr}\n"
+        for clean in clean_addresses:
+            address_list += f"▫️ <i>{clean}</i>\n"
         
-        remaining = max(0, len(addresses) - 5)
+        remaining = max(0, len(addresses) - len(clean_addresses))
         if remaining > 0:
-            address_list += f"  ... e mais {remaining} paradas"
+            address_list += f"▫️ <i>... e mais {remaining} entregas na região.</i>"
+            
+        # Calcular tempo estimado (Base: 15 km/h + 3 min por pacote de tempo parado)
+        tempo_deslocamento_min = (distance_km / 15.0) * 60
+        tempo_parado_min = total_packages * 3
+        tempo_total_min = int(tempo_deslocamento_min + tempo_parado_min)
         
-        # Montar mensagem/caption
-        message = f"""🚀 <b>NOVA ROTA DISPONÍVEL!</b>
+        horas = tempo_total_min // 60
+        minutos = tempo_total_min % 60
+        tempo_str = f"{horas}h {minutos}m" if horas > 0 else f"{minutos} minutos"
+        
+        # Montar mensagem/caption (Card Bonitinho)
+        message = f"""📦 <b>NOVA ROTA ATRIBUÍDA A VOCÊ!</b>
 
-<b>Cor:</b> {color_name}
-<b>Pacotes:</b> {total_packages} entregas
-<b>Distância:</b> {distance_km:.1f} km
+<b>Cor de Separação:</b> {color_name}
 
-<b>📍 Primeiras Paradas:</b>
+📊 <b>Resumo da Rota:</b>
+📦 <b>Pacotes:</b> {total_packages} volumes
+🛣️ <b>Distância:</b> {distance_km:.1f} km
+⏱️ <b>Tempo Est.:</b> ~{tempo_str}
+
+📍 <b>Principais Destinos:</b>
 {address_list}
 
-Abra o app para ver o mapa completo e iniciar a separação! 👇"""
+👇 <b>CLIQUE ABAIXO PARA VER O MAPA E DAR BAIXA:</b>"""
 
-        # Incluir link direto (se disponível) e fallback legacy (?tab=myroute)
+        # Garantir que SEMPRE teremos o botão do app, gerando o fallback se `webapp_url` for nulo
         try:
-            legacy_url = f"{BotConfig.WEBAPP_URL}?user_id={chat_id}&tab=myroute"
+            fallback_url = f"{BotConfig.WEBAPP_URL}?user_id={chat_id}&tab=myroute"
         except Exception:
-            legacy_url = None
+            fallback_url = "https://t.me/" # URL dummy para não quebrar se algo der muito errado
+            
+        final_url = webapp_url if webapp_url else fallback_url
 
-        # Não incluir links no corpo da mensagem — usar apenas botões
-        reply_markup = None
-        if webapp_url:
-            buttons = [
-                {"text": "📱 Abrir Mapa da Rota", "url": webapp_url}
-            ]
-            # Se tivermos fallback legacy, adicionar um segundo botão
-            if legacy_url:
-                buttons.append({"text": "🔗 Fallback", "url": legacy_url})
-
-            reply_markup = {"inline_keyboard": [buttons]}
+        buttons = [
+            {"text": "📱 ABRIR APP DE ENTREGAS", "url": final_url}
+        ]
+        
+        reply_markup = {"inline_keyboard": [buttons]}
         
         # Se temos coordenadas, tentar enviar mapa estático PREMIUM
         map_sent = False

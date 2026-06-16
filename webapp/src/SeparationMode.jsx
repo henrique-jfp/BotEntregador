@@ -161,25 +161,36 @@ export default function SeparationMode() {
       const html5QrCode = new Html5Qrcode("camera-reader");
       html5QrCodeRef.current = html5QrCode;
       
-      // Configuração para câmera TRASEIRA automática
+      // Configuração otimizada para leitura rápida
       const config = {
-        fps: 10,
-        qrbox: { width: 280, height: 150 }, // Retangular para código de barras
-        aspectRatio: 1.777778, // 16:9
+        fps: 30, // Aumentado para 30 para leitura muito mais rápida
+        qrbox: { width: 260, height: 260 }, // Quadrado para ler tanto QR quanto Barras facilmente
+        aspectRatio: 1.0, // Foco melhor no centro
         disableFlip: false,
         experimentalFeatures: {
           useBarCodeDetectorIfSupported: true
         }
       };
       
+      // Variável para ignorar leituras repetidas muito rápidas (debounce)
+      let lastScannedText = '';
+      let lastScannedTime = 0;
+
       // Iniciar com câmera traseira (facingMode: environment)
       await html5QrCode.start(
         { facingMode: "environment" }, // Câmera traseira!
         config,
         (decodedText, decodedResult) => {
+          // Debounce para evitar 50 chamadas da mesma caixa no mesmo segundo
+          const now = Date.now();
+          if (decodedText === lastScannedText && (now - lastScannedTime) < 2000) {
+              return; // Ignora se for o mesmo texto a menos de 2 segundos
+          }
+          lastScannedText = decodedText;
+          lastScannedTime = now;
+          
           // Sucesso no scan!
           handleScan(decodedText);
-          playBeep('success');
         },
         (errorMessage) => {
           // Erro de scan (normal, ignora)
@@ -188,7 +199,7 @@ export default function SeparationMode() {
       
       setCameraReady(true);
       setIsScanning(true);
-      console.log('📷 Câmera traseira iniciada com sucesso!');
+      console.log('📷 Câmera traseira iniciada com sucesso (Alta performance)!');
       
     } catch (err) {
       console.error('❌ Erro ao iniciar câmera:', err);
@@ -627,80 +638,84 @@ export default function SeparationMode() {
               )}
             </div>
 
-            {/* Result Panel - Só aparece em telas maiores ou quando tem resultado */}
+            {/* Result Panel - Notificação Flutuante no Mobile ou Painel no Desktop */}
             {(!isMobile || lastScanned) && (
               <div 
-                className={`flex-1 flex flex-col items-center justify-center relative overflow-hidden transition-colors duration-500 ${
-                  isMobile ? 'absolute inset-0 z-20' : ''
-                }`}
-                style={{ 
-                  backgroundColor: lastScanned?.route_color || (isMobile ? 'transparent' : 'rgb(249 250 251)')
-                }}
+                className={
+                  isMobile 
+                    ? `absolute bottom-4 left-4 right-4 z-40 pointer-events-auto transition-all duration-300 animate-in slide-in-from-bottom-8 fade-in ${lastScanned ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none'}`
+                    : `flex-1 flex flex-col items-center justify-center relative overflow-hidden transition-colors duration-500`
+                }
+                style={!isMobile ? { backgroundColor: lastScanned?.route_color || 'rgb(249 250 251)' } : {}}
               >
                 {lastScanned ? (
-                  <>
-                    {/* Background overlay */}
-                    <div className="absolute inset-0 bg-black/40" />
-                    
-                    {/* Content */}
-                    <div className="relative z-10 text-center p-6 w-full max-w-md animate-in fade-in zoom-in duration-300">
-                      
-                      {/* Close button mobile */}
-                      {isMobile && (
-                        <button 
-                          onClick={clearLastScan}
-                          className="absolute top-2 right-2 p-2 bg-white/20 rounded-full"
-                        >
-                          <X size={20} className="text-white" />
-                        </button>
-                      )}
-                      
-                      {/* Route Header */}
-                      <div className="mb-4 px-4 py-3 rounded-2xl bg-black/30 backdrop-blur-md inline-block">
-                        <h2 className="text-sm font-medium text-white/80 uppercase tracking-widest mb-1">
-                          Rota de Entrega
-                        </h2>
-                        <div className="text-3xl font-black text-white flex items-center justify-center gap-3">
-                          <div 
-                            className="w-8 h-8 rounded-full border-4 border-white shadow-lg" 
-                            style={{ backgroundColor: lastScanned.route_color }} 
-                          />
-                          <span>{getColorName(lastScanned.route_color)}</span>
+                  isMobile ? (
+                    /* BANNER FLUTUANTE MOBILE */
+                    <div 
+                      className="bg-white dark:bg-gray-800 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] border-l-8 overflow-hidden flex items-stretch"
+                      style={{ borderLeftColor: lastScanned.route_color }}
+                    >
+                      <div className="flex-1 p-3 pl-4">
+                        <div className="flex justify-between items-start mb-1">
+                          <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                            {getColorName(lastScanned.route_color)} • {lastScanned.deliverer || 'S/ Entregador'}
+                          </span>
+                          <button onClick={clearLastScan} className="text-gray-400 p-1 -mr-1 -mt-1 rounded-full hover:bg-gray-100">
+                            <X size={16} />
+                          </button>
                         </div>
-                        {lastScanned.deliverer && (
-                          <p className="text-white font-semibold mt-2">{lastScanned.deliverer}</p>
-                        )}
-                      </div>
-
-                      {/* Stop Number */}
-                      <div className="bg-white text-gray-900 rounded-3xl shadow-2xl mx-auto p-6 max-w-[200px] border-4 border-white/50">
-                        <span className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">
-                          Posição
-                        </span>
-                        <span className="block text-[80px] leading-none font-black text-gray-900">
-                          {lastScanned.sequence}
-                        </span>
-                        <div className="mt-3 pt-3 border-t-2 border-gray-100 flex justify-between text-xs font-bold text-gray-400">
-                          <span>TOTAL</span>
-                          <span className="text-lg text-gray-700">{lastScanned.total_in_route}</span>
+                        
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-4xl font-black text-gray-900 dark:text-white leading-none">
+                              {lastScanned.sequence}
+                            </span>
+                            <span className="text-sm font-bold text-gray-400">
+                              /{lastScanned.total_in_route}
+                            </span>
+                          </div>
+                          
+                          <div className="flex-1 border-l border-gray-200 dark:border-gray-700 pl-3">
+                            <p className="text-xs font-medium text-gray-600 dark:text-gray-300 line-clamp-2">
+                              {lastScanned.address}
+                            </p>
+                          </div>
                         </div>
                       </div>
-
-                      {/* Address */}
-                      <div className="mt-4 text-white/90 text-sm truncate bg-black/40 px-4 py-2 rounded-full">
-                        📍 {lastScanned.address}
-                      </div>
-
-                      {/* Next button */}
-                      <button 
-                        onClick={clearLastScan}
-                        className="mt-6 px-8 py-3 bg-white text-gray-900 rounded-full font-bold text-sm flex items-center gap-2 mx-auto shadow-lg hover:scale-105 transition-transform"
-                      >
-                        <RotateCcw size={18} />
-                        Próximo Pacote
-                      </button>
                     </div>
-                  </>
+                  ) : (
+                    /* DESKTOP FULL PANEL (Manteve Original) */
+                    <>
+                      <div className="absolute inset-0 bg-black/40" />
+                      <div className="relative z-10 text-center p-6 w-full max-w-md animate-in fade-in zoom-in duration-300">
+                        <div className="mb-4 px-4 py-3 rounded-2xl bg-black/30 backdrop-blur-md inline-block">
+                          <h2 className="text-sm font-medium text-white/80 uppercase tracking-widest mb-1">Rota de Entrega</h2>
+                          <div className="text-3xl font-black text-white flex items-center justify-center gap-3">
+                            <div className="w-8 h-8 rounded-full border-4 border-white shadow-lg" style={{ backgroundColor: lastScanned.route_color }} />
+                            <span>{getColorName(lastScanned.route_color)}</span>
+                          </div>
+                          {lastScanned.deliverer && <p className="text-white font-semibold mt-2">{lastScanned.deliverer}</p>}
+                        </div>
+
+                        <div className="bg-white text-gray-900 rounded-3xl shadow-2xl mx-auto p-6 max-w-[200px] border-4 border-white/50">
+                          <span className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Posição</span>
+                          <span className="block text-[80px] leading-none font-black text-gray-900">{lastScanned.sequence}</span>
+                          <div className="mt-3 pt-3 border-t-2 border-gray-100 flex justify-between text-xs font-bold text-gray-400">
+                            <span>TOTAL</span>
+                            <span className="text-lg text-gray-700">{lastScanned.total_in_route}</span>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 text-white/90 text-sm truncate bg-black/40 px-4 py-2 rounded-full">
+                          📍 {lastScanned.address}
+                        </div>
+                        
+                        <p className="text-[10px] text-white/70 font-bold uppercase mt-6 animate-pulse tracking-widest">
+                          Pronto para o próximo bipe...
+                        </p>
+                      </div>
+                    </>
+                  )
                 ) : !isMobile && (
                   <div className="text-center text-gray-400">
                     <Package size={80} className="mx-auto mb-4 opacity-30" />
