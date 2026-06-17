@@ -309,20 +309,28 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
         const routesMap = {};
         coloredPackages.forEach(p => {
             if (!routesMap[p.assignedColor]) routesMap[p.assignedColor] = [];
-            routesMap[p.assignedColor].push(p.package_id);
+            // Força a conversão para string, pois o backend (List[str]) exige string
+            routesMap[p.assignedColor].push(String(p.package_id));
         });
         const creativeRoutes = Object.entries(routesMap).map(([color, ids], idx) => ({
             id: `CREATIVE_${idx + 1}`,
             color: color,
-            package_ids: ids,
-            assigned_to_telegram_id: null,
-            assigned_to_name: null
+            package_ids: ids
+            // Removidos campos null explícitos que podem falhar na validação
         }));
+        
+        console.log("Enviando rotas criativas:", { session_id: sessionId, routes: creativeRoutes });
+        
         const res = await fetchWithAuth('/api/routes/creative/save', {
             method: 'POST',
-            body: JSON.stringify({ session_id: sessionId, routes: creativeRoutes })
+            body: JSON.stringify({ session_id: String(sessionId), routes: creativeRoutes })
         });
-        if (!res.ok) throw new Error("Erro ao salvar rotas.");
+        
+        if (!res.ok) {
+           const errText = await res.text();
+           console.error("Erro 422 do backend:", errText);
+           throw new Error(`Erro ao salvar rotas: ${errText.slice(0,100)}`);
+        }
         alert("Rotas salvas com sucesso!");
         if (onSaved) onSaved();
     } catch (e) { alert(e.message); } finally { setSaving(false); }
