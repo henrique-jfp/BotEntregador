@@ -71,6 +71,7 @@ async def process_notifications(session_id: str, assignments: Dict[str, int]):
 # ENDPOINTS DE GESTÃO DE ROTAS
 # ============================================
 
+@router.post("/divide-and-assign")
 @router.post("/optimize")
 async def optimize_routes(data: OptimizeInput):
     """Divide e otimiza a rota automaticamente."""
@@ -107,8 +108,11 @@ async def optimize_routes(data: OptimizeInput):
     for r in routes:
         center = r.cluster.centroid
         preview.append({
+            "route_id": r.id,  # Mapeamento para o frontend RouteAnalysisView.jsx
             "id": r.id,
             "name": f"Rota {r.id.split('_')[-1]}",
+            "total_packages": len(r.optimized_order), # Mapeamento frontend
+            "total_points": len(r.optimized_order),   # Mapeamento frontend
             "packages_count": len(r.optimized_order),
             "color": r.color,
             "center": {"lat": center[0], "lng": center[1]},
