@@ -92,8 +92,11 @@ async def optimize_routes(data: OptimizeInput):
         optimized = divider.optimize_cluster_route(cluster)
         color = get_color_for_index(idx)
         
+        # ID Único: prefixado com session_id para evitar conflitos no DB
+        route_id = f"{session.session_id}_ROTA_{cluster.id + 1}"
+        
         route = Route(
-            id=f"ROTA_{cluster.id + 1}",
+            id=route_id,
             cluster=cluster,
             color=color,
             optimized_order=optimized
@@ -106,7 +109,7 @@ async def optimize_routes(data: OptimizeInput):
     entregadores_lista = [{'name': d.name, 'id': str(d.telegram_id)} for d in deliverer_service.get_all_deliverers()]
 
     for r in routes:
-        center = r.cluster.centroid
+        center = r.cluster.centroid if r.cluster else (session.base_lat, session.base_lng)
         preview.append({
             "route_id": r.id,  # Mapeamento para o frontend RouteAnalysisView.jsx
             "id": r.id,
@@ -134,8 +137,14 @@ async def assign_multiple_routes(background_tasks: BackgroundTasks, request: Ass
     
     results = {}
     for route_id, deliverer_id in request.assignments.items():
+        # Busca flexível por ID (string ou objeto)
         route = next((r for r in session.routes if str(r.id) == str(route_id)), None)
         if not route:
+            # Fallback: se o frontend mandou apenas o sufixo (ex: ROTA_1), tenta encontrar
+            route = next((r for r in session.routes if r.id.endswith(str(route_id))), None)
+            
+        if not route:
+            logger.error(f"❌ Rota {route_id} não encontrada na sessão {session.session_id}. Disponíveis: {[r.id for r in session.routes]}")
             raise HTTPException(status_code=404, detail=f"Rota {route_id} não encontrada")
         
         deliverer = data_store.get_deliverer(deliverer_id)
@@ -153,13 +162,25 @@ async def assign_multiple_routes(background_tasks: BackgroundTasks, request: Ass
 
 @router.post("/assign")
 async def assign_route(data: AssignRouteInput):
-    """Atribuir rota individual (legado/fallback)."""
-    session = session_manager.get_current_session()
+    """Atribuir rota individual."""
+    # Busca por session_id se fornecido, senão usa atual
+    session = session_manager.get_session(data.session_id) if data.session_id else session_manager.get_current_session()
+    
     if not session:
-        raise HTTPException(status_code=400, detail="Sem sessão ativa")
-    success = session_manager.assign_route(data.route_id, data.deliverer_id)
+        raise HTTPException(status_code=404, detail="Sessão não encontrada")
+        
+    success = session_manager.assign_route(data.route_id, data.deliverer_id, session_id=session.session_id)
+    
     if not success:
-         raise HTTPException(status_code=404, detail="Rota não encontrada")
+        # Tenta busca flexível se falhou (compatibilidade com prefixos)
+        for r in session.routes:
+            if r.id.endswith(data.route_id):
+                success = session_manager.assign_route(r.id, data.deliverer_id, session_id=session.session_id)
+                break
+                
+    if not success:
+         raise HTTPException(status_code=404, detail=f"Rota {data.route_id} não encontrada na sessão")
+         
     return {"status": "success"}
 
 @router.post("/creative/save")
@@ -185,8 +206,11 @@ async def save_creative_routes(data: SaveCreativeRoutesInput):
         )
         optimized_order = divider.optimize_cluster_route(cluster)
         
+        # ID Único prefixado
+        creative_id = f"{session.session_id}_{c_route.id}"
+        
         new_route = Route(
-            id=c_route.id,
+            id=creative_id,
             cluster=cluster,
             color=c_route.color,
             assigned_to_telegram_id=c_route.assigned_to_telegram_id,

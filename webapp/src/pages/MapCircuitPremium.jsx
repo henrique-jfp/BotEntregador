@@ -39,10 +39,7 @@ function getAssignmentsFromUI(routes, deliverers) {
     alert("Rotas enviadas com sucesso!");
   };
 // ─── Configuração do endpoint backend ──────────────────────────────────────
-// Remove '/api' do início ou fim da URL base, se existir
-let _apiBase = "";
-_apiBase = _apiBase.replace(/\/api\/?$/, "").replace(/^.*\/api\//, "/");
-const API_BASE = _apiBase;
+const API_BASE = "/api";
 
 // Função para dividir/otimizar rotas
 async function divideAndAssignRoutes({ sessionId, numDeliverers, baseLat, baseLng }) {

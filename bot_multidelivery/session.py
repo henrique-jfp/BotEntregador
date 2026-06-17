@@ -33,7 +33,7 @@ class Romaneio:
 class Route:
     """Rota atribuída a um entregador"""
     id: str
-    cluster: Cluster
+    cluster: Optional[Cluster] = None
     assigned_to_telegram_id: Optional[int] = None
     assigned_to_name: Optional[str] = None
     color: str = '#667eea'  # Cor única do entregador
