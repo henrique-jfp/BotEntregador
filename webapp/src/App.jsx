@@ -10,6 +10,7 @@ import AnalyticsPage from './pages/AnalyticsPage'
 import HeatmapView from './HeatmapView'
 import MapsView from './pages/MapsView'
 import DelivererPublicView from './pages/DelivererPublicView'
+import DelivererRouteView from './pages/DelivererRouteView.jsx'
 import ProgressBar from './components/ProgressBar'
 import OfflineIndicator from './components/OfflineIndicator'
 import ZonaSulWarMap from './components/ZonaSulWarMap'
@@ -147,7 +148,7 @@ function App() {
                 })
                 .catch(() => setZonalMapData({}))
         )
-      } else if (authData.role === 'deliverer') {
+      } else if (authData.role === 'deliverer' || authData.is_partner) {
         promises.push(
             fetchWithAuth(`/api/deliverer/route?user_id=${id}`)
                 .then(r => r.json())
@@ -751,6 +752,11 @@ function App() {
         </div>
       </div>
     )
+  }
+
+  // Se o entregador/parceiro estiver visualizando sua rota ativamente, mostrar o DelivererRouteView em tela cheia
+  if (activeTab === 'routes' && (roleInfo.role === 'deliverer' || roleInfo.is_partner)) {
+    return <DelivererRouteView />;
   }
 
   return (

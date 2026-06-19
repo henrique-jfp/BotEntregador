@@ -119,60 +119,60 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved, initialB
 
   const loadPackages = async () => {
     setLoading(true);
+    setError(null);
     try {
-      const res = await fetchWithAuth(`/session/state`);
-      const data = await res.json();
-      if (data.active && data.session_id === sessionId) {
-        const mapRes = await fetchWithAuth(`/map/realtime/${sessionId}`);
-        const mapData = await mapRes.json();
-        
-        if (mapData.points) {
-          const pkgs = mapData.points.map(p => {
-             const addr = p.address || '';
-             let street = addr;
-             let number = null;
-             let bairro = (p.bairro || 'Desconhecido').toUpperCase();
-             let cep = p.cep || 'Sem CEP';
+      const mapRes = await fetchWithAuth(`/map/realtime/${sessionId}`);
+      if (!mapRes.ok) {
+        throw new Error(`Erro ao carregar dados do mapa: ${mapRes.statusText}`);
+      }
+      const mapData = await mapRes.json();
+      
+      if (mapData.points) {
+        const pkgs = mapData.points.map(p => {
+           const addr = p.address || '';
+           let street = addr;
+           let number = null;
+           let bairro = (p.bairro || 'Desconhecido').toUpperCase();
+           let cep = p.cep || 'Sem CEP';
 
-             // 1. Extract CEP (fallback)
-             if (cep === 'Sem CEP') {
-                const cepMatch = addr.match(/\b\d{5}-?\d{3}\b/);
-                if (cepMatch) cep = cepMatch[0];
-             }
+           // 1. Extract CEP (fallback)
+           if (cep === 'Sem CEP') {
+              const cepMatch = addr.match(/\b\d{5}-?\d{3}\b/);
+              if (cepMatch) cep = cepMatch[0];
+           }
 
-             // 2. Extract House Number
-             const numberAfterComma = addr.match(/,\s*(\d+)/);
-             if (numberAfterComma) {
-                 number = parseInt(numberAfterComma[1], 10);
-             } else {
-                 const firstPart = addr.split('-')[0].split('(')[0];
-                 const allNums = firstPart.match(/\b\d+\b/g);
-                 if (allNums) number = parseInt(allNums[allNums.length - 1], 10);
-             }
+           // 2. Extract House Number
+           const numberAfterComma = addr.match(/,\s*(\d+)/);
+           if (numberAfterComma) {
+               number = parseInt(numberAfterComma[1], 10);
+           } else {
+               const firstPart = addr.split('-')[0].split('(')[0];
+               const allNums = firstPart.match(/\b\d+\b/g);
+               if (allNums) number = parseInt(allNums[allNums.length - 1], 10);
+           }
 
-             // 3. Street Extraction
-             const parts = addr.split(',');
-             if (parts.length >= 2) {
-                 street = parts[0].trim();
-             } else {
-                 street = addr.replace(/\s+\d+.*$/, '').trim();
-             }
+           // 3. Street Extraction
+           const parts = addr.split(',');
+           if (parts.length >= 2) {
+               street = parts[0].trim();
+           } else {
+               street = addr.replace(/\s+\d+.*$/, '').trim();
+           }
 
-             const cleanStreet = normalizeStreet(street);
+           const cleanStreet = normalizeStreet(street);
 
-             return {
-                 ...p,
-                 package_id: p.package_id || p.id,
-                 street: cleanStreet,
-                 number,
-                 bairro,
-                 cep,
-                 assignedColor: !initialBlank && p.route_id !== 'unassigned' ? normalizeRouteColor(p.route_color) : null,
-                 assignedRouteId: !initialBlank && p.route_id !== 'unassigned' ? p.route_id : null
-             };
-          });
-          setPackages(pkgs);
-        }
+           return {
+               ...p,
+               package_id: p.package_id || p.id,
+               street: cleanStreet,
+               number,
+               bairro,
+               cep,
+               assignedColor: !initialBlank && p.route_id !== 'unassigned' ? normalizeRouteColor(p.route_color) : null,
+               assignedRouteId: !initialBlank && p.route_id !== 'unassigned' ? p.route_id : null
+           };
+        });
+        setPackages(pkgs);
       }
     } catch (err) {
       setError(err.message);
@@ -419,6 +419,12 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved, initialB
 
   return (
     <div className="flex flex-col md:flex-row gap-4 h-[85vh] relative">
+      {error && (
+        <div className="absolute top-4 left-4 right-4 z-[2000] bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg shadow-lg flex justify-between items-center pointer-events-auto">
+          <span>❌ Erro: {error}</span>
+          <button onClick={() => setError(null)} className="font-bold hover:text-red-500 px-2 py-1 rounded">✕</button>
+        </div>
+      )}
       
       {/* MOBILE TOGGLE (Floating) */}
       <div className="md:hidden flex bg-white dark:bg-gray-800 p-1 rounded-full shadow-xl border border-gray-200 dark:border-gray-700 absolute bottom-24 left-1/2 -translate-x-1/2 z-[1001] w-48">
