@@ -14,12 +14,9 @@ import { fetchWithAuth } from '../api_client'
 const MAP_TILES_URL = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
 
 const FAILURE_REASONS = [
-  "Cliente Ausente",
-  "Recusado",
   "Pacote Avariado",
-  "Endereço Inexistente",
-  "Area de Risco",
-  "Tempo Insuficiente"
+  "Recusado",
+  "Cliente Ausente"
 ];
 
 // Função para criar ícones personalizados (L.divIcon)
@@ -356,7 +353,7 @@ export default function DelivererRouteView() {
       {/* 4. BOTTOM SHEET INTERATIVO */}
       {selectedStop && (
         <div 
-          className={`absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-[0_-5px_20px_rgba(0,0,0,0.1)] z-[600] transition-all duration-300 ease-in-out flex flex-col ${bottomSheetOpen ? 'h-[80vh]' : 'h-[30vh] min-h-[220px]'}`}
+          className={`absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-[0_-5px_20px_rgba(0,0,0,0.1)] z-[600] transition-all duration-300 ease-in-out flex flex-col ${bottomSheetOpen ? 'h-[80vh]' : 'h-auto pb-4'}`}
         >
           {/* Handle para arrastar */}
           <div 
@@ -395,26 +392,47 @@ export default function DelivererRouteView() {
             </div>
 
             {/* Botões de Ação Primária */}
-            <div className="grid grid-cols-[1fr_auto] gap-3 mt-2">
-              <button 
-                onClick={handleNavigate}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-2 shadow-blue-200 shadow-lg active:scale-95 transition-transform"
-              >
-                <Navigation size={20} />
-                Navegar
-              </button>
-              
-              <button 
-                onClick={() => setBottomSheetOpen(!bottomSheetOpen)}
-                className="bg-gray-100 hover:bg-gray-200 p-3 rounded-xl text-gray-600"
-              >
-                <ChevronUp size={24} className={`transition-transform ${bottomSheetOpen ? 'rotate-180' : ''}`} />
-              </button>
+            <div className="flex flex-col gap-3 mt-2">
+              <div className="grid grid-cols-[1fr_auto] gap-3">
+                <button 
+                  onClick={handleNavigate}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-2 shadow-blue-200 shadow-lg active:scale-95 transition-transform"
+                >
+                  <Navigation size={20} />
+                  Navegar
+                </button>
+                
+                <button 
+                  onClick={() => setBottomSheetOpen(!bottomSheetOpen)}
+                  className="bg-gray-100 hover:bg-gray-200 p-3 rounded-xl text-gray-600"
+                >
+                  <ChevronUp size={24} className={`transition-transform ${bottomSheetOpen ? 'rotate-180' : ''}`} />
+                </button>
+              </div>
+
+              {selectedStop.status === 'pending' && (
+                <div className="grid grid-cols-2 gap-3">
+                  <button 
+                    onClick={() => handleStatusChange('failed')}
+                    className="border-2 border-red-100 bg-red-50 text-red-600 font-bold py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-red-100 active:scale-95 transition-all"
+                  >
+                    <X size={20} />
+                    Insucesso
+                  </button>
+                  <button 
+                    onClick={() => handleStatusChange('delivered')}
+                    className="bg-green-500 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-green-200 hover:bg-green-600 active:scale-95 transition-all"
+                  >
+                    <Check size={20} />
+                    Entregue
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
           {/* Conteúdo Expandido (Detalhes e Ações de Finalização) */}
-          <div className={`flex-1 overflow-y-auto px-6 pb-6 transition-opacity duration-300 ${bottomSheetOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+          <div className={`flex-1 overflow-y-auto px-6 pb-6 transition-opacity duration-300 ${bottomSheetOpen ? 'opacity-100' : 'opacity-0 pointer-events-none hidden'}`}>
             <div className="space-y-6">
               {/* Info Adicional */}
               <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-3">
@@ -433,26 +451,6 @@ export default function DelivererRouteView() {
                   <span className="text-sm underline decoration-dotted">Contato não disponível</span>
                 </div>
               </div>
-
-              {/* Ações de Finalização */}
-              {selectedStop.status === 'pending' && (
-                <div className="grid grid-cols-2 gap-4 pt-2">
-                  <button 
-                    onClick={() => handleStatusChange('failed')}
-                    className="border-2 border-red-100 bg-red-50 text-red-600 font-bold py-4 rounded-xl flex flex-col items-center gap-1 hover:bg-red-100 active:scale-95 transition-all"
-                  >
-                    <X size={24} />
-                    Insucesso
-                  </button>
-                  <button 
-                    onClick={() => handleStatusChange('delivered')}
-                    className="bg-green-500 text-white font-bold py-4 rounded-xl flex flex-col items-center gap-1 shadow-lg shadow-green-200 hover:bg-green-600 active:scale-95 transition-all"
-                  >
-                    <Check size={24} />
-                    Entregue
-                  </button>
-                </div>
-              )}
             </div>
           </div>
         </div>
