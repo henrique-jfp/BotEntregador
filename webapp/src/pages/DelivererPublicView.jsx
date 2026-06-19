@@ -172,6 +172,7 @@ export default function DelivererPublicView() {
             number: idx + 1,
             isActive: idx === currentIndexToPass
           }))}
+          hideUI={true}
           userLocation={[
             route.base?.lat || route.stops?.[0]?.lat || -22.966441,
             route.base?.lng || route.stops?.[0]?.lng || -43.188863

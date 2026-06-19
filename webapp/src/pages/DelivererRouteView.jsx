@@ -341,7 +341,17 @@ export default function DelivererRouteView() {
       )}
 
       {/* 3. MAPA PREMIUM SHOPEE */}
-      <MapCircuitPremium stops={routeInfo.stops} />
+      <MapCircuitPremium 
+        stops={routeInfo.stops} 
+        hideUI={true}
+        userLocation={userLocation}
+        heading={heading}
+        onPinClick={(idx) => {
+          if (routeInfo.stops[idx]) {
+            handleStopClick(routeInfo.stops[idx]);
+          }
+        }}
+      />
 
       {/* 4. BOTTOM SHEET INTERATIVO */}
       {selectedStop && (

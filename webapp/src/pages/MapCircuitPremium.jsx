@@ -474,8 +474,16 @@ function BottomSheet({ stops, currentIdx, onStopSelect, onAction, expanded, setE
 
 /* ─── Root ────────────────────────────────────────────────────────────────── */
 // O componente agora só renderiza com dados reais vindos por props
-export default function MapCircuitPremium({ stops: stopsProp, routeName = ROUTE_NAME, routeTime = ROUTE_TIME, routeKm = ROUTE_KM }) {
-
+export default function MapCircuitPremium({ 
+  stops: stopsProp, 
+  routeName = ROUTE_NAME, 
+  routeTime = ROUTE_TIME, 
+  routeKm = ROUTE_KM,
+  hideUI = false,
+  userLocation,
+  onPinClick,
+  heading
+}) {
 
   // Só renderiza se receber paradas reais (array válido e não vazio)
   const isValidStops = Array.isArray(stopsProp) && stopsProp.length > 0 && stopsProp.every(s => s.lat && s.lng);
@@ -610,13 +618,13 @@ export default function MapCircuitPremium({ stops: stopsProp, routeName = ROUTE_
 
   // Renderização normal do mapa
   return (
-    <div className="relative w-full h-screen overflow-hidden" style={{ fontFamily: "'Roboto', sans-serif" }}>
+    <div className="relative w-full h-full overflow-hidden" style={{ fontFamily: "'Roboto', sans-serif" }}>
       {/* ── Map ── */}
       {currentStop && (
         <MapContainer
           center={[currentStop.lat, currentStop.lng]}
           zoom={15}
-          style={{ height: "100vh", width: "100vw", zIndex: 1 }}
+          style={{ height: "100%", width: "100%", zIndex: 1 }}
           scrollWheelZoom={true}
           dragging={true}
           doubleClickZoom={false}
@@ -627,47 +635,68 @@ export default function MapCircuitPremium({ stops: stopsProp, routeName = ROUTE_
             url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
             attribution="© CartoDB"
           />
-          <FlyToStop position={[currentStop.lat, currentStop.lng]} />
+          {!hideUI && <FlyToStop position={[currentStop.lat, currentStop.lng]} />}
           <Polyline positions={polyline} color="#1a56ff" weight={6} opacity={0.95} />
           {stops.map((stop, idx) => (
             <Marker
               key={stop.id}
               position={[stop.lat, stop.lng]}
               icon={buildCircuitIcon(idx, stop.status, idx === currentIdx)}
-              eventHandlers={{ click: () => setCurrentIdx(idx) }}
+              eventHandlers={{ click: () => {
+                setCurrentIdx(idx);
+                if (onPinClick) onPinClick(idx);
+              } }}
             />
           ))}
+          {userLocation && (
+            <Marker 
+              position={userLocation} 
+              icon={L.divIcon({
+                className: 'bg-transparent',
+                html: `<div style="width: 20px; height: 20px; background-color: #3b82f6; border: 3px solid white; border-radius: 50%; box-shadow: 0 0 6px rgba(0,0,0,0.4); transform: rotate(${heading || 0}deg);">
+                        ${heading !== undefined ? '<div style="position: absolute; top: -6px; left: 5px; width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-bottom: 6px solid #3b82f6;"></div>' : ''}
+                       </div>`,
+                iconSize: [20, 20],
+                iconAnchor: [10, 10],
+              })} 
+            />
+          )}
         </MapContainer>
       )}
 
-      {/* ── Top Bar ── */}
-      <TopBar routeName={routeName} onMenuClick={() => setExpanded(v => !v)} />
+      {/* ── UI Elements ── */}
+      {!hideUI && (
+        <>
+          {/* ── Top Bar ── */}
+          <TopBar routeName={routeName} onMenuClick={() => setExpanded(v => !v)} />
 
-      {/* ── Map Controls ── */}
-      <MapControls bottomOffset={sheetHeight} />
+          {/* ── Map Controls ── */}
+          <MapControls bottomOffset={sheetHeight} />
 
-      {/* ── Bottom Sheet ── */}
-      <div id="circuit-sheet">
-        <BottomSheet
-          stops={stops}
-          currentIdx={currentIdx}
-          onStopSelect={setCurrentIdx}
-          onAction={handleAction}
-          expanded={expanded}
-          setExpanded={setExpanded}
-        />
-      </div>
+          {/* ── Bottom Sheet ── */}
+          <div id="circuit-sheet">
+            <BottomSheet
+              stops={stops}
+              currentIdx={currentIdx}
+              onStopSelect={setCurrentIdx}
+              onAction={handleAction}
+              expanded={expanded}
+              setExpanded={setExpanded}
+            />
+          </div>
 
-      {/* ── Botão Confirmar e Enviar Rotas ── */}
-      <div style={{ position: "absolute", bottom: 24, left: 0, right: 0, display: "flex", justifyContent: "center", zIndex: 30 }}>
-        <button
-          className="px-8 py-3 rounded-full bg-green-600 text-white text-lg font-bold shadow-lg"
-          onClick={handleAssignRoutes}
-          disabled={loading}
-        >
-          {loading ? "Enviando..." : "Confirmar e Enviar Rotas"}
-        </button>
-      </div>
+          {/* ── Botão Confirmar e Enviar Rotas ── */}
+          <div style={{ position: "absolute", bottom: 24, left: 0, right: 0, display: "flex", justifyContent: "center", zIndex: 30 }}>
+            <button
+              className="px-8 py-3 rounded-full bg-green-600 text-white text-lg font-bold shadow-lg"
+              onClick={handleAssignRoutes}
+              disabled={loading}
+            >
+              {loading ? "Enviando..." : "Confirmar e Enviar Rotas"}
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
