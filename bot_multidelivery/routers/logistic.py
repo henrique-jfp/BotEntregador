@@ -21,6 +21,37 @@ class AssignRoutesRequest(BaseModel):
     session_id: str
     assignments: Dict[str, int]  # {route_id: deliverer_telegram_id}
 
+
+def build_route_preview(route: Route, idx: int) -> Dict:
+    points = route.optimized_order or []
+    total_packages = len(points)
+    return {
+        "route_id": route.id,
+        "id": route.id,
+        "name": f"Rota {idx + 1}",
+        "total_stops": total_packages,
+        "total_packages": total_packages,
+        "total_points": total_packages,
+        "packages_count": total_packages,
+        "percentage_load": 0,
+        "color": route.color,
+        "map_url": None,
+        "points_sample": [
+            {
+                "id": p.package_id,
+                "address": p.address,
+                "lat": p.lat,
+                "lng": p.lng,
+                "bairro": getattr(p, "bairro", ""),
+                "cep": getattr(p, "cep", ""),
+            }
+            for p in points
+            if getattr(p, "lat", None) and getattr(p, "lng", None)
+        ],
+        "assigned_to": route.assigned_to_name,
+        "assigned_to_id": route.assigned_to_telegram_id,
+    }
+
 # ============================================
 # FUNÇÃO AUXILIAR DE NOTIFICAÇÃO (BACKGROUND)
 # ============================================
@@ -108,19 +139,23 @@ async def optimize_routes(data: OptimizeInput):
     preview = []
     entregadores_lista = [{'name': d.name, 'id': str(d.telegram_id)} for d in deliverer_service.get_all_deliverers()]
 
-    for r in routes:
+    total_route_packages = sum(len(r.optimized_order or []) for r in routes) or 1
+    for idx, r in enumerate(routes):
         center = r.cluster.centroid if r.cluster else (session.base_lat, session.base_lng)
-        preview.append({
+        route_preview = build_route_preview(r, idx)
+        route_preview.update({
             "route_id": r.id,  # Mapeamento para o frontend RouteAnalysisView.jsx
             "id": r.id,
             "name": f"Rota {r.id.split('_')[-1]}",
             "total_packages": len(r.optimized_order), # Mapeamento frontend
             "total_points": len(r.optimized_order),   # Mapeamento frontend
             "packages_count": len(r.optimized_order),
+            "percentage_load": round(len(r.optimized_order or []) / total_route_packages * 100),
             "color": r.color,
             "center": {"lat": center[0], "lng": center[1]},
             "deliverer_id": None
         })
+        preview.append(route_preview)
 
     return {
         "status": "success", 
@@ -223,7 +258,24 @@ async def save_creative_routes(data: SaveCreativeRoutesInput):
     session.routes = new_routes
     session.current_step = 'routes_created'
     session_manager.save_session(session)
-    return {"status": "success", "session_id": session.session_id}
+
+    total_route_packages = sum(len(r.optimized_order or []) for r in new_routes) or 1
+    routes_preview = []
+    for idx, route in enumerate(new_routes):
+        route_preview = build_route_preview(route, idx)
+        route_preview["percentage_load"] = round(len(route.optimized_order or []) / total_route_packages * 100)
+        routes_preview.append(route_preview)
+
+    return {
+        "status": "success",
+        "session_id": session.session_id,
+        "routes": routes_preview,
+        "assignments": {
+            r.id: r.assigned_to_telegram_id
+            for r in new_routes
+            if r.assigned_to_telegram_id
+        }
+    }
 
 @router.post("/start")
 async def start_routes(session_id: str = Query(...)):

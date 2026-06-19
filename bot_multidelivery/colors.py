@@ -1,29 +1,25 @@
 # 🎨 PALETA DE CORES PARA ENTREGADORES
 # Cores usadas nos mapas, adesivos e separação
 DELIVERER_COLORS = [
-    '#FF4444',  # Vermelho
-    '#44FF44',  # Verde
-    '#4444FF',  # Azul
-    '#FFD700',  # Amarelo/Ouro
-    '#FF69B4',  # Rosa
-    '#9370DB',  # Roxo
-    '#FF8C00',  # Laranja
-    '#00CED1',  # Ciano
-    '#32CD32',  # Verde-lima
-    '#FF1493',  # Rosa-escuro
+    '#3B82F6',  # Azul
+    '#10B981',  # Verde
+    '#F59E0B',  # Amarelo
+    '#EF4444',  # Vermelho
+    '#8B5CF6',  # Roxo
+    '#F97316',  # Laranja
+    '#EC4899',  # Rosa
+    '#14B8A6',  # Turquesa
 ]
 
 COLOR_NAMES = {
-    '#FF4444': '🔴 VERMELHO',
-    '#44FF44': '🟢 VERDE',
-    '#4444FF': '🔵 AZUL',
-    '#FFD700': '🟡 AMARELO',
-    '#FF69B4': '🌸 ROSA',
-    '#9370DB': '🟣 ROXO',
-    '#FF8C00': '🟠 LARANJA',
-    '#00CED1': '💎 CIANO',
-    '#32CD32': '🍏 VERDE-LIMA',
-    '#FF1493': '💗 ROSA-ESCURO',
+    '#3B82F6': '🔵 AZUL',
+    '#10B981': '🟢 VERDE',
+    '#F59E0B': '🟡 AMARELO',
+    '#EF4444': '🔴 VERMELHO',
+    '#8B5CF6': '🟣 ROXO',
+    '#F97316': '🟠 LARANJA',
+    '#EC4899': '🌸 ROSA',
+    '#14B8A6': '💎 TURQUESA',
 }
 
 def get_color_for_index(idx: int) -> str:

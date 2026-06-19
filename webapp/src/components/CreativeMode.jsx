@@ -2,20 +2,9 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, LayersControl } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Filter, MapPin, CheckSquare, Square, Save, Palette, Layers, PaintBucket, Eye, EyeOff, Navigation2, Crosshair, ChevronDown, ChevronRight, List as ListIcon, Map as MapIcon } from 'lucide-react';
+import { Filter, MapPin, CheckSquare, Square, Save, Palette, Layers, PaintBucket, Eye, EyeOff, Navigation2, Crosshair, ChevronDown, ChevronRight, List as ListIcon, Map as MapIcon, Search, Eraser } from 'lucide-react';
 import { fetchWithAuth } from '../api_client';
-
-// Palette Colors
-const COLORS = [
-  { id: 'blue', hex: '#3B82F6', label: '🔵 Azul' },
-  { id: 'green', hex: '#10B981', label: '🟢 Verde' },
-  { id: 'yellow', hex: '#F59E0B', label: '🟡 Amarelo' },
-  { id: 'red', hex: '#EF4444', label: '🔴 Vermelho' },
-  { id: 'purple', hex: '#8B5CF6', label: '🟣 Roxo' },
-  { id: 'orange', hex: '#F97316', label: '🟠 Laranja' },
-  { id: 'pink', hex: '#EC4899', label: '🦩 Rosa' },
-  { id: 'teal', hex: '#14B8A6', label: '🩵 Turquesa' },
-];
+import { ROUTE_COLORS, normalizeRouteColor } from '../lib/routePalette';
 
 const createMarkerIcon = (color, isSelected, number = '') => {
   return L.divIcon({
@@ -95,18 +84,20 @@ function MapUpdater({ center, zoom, bounds }) {
   return null;
 }
 
-export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
+export default function CreativeMode({ sessionId, sessionBase, onSaved, initialBlank = false }) {
   const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
   // State: Tools
-  const [activeColor, setActiveColor] = useState(COLORS[0].hex);
+  const [activeColor, setActiveColor] = useState(ROUTE_COLORS[0].hex);
   const [selectedIds, setSelectedIds] = useState(new Set());
   
   // State: Filters & Grouping
   const [groupMode, setGroupMode] = useState('bairro'); // Default to bairro grouping
+  const [searchTerm, setSearchTerm] = useState('');
+  const [colorFilter, setColorFilter] = useState('all');
   const [hiddenGroups, setHiddenGroups] = useState(new Set());
   const [collapsedGroups, setCollapsedGroups] = useState(new Set());
   const [numberSideFilter, setNumberSideFilter] = useState('all'); // 'all', 'even', 'odd'
@@ -124,7 +115,7 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
     if (sessionId) {
       loadPackages();
     }
-  }, [sessionId]);
+  }, [sessionId, initialBlank]);
 
   const loadPackages = async () => {
     setLoading(true);
@@ -171,12 +162,13 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
 
              return {
                  ...p,
+                 package_id: p.package_id || p.id,
                  street: cleanStreet,
                  number,
                  bairro,
                  cep,
-                 assignedColor: p.route_id !== 'unassigned' ? p.route_color : null,
-                 assignedRouteId: p.route_id !== 'unassigned' ? p.route_id : null
+                 assignedColor: !initialBlank && p.route_id !== 'unassigned' ? normalizeRouteColor(p.route_color) : null,
+                 assignedRouteId: !initialBlank && p.route_id !== 'unassigned' ? p.route_id : null
              };
           });
           setPackages(pkgs);
@@ -191,7 +183,24 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
 
   // --- Filtering & Grouping Logic ---
   const filteredPackages = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toUpperCase();
     return packages.filter(pkg => {
+      if (normalizedSearch) {
+        const haystack = [
+          pkg.address,
+          pkg.street,
+          pkg.bairro,
+          pkg.cep,
+          pkg.id,
+          pkg.package_id,
+        ].filter(Boolean).join(' ').toUpperCase();
+        if (!haystack.includes(normalizedSearch)) return false;
+      }
+
+      if (colorFilter === 'unassigned' && pkg.assignedColor) return false;
+      if (colorFilter === 'assigned' && !pkg.assignedColor) return false;
+      if (colorFilter.startsWith('#') && normalizeRouteColor(pkg.assignedColor) !== colorFilter) return false;
+
       if (numberSideFilter !== 'all') {
         if (pkg.number === null || isNaN(pkg.number)) return false;
         const isEven = pkg.number % 2 === 0;
@@ -214,7 +223,23 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
       }
       return true;
     });
-  }, [packages, numberSideFilter, anchorId, radiusFilter, proximityMode, selectedIds]);
+  }, [packages, searchTerm, colorFilter, numberSideFilter, anchorId, radiusFilter, proximityMode, selectedIds]);
+
+  const filteredIds = useMemo(() => new Set(filteredPackages.map(pkg => pkg.id)), [filteredPackages]);
+
+  const routeStats = useMemo(() => {
+    const stats = {
+      total: packages.length,
+      filtered: filteredPackages.length,
+      selected: selectedIds.size,
+      unassigned: packages.filter(pkg => !pkg.assignedColor).length,
+      byColor: {}
+    };
+    ROUTE_COLORS.forEach(color => {
+      stats.byColor[color.hex] = packages.filter(pkg => normalizeRouteColor(pkg.assignedColor) === color.hex).length;
+    });
+    return stats;
+  }, [packages, filteredPackages.length, selectedIds.size]);
 
   const groupedPackages = useMemo(() => {
     if (groupMode === 'none') return { 'Todos os Pacotes': filteredPackages };
@@ -272,7 +297,7 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
     setActiveColor(hex);
     if (selectedIds.size > 0) {
         const newPkgs = packages.map(p => {
-            if (selectedIds.has(p.id)) return { ...p, assignedColor: hex };
+            if (selectedIds.has(p.id)) return { ...p, assignedColor: hex, assignedRouteId: null };
             return p;
         });
         setPackages(newPkgs);
@@ -280,9 +305,54 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
     }
   };
 
+  const handleSelectFiltered = () => {
+      setSelectedIds(prev => {
+          const allFilteredSelected = filteredPackages.length > 0 && filteredPackages.every(pkg => prev.has(pkg.id));
+          const next = new Set(prev);
+          filteredPackages.forEach(pkg => {
+              if (allFilteredSelected) next.delete(pkg.id);
+              else next.add(pkg.id);
+          });
+          return next;
+      });
+  };
+
+  const handlePaintFiltered = () => {
+      if (filteredPackages.length === 0) return;
+      setPackages(prev => prev.map(pkg => (
+          filteredIds.has(pkg.id) ? { ...pkg, assignedColor: activeColor, assignedRouteId: null } : pkg
+      )));
+      setSelectedIds(new Set());
+  };
+
+  const handleClearFiltered = () => {
+      if (filteredPackages.length === 0) return;
+      setPackages(prev => prev.map(pkg => (
+          filteredIds.has(pkg.id) ? { ...pkg, assignedColor: null, assignedRouteId: null } : pkg
+      )));
+      setSelectedIds(new Set());
+  };
+
+  const handlePaintSelected = () => {
+      if (selectedIds.size === 0) return;
+      setPackages(prev => prev.map(pkg => (
+          selectedIds.has(pkg.id) ? { ...pkg, assignedColor: activeColor, assignedRouteId: null } : pkg
+      )));
+      setSelectedIds(new Set());
+  };
+
+  const handleClearFilters = () => {
+      setSearchTerm('');
+      setColorFilter('all');
+      setNumberSideFilter('all');
+      setRadiusFilter('');
+      setAnchorId(null);
+      setHiddenGroups(new Set());
+  };
+
   const handleQuickPaint = (id) => {
       const newPkgs = packages.map(p => {
-          if (p.id === id) return { ...p, assignedColor: activeColor };
+          if (p.id === id) return { ...p, assignedColor: activeColor, assignedRouteId: null };
           return p;
       });
       setPackages(newPkgs);
@@ -310,7 +380,7 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
         coloredPackages.forEach(p => {
             if (!routesMap[p.assignedColor]) routesMap[p.assignedColor] = [];
             // Força a conversão para string, pois o backend (List[str]) exige string
-            routesMap[p.assignedColor].push(String(p.package_id));
+            routesMap[p.assignedColor].push(String(p.package_id || p.id));
         });
         const creativeRoutes = Object.entries(routesMap).map(([color, ids], idx) => ({
             id: `CREATIVE_${idx + 1}`,
@@ -331,8 +401,9 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
            console.error("Erro 422 do backend:", errText);
            throw new Error(`Erro ao salvar rotas: ${errText.slice(0,100)}`);
         }
+        const savedRoutes = await res.json();
         alert("Rotas salvas com sucesso!");
-        if (onSaved) onSaved();
+        if (onSaved) onSaved(savedRoutes);
     } catch (e) { alert(e.message); } finally { setSaving(false); }
   };
 
@@ -381,7 +452,7 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
                )}
            </div>
            <div className="flex flex-wrap gap-2">
-             {COLORS.map(c => (
+             {ROUTE_COLORS.map(c => (
                  <button
                     key={c.id}
                     onClick={() => handleColorClick(c.hex)}
@@ -396,10 +467,54 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
                  />
              ))}
            </div>
+           <div className="grid grid-cols-4 gap-2 mt-3 text-center">
+             <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700 py-1">
+               <p className="text-[9px] text-gray-400 font-bold uppercase">Total</p>
+               <p className="text-xs font-black text-gray-700 dark:text-gray-200">{routeStats.total}</p>
+             </div>
+             <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700 py-1">
+               <p className="text-[9px] text-gray-400 font-bold uppercase">Filtro</p>
+               <p className="text-xs font-black text-blue-600">{routeStats.filtered}</p>
+             </div>
+             <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700 py-1">
+               <p className="text-[9px] text-gray-400 font-bold uppercase">Sem rota</p>
+               <p className="text-xs font-black text-amber-600">{routeStats.unassigned}</p>
+             </div>
+             <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700 py-1">
+               <p className="text-[9px] text-gray-400 font-bold uppercase">Selecion.</p>
+               <p className="text-xs font-black text-purple-600">{routeStats.selected}</p>
+             </div>
+           </div>
         </div>
 
         {/* Filters */}
         <div className="p-3 border-b border-gray-200 dark:border-gray-700 space-y-3 bg-white dark:bg-gray-800">
+            <div>
+                <p className="text-[10px] font-bold text-gray-400 uppercase mb-1 flex items-center gap-1"><Search size={12}/> Buscar</p>
+                <input
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                    placeholder="Endereço, rua, bairro, CEP ou pacote"
+                    className="w-full text-xs font-semibold p-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700"
+                />
+            </div>
+
+            <div>
+                <p className="text-[10px] font-bold text-gray-400 uppercase mb-1 flex items-center gap-1"><Filter size={12}/> Cor</p>
+                <select
+                    value={colorFilter}
+                    onChange={e => setColorFilter(e.target.value)}
+                    className="w-full text-xs font-bold p-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700"
+                >
+                    <option value="all">Todas as cores</option>
+                    <option value="unassigned">Sem rota</option>
+                    <option value="assigned">Com rota</option>
+                    {ROUTE_COLORS.map(color => (
+                        <option key={color.hex} value={color.hex}>{color.label} ({routeStats.byColor[color.hex] || 0})</option>
+                    ))}
+                </select>
+            </div>
+
             <div>
                 <p className="text-[10px] font-bold text-gray-400 uppercase mb-2 flex items-center gap-1"><Layers size={12}/> Agrupar por:</p>
                 <div className="grid grid-cols-4 gap-1 bg-gray-100 dark:bg-gray-700 p-1 rounded-lg">
@@ -447,6 +562,44 @@ export default function CreativeMode({ sessionId, sessionBase, onSaved }) {
                     </div>
                 </div>
             </div>
+
+            <div className="grid grid-cols-2 gap-2">
+                <button
+                    onClick={handleSelectFiltered}
+                    disabled={filteredPackages.length === 0}
+                    className="text-[10px] font-black rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 py-2 flex items-center justify-center gap-1 disabled:opacity-40"
+                >
+                    <CheckSquare size={14}/> Selecionar filtro
+                </button>
+                <button
+                    onClick={handlePaintFiltered}
+                    disabled={filteredPackages.length === 0}
+                    className="text-[10px] font-black rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 py-2 flex items-center justify-center gap-1 disabled:opacity-40"
+                >
+                    <PaintBucket size={14}/> Pintar filtro
+                </button>
+                <button
+                    onClick={handlePaintSelected}
+                    disabled={selectedIds.size === 0}
+                    className="text-[10px] font-black rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 py-2 flex items-center justify-center gap-1 disabled:opacity-40"
+                >
+                    <Palette size={14}/> Pintar seleção
+                </button>
+                <button
+                    onClick={handleClearFiltered}
+                    disabled={filteredPackages.length === 0}
+                    className="text-[10px] font-black rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 py-2 flex items-center justify-center gap-1 disabled:opacity-40"
+                >
+                    <Eraser size={14}/> Limpar filtro
+                </button>
+            </div>
+
+            <button
+                onClick={handleClearFilters}
+                className="w-full text-[10px] font-black rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-300 py-2 hover:bg-gray-50 dark:hover:bg-gray-700"
+            >
+                Resetar filtros
+            </button>
             
             {anchorId && proximityMode === 'anchor' && (
                 <div className="bg-blue-50 dark:bg-blue-900/20 p-2 rounded flex justify-between items-center text-[10px] text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-800">

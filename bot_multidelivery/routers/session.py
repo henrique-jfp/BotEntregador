@@ -10,6 +10,35 @@ from bot_multidelivery.session import session_manager
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/session", tags=["Sessions"])
 
+
+def build_session_route_preview(route):
+    points = route.optimized_order or []
+    return {
+        "route_id": route.id,
+        "id": route.id,
+        "total_stops": len(points),
+        "total_packages": len(points),
+        "total_points": len(points),
+        "packages_count": len(points),
+        "percentage_load": 0,
+        "color": route.color,
+        "map_url": None,
+        "points_sample": [
+            {
+                "id": p.package_id,
+                "address": p.address,
+                "lat": p.lat,
+                "lng": p.lng,
+                "bairro": getattr(p, "bairro", ""),
+                "cep": getattr(p, "cep", ""),
+            }
+            for p in points
+            if getattr(p, "lat", None) and getattr(p, "lng", None)
+        ],
+        "assigned_to": route.assigned_to_name,
+        "assigned_to_id": route.assigned_to_telegram_id,
+    }
+
 @router.post("/start")
 async def start_session(data: StartSessionInput):
     """
@@ -102,10 +131,8 @@ async def get_session_state():
         ],
         "routes": [
             {
-                "route_id": r.id,
-                "total_packages": len(r.optimized_order),
-                "assigned_to": r.assigned_to_name,
-                "assigned_to_id": r.assigned_to_telegram_id
+                **build_session_route_preview(r),
+                "percentage_load": round(len(r.optimized_order or []) / (sum(len(route.optimized_order or []) for route in session.routes) or 1) * 100),
             }
             for r in session.routes
         ],

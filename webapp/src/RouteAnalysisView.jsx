@@ -33,6 +33,7 @@ export default function RouteAnalysisView() {
   const [routes, setRoutes] = useState([]);
   const [assignments, setAssignments] = useState({});
   const [autoOptimizeAfterImport, setAutoOptimizeAfterImport] = useState(false);
+  const [editorInitialBlank, setEditorInitialBlank] = useState(false);
   
   // ===== LOCALIZAÇÃO DA BASE =====
   const [baseAddress, setBaseAddress] = useState('');
@@ -61,6 +62,7 @@ export default function RouteAnalysisView() {
           console.log("Restaurando sessão:", data);
           if (data.has_romaneio) {
             setRoteirizadorMode('automatic');
+            setEditorInitialBlank(false);
             setHasRomaneio(true);
             setSessionId(data.session_id);
             if (data.route_value) setImportRouteValue(data.route_value);
@@ -300,6 +302,16 @@ export default function RouteAnalysisView() {
     }
   };
 
+  const openEditorWithCurrentRoutes = () => {
+    setEditorInitialBlank(false);
+    setRoteirizadorMode('creative');
+  };
+
+  const openBlankEditor = () => {
+    setEditorInitialBlank(true);
+    setRoteirizadorMode('creative');
+  };
+
   const handleOptimize = async () => {
     if (!sessionId) {
       setError('Nenhuma sessão ativa. Importe um romaneio primeiro.');
@@ -357,6 +369,9 @@ export default function RouteAnalysisView() {
       }));
       
       setRoutes(mappedRoutes);
+      setAssignments(data.assignments || {});
+      setEditorInitialBlank(false);
+      setRoteirizadorMode('creative');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -561,7 +576,7 @@ export default function RouteAnalysisView() {
       {/* Abas Principais */}
       <div className={`grid gap-3 ${responsive.isDesktop ? 'grid-cols-4' : 'grid-cols-2'}`}>
         <button
-          onClick={() => setRoteirizadorMode('creative')}
+          onClick={openEditorWithCurrentRoutes}
           className={`${responsive.isDesktop ? 'py-4 px-6' : 'py-3 px-4'} rounded-xl font-bold transition-all flex items-center justify-center ${
             roteirizadorMode === 'creative'
               ? 'bg-purple-600 text-white shadow-lg scale-105'
@@ -572,7 +587,10 @@ export default function RouteAnalysisView() {
           {responsive.isDesktop ? 'Roteirizador Manual' : 'Manual'}
         </button>
         <button
-          onClick={() => setRoteirizadorMode('automatic')}
+          onClick={() => {
+            setEditorInitialBlank(false);
+            setRoteirizadorMode('automatic');
+          }}
           className={`${responsive.isDesktop ? 'py-4 px-6' : 'py-3 px-4'} rounded-xl font-bold transition-all flex items-center justify-center ${
             roteirizadorMode === 'automatic'
               ? 'bg-blue-600 text-white shadow-lg scale-105'
@@ -630,7 +648,11 @@ export default function RouteAnalysisView() {
             <CreativeMode 
               sessionId={sessionId} 
               sessionBase={{lat: baseLat, lng: baseLng}} 
-              onSaved={() => {
+              onSaved={(savedData) => {
+                if (savedData?.routes?.length) {
+                  setRoutes(savedData.routes);
+                  setAssignments(savedData.assignments || {});
+                }
                 setRoteirizadorMode('automatic');
                 handleSessionReport();
               }} 
