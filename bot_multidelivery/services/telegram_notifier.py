@@ -298,7 +298,8 @@ class TelegramNotifier:
         distance_km: float,
         addresses: list,
         webapp_url: str = None,
-        coordinates: List[Tuple[float, float]] = None
+        coordinates: List[Tuple[float, float]] = None,
+        duration_min: Optional[float] = None
     ) -> bool:
         """
         Envia notificação de nova rota para o entregador COM MAPA
@@ -311,6 +312,7 @@ class TelegramNotifier:
             addresses: Lista de endereços (primeiros 5 serão mostrados)
             webapp_url: URL do WebApp para abrir mapa
             coordinates: Lista de (lat, lng) para gerar mapa estático
+            duration_min: Duração exata do deslocamento (sem paradas) via OSRM
         """
         # Mapear cor hex para nome
         color_names = {
@@ -352,8 +354,14 @@ class TelegramNotifier:
         if remaining > 0:
             address_list += f"▫️ <i>... e mais {remaining} entregas na região.</i>"
             
-        # Calcular tempo estimado (Base: 15 km/h + 3 min por pacote de tempo parado)
-        tempo_deslocamento_min = (distance_km / 15.0) * 60
+        # Calcular tempo estimado
+        if duration_min is not None and duration_min > 0:
+            # Usar duração EXATA do OSRM (estatísticas reais das vias) + tempo de parada
+            tempo_deslocamento_min = duration_min
+        else:
+            # Fallback: Base: 15 km/h
+            tempo_deslocamento_min = (distance_km / 15.0) * 60
+            
         tempo_parado_min = total_packages * 3
         tempo_total_min = int(tempo_deslocamento_min + tempo_parado_min)
         
@@ -476,7 +484,8 @@ async def notify_route_assigned(
     distance_km: float,
     addresses: list,
     webapp_url: str = None,
-    coordinates: List[Tuple[float, float]] = None
+    coordinates: List[Tuple[float, float]] = None,
+    duration_min: Optional[float] = None
 ) -> bool:
     """
     Função de conveniência para enviar notificação de rota COM MAPA
@@ -489,6 +498,7 @@ async def notify_route_assigned(
         addresses: Lista de endereços
         webapp_url: URL do webapp
         coordinates: Lista de (lat, lng) para gerar mapa estático
+        duration_min: Duração exata via OSRM
     """
     return await notifier.send_route_notification(
         chat_id=telegram_id,
@@ -497,5 +507,6 @@ async def notify_route_assigned(
         distance_km=distance_km,
         addresses=addresses,
         webapp_url=webapp_url,
-        coordinates=coordinates
+        coordinates=coordinates,
+        duration_min=duration_min
     )

@@ -86,14 +86,32 @@ async def process_notifications(session_id: str, assignments: Dict[str, int]):
                 
             addresses = [p.address for p in pts] if pts else []
 
+            # Tentar pegar duração e distância exatas via OSRM
+            exact_distance_km = route.total_distance_km or 0
+            exact_duration_min = None
+            
+            if coordinates:
+                try:
+                    from bot_multidelivery.services.osrm_service import osrm_client
+                    # Inclui a base como ponto inicial
+                    base_coords = [(session.base_lat, session.base_lng)] + coordinates
+                    geom_result = await osrm_client.get_route_geometry_async(base_coords)
+                    
+                    if geom_result and not geom_result.fallback_used:
+                        exact_distance_km = geom_result.distance_km
+                        exact_duration_min = geom_result.duration_min
+                except Exception as e:
+                    logger.warning(f"⚠️ Não foi possível obter rota exata OSRM para notificação: {e}")
+
             await notify_route_assigned(
                 telegram_id=deliverer_id,
                 route_color=route.color,
                 total_packages=route.total_packages,
-                distance_km=route.total_distance_km or 0,
+                distance_km=exact_distance_km,
                 addresses=addresses,
                 webapp_url=None,
-                coordinates=coordinates
+                coordinates=coordinates,
+                duration_min=exact_duration_min
             )
         except Exception as e:
             logger.error(f"🚨 Erro ao notificar rota {route_id}: {e}", exc_info=True)
