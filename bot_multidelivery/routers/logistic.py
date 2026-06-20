@@ -65,17 +65,23 @@ async def process_notifications(session_id: str, assignments: Dict[str, int]):
         return
 
     for route_id, deliverer_id in assignments.items():
+        # Busca exata
         route = next((r for r in session.routes if str(r.id) == str(route_id)), None)
         if not route:
+            # Fallback para rotas com prefixo (usado no modo criativo/automático)
+            route = next((r for r in session.routes if str(r.id).endswith(str(route_id))), None)
+            
+        if not route:
+            logger.warning(f"⚠️ Rota {route_id} não encontrada em process_notifications. Disponíveis: {[r.id for r in session.routes]}")
             continue
 
         logger.info(f"📱 Notificando entregador {deliverer_id} para rota {route.id}...")
         
         try:
-            # Preparar dados
+            # Preparar dados e garantir tipos
             coordinates = None
             if hasattr(route, 'optimized_order') and route.optimized_order:
-                 coordinates = [(p.lat, p.lng) for p in route.optimized_order if hasattr(p, 'lat') and p.lat]
+                 coordinates = [(float(p.lat), float(p.lng)) for p in route.optimized_order if hasattr(p, 'lat') and p.lat]
             
             # Usar pontos da rota para endereços (compatibilidade com manual e auto)
             pts = []
@@ -84,17 +90,17 @@ async def process_notifications(session_id: str, assignments: Dict[str, int]):
             elif hasattr(route, 'optimized_order') and route.optimized_order:
                 pts = route.optimized_order
                 
-            addresses = [p.address for p in pts] if pts else []
+            addresses = [str(p.address or '') for p in pts] if pts else []
 
             # Tentar pegar duração e distância exatas via OSRM
-            exact_distance_km = route.total_distance_km or 0
+            exact_distance_km = route.total_distance_km or 0.0
             exact_duration_min = None
             
             if coordinates:
                 try:
                     from bot_multidelivery.services.osrm_service import osrm_client
-                    # Inclui a base como ponto inicial
-                    base_coords = [(session.base_lat, session.base_lng)] + coordinates
+                    # Inclui a base como ponto inicial, convertendo para float
+                    base_coords = [(float(session.base_lat or 0.0), float(session.base_lng or 0.0))] + coordinates
                     geom_result = await osrm_client.get_route_geometry_async(base_coords)
                     
                     if geom_result and not geom_result.fallback_used:
