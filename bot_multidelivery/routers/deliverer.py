@@ -189,10 +189,11 @@ async def complete_stop(
     reason: str = Query(None), # Motivo da falha
     status_detail: str = Query(None), # Observações
     lat: float = Query(None),
-    lng: float = Query(None)
+    lng: float = Query(None),
+    failed_packages: list[str] = Body(default=[]) # Lista de IDs de pacotes que falharam especificamente
 ):
     """
-    Marca uma parada com status: delivered, failed ou returned
+    Marca uma parada com status. Permite baixa parcial (alguns entregues, outros falharam).
     """
     try:
         # Procurar sessão e rota
@@ -218,12 +219,16 @@ async def complete_stop(
         stop_packages = stops[stop_index].get("packages", [])
         for pkg_id in stop_packages:
             if pkg_id:
-                if status == "delivered":
-                    route.mark_as_delivered(pkg_id, detail=status_detail)
-                elif status == "failed":
-                    route.mark_as_failed(pkg_id, reason=reason, detail=status_detail)
-                elif status == "returned":
-                    route.mark_as_returned(pkg_id, reason=reason, detail=status_detail)
+                if pkg_id in failed_packages:
+                    # Se pacote está na lista de falhas, força falha
+                    route.mark_as_failed(pkg_id, reason=reason or "Baixa parcial - Insucesso", detail=status_detail)
+                else:
+                    if status == "delivered":
+                        route.mark_as_delivered(pkg_id, detail=status_detail)
+                    elif status == "failed":
+                        route.mark_as_failed(pkg_id, reason=reason, detail=status_detail)
+                    elif status == "returned":
+                        route.mark_as_returned(pkg_id, reason=reason, detail=status_detail)
         
         logger.info(f"✅ Parada {stop_index + 1} marcada como {status} ({reason or ''}) na rota {route.color}")
         

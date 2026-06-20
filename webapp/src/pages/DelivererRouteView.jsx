@@ -107,9 +107,27 @@ export default function DelivererRouteView() {
   const [bottomSheetOpen, setBottomSheetOpen] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [failureModalOpen, setFailureModalOpen] = useState(false)
+  const [checkedPackages, setCheckedPackages] = useState({})
   
   const pollIntervalRef = useRef(null)
   const mapRef = useRef(null)
+
+  useEffect(() => {
+    if (selectedStop && selectedStop.packages) {
+      const initial = {};
+      selectedStop.packages.forEach(pkg => {
+        initial[pkg] = true;
+      });
+      setCheckedPackages(initial);
+    }
+  }, [selectedStop]);
+
+  const togglePackage = (pkgId) => {
+    setCheckedPackages(prev => ({
+      ...prev,
+      [pkgId]: !prev[pkgId]
+    }));
+  };
 
   useEffect(() => {
     // 1. Identificar se é acesso via Token Público ou User ID
@@ -262,8 +280,21 @@ export default function DelivererRouteView() {
         params.append('lng', userLocation[1].toString())
       }
       
+      const failedPackagesList = [];
+      if (selectedStop.packages) {
+        selectedStop.packages.forEach(pkg => {
+          if (!checkedPackages[pkg]) {
+            failedPackagesList.push(pkg);
+          }
+        });
+      }
+
       const res = await fetchWithAuth(`/api/deliverer/complete-stop?${params.toString()}`, {
-        method: 'POST'
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(failedPackagesList)
       })
       
       if (res.ok) {
@@ -435,11 +466,42 @@ export default function DelivererRouteView() {
           <div className={`flex-1 overflow-y-auto px-6 pb-6 transition-opacity duration-300 ${bottomSheetOpen ? 'opacity-100' : 'opacity-0 pointer-events-none hidden'}`}>
             <div className="space-y-6">
               {/* Info Adicional */}
+              {/* Lista de Pacotes para Baixa Parcial */}
               <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-3">
-                <div className="flex items-center gap-3 text-gray-600">
-                  <Package size={18} />
-                  <span className="text-sm">Pacote #{selectedStop.id?.toString().slice(-5) || '---'} • {selectedStop.packages?.length || 1} vol</span>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-bold text-gray-700 text-sm">Pacotes neste endereço:</h3>
+                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">
+                    {selectedStop.packages?.length || 1} volumes
+                  </span>
                 </div>
+                
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  {selectedStop.packages && selectedStop.packages.map((pkg, i) => (
+                    <label key={pkg} className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200 cursor-pointer hover:bg-blue-50 transition-colors shadow-sm">
+                      <input 
+                        type="checkbox" 
+                        className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 border-gray-300"
+                        checked={checkedPackages[pkg] !== false}
+                        onChange={() => togglePackage(pkg)}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm font-bold text-gray-800 block truncate">Pacote {i + 1}</span>
+                        <p className="text-[11px] text-gray-500 font-mono mt-0.5 truncate">{pkg}</p>
+                      </div>
+                      {checkedPackages[pkg] === false && (
+                        <span className="text-[10px] font-bold text-red-500 bg-red-50 px-2 py-1 rounded">Insucesso</span>
+                      )}
+                    </label>
+                  ))}
+                  
+                  {(!selectedStop.packages || selectedStop.packages.length === 0) && (
+                    <div className="flex items-center gap-3 text-gray-600 p-2 bg-white rounded-lg border border-gray-200">
+                      <Package size={18} />
+                      <span className="text-sm">Pacote único #{selectedStop.id?.toString().slice(-5) || '---'}</span>
+                    </div>
+                  )}
+                </div>
+
                 {selectedStop.note && (
                   <div className="flex items-start gap-3 text-orange-600 bg-orange-50 p-2 rounded-lg">
                     <AlertTriangle size={18} className="shrink-0 mt-0.5" />

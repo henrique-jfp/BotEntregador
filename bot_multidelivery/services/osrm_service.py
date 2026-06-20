@@ -41,11 +41,11 @@ class OSRMClient:
         base_url: str = "https://router.project-osrm.org",
         profile: Optional[str] = None,
         cache_path: str = "data/osrm_cache.json",
-        timeout: float = 10.0,
-        max_points: int = 100,
+        timeout: float = 15.0,
+        max_points: int = 50,  # Reduzido para rotas a pé (API restringe mais)
     ) -> None:
         self.base_url = base_url.rstrip("/")
-        self.profile = (profile or os.getenv("OSRM_PROFILE", "car")).strip() or "car"
+        self.profile = (profile or os.getenv("OSRM_PROFILE", "foot")).strip() or "foot"
         self.timeout = timeout
         self.max_points = max_points
 

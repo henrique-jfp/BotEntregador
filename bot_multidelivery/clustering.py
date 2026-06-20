@@ -160,144 +160,76 @@ class TerritoryDivider:
     
     def divide_into_clusters(self, points: List[DeliveryPoint], k: int) -> List[Cluster]:
         """
-        Divide pontos em K territórios usando K-Means e rebalanceamento iterativo.
-        Garante que as rotas sejam balanceadas (próximo de 50/50 para k=2).
+        Divide pontos em K territórios usando Divisão Angular (fatias de pizza a partir da base).
+        Isso garante que os entregadores nunca se cruzem e cada um atenda seu próprio arco.
         """
         if not points:
             return []
         if len(points) < k:
             return [Cluster(id=i, center_lat=p.lat, center_lng=p.lng, points=[p]) for i, p in enumerate(points)]
 
-        # --- FASE 1: CLUSTERING INICIAL COM K-MEANS ---
-        # Balanceamento é feito por paradas, não por pacotes individuais.
-        stops = self.group_packages_by_address(points)
-        if len(stops) < k:
-            stops = points # Fallback para pontos individuais se o agrupamento for muito agressivo
-
-        coords = np.array([[s.lat, s.lng] for s in stops])
-        try:
-            from sklearn.cluster import KMeans
-            kmeans = KMeans(n_clusters=k, random_state=42, n_init='auto')
-            labels = kmeans.fit_predict(coords)
-        except ImportError:
-            logger.error("Scikit-learn não encontrado. Usando divisão angular como fallback.")
-            return self._divide_by_angle(points, k)
-
-        # Atribui paradas aos clusters
-        stop_clusters = [[] for _ in range(k)]
-        for i, stop in enumerate(stops):
-            stop_clusters[labels[i]].append(stop)
-
-        # --- FASE 2: REBALANCEAMENTO ITERATIVO ---
-        for _ in range(len(stops) * 2): # Limita o número de iterações
-            # Usa getattr para funcionar tanto com DeliveryStop (package_count) quanto com DeliveryPoint (fallback para 1)
-            sizes = [sum(getattr(s, 'package_count', 1) for s in c) for c in stop_clusters]
-
-            if not any(s == 0 for s in sizes):
-                min_cluster_idx, max_cluster_idx = np.argmin(sizes), np.argmax(sizes)
-                
-                total_packages = sum(sizes)
-                # Tolerância de 10% na diferença entre o maior e o menor cluster.
-                # Para k=2, isso se traduz em uma divisão máxima de 55/45.
-                allowed_imbalance = max(1, int(total_packages * 0.10))
-
-                is_balanced = (sizes[max_cluster_idx] - sizes[min_cluster_idx] <= allowed_imbalance)
-
-                # Para k=2, uma checagem adicional para garantir que a maior parte não exceda 55%
-                if k == 2 and total_packages > 0:
-                    max_share = sizes[max_cluster_idx] / total_packages
-                    if max_share > 0.55:
-                        is_balanced = False
-
-                if is_balanced:
-                    logger.info(f"✅ Clusters de pacotes balanceados. Divisão: {sizes}")
-                    break
-
-                largest_cluster_stops = stop_clusters[max_cluster_idx]
-                smallest_cluster_stops = stop_clusters[min_cluster_idx]
-
-                if not smallest_cluster_stops:
-                    smallest_centroid = kmeans.cluster_centers_[min_cluster_idx]
-                else:
-                    smallest_centroid = np.mean([[s.lat, s.lng] for s in smallest_cluster_stops], axis=0)
-
-                # Encontra no cluster maior o ponto mais próximo do centroide do menor (Heurística de troca)
-                # Se não balancear, relaxa a heurística para pegar qualquer ponto da borda
-                best_stop_to_move = min(
-                    largest_cluster_stops,
-                    key=lambda s: haversine_distance(s.lat, s.lng, smallest_centroid[0], smallest_centroid[1])
-                )
-
-                # Move a parada
-                if best_stop_to_move:
-                    largest_cluster_stops.remove(best_stop_to_move)
-                    smallest_cluster_stops.append(best_stop_to_move)
-                else:
-                    break
-            else:
-                break # Evita loop se um cluster ficar vazio
-
-        # --- FASE 3: CONVERTE PARADAS EM PONTOS E CRIA OBJETOS CLUSTER ---
-        final_clusters = []
-        for i, sc in enumerate(stop_clusters):
-            # Expande paradas de volta para pontos de entrega
-            pts = [pkg for stop in sc for pkg in stop.packages] if sc and isinstance(sc[0], DeliveryStop) else sc
-            
-            if pts:
-                center_lat = sum(pt.lat for pt in pts) / len(pts)
-                center_lng = sum(pt.lng for pt in pts) / len(pts)
-            else:
-                center_lat = self.base_lat
-                center_lng = self.base_lng
-            final_clusters.append(Cluster(id=i, center_lat=center_lat, center_lng=center_lng, points=pts))
-
-        logger.info(f"🗺️ K-Means+Balance: {len(points)} pts -> {k} clusters. Balance: {[len(c.points) for c in final_clusters]}")
-        return final_clusters
+        logger.info(f"🍕 Dividindo {len(points)} pacotes em {k} fatias (setores radiais absolutos)...")
+        return self._divide_by_angle(points, k)
     
     def _divide_by_angle(self, points: List[DeliveryPoint], k: int) -> List[Cluster]:
         """
         Divide pontos em setores angulares a partir da base
         
         Como funciona:
-        1. Calcula ângulo de cada ponto em relação à base
-        2. Ordena todos os pontos por ângulo
-        3. Divide em K setores iguais
-        
-        Resultado: Cada entregador tem sua "fatia de pizza"
+        1. Agrupa pacotes pelo mesmo endereço para não separá-los
+        2. Calcula ângulo de cada parada em relação à base
+        3. Ordena todas as paradas por ângulo
+        4. Divide em K setores baseando-se no volume de pacotes
         """
-        # Calcula ângulo de cada ponto
-        point_angles = []
-        for p in points:
+        stops = self.group_packages_by_address(points)
+        if len(stops) < k:
+            stops = points # Fallback se agrupar demais
+        
+        # Calcula ângulo de cada parada
+        stop_angles = []
+        for s in stops:
             # atan2 retorna ângulo em radianos (-π a π)
-            angle = math.atan2(p.lng - self.base_lng, p.lat - self.base_lat)
+            angle = math.atan2(s.lng - self.base_lng, s.lat - self.base_lat)
             angle_deg = math.degrees(angle) % 360  # Normaliza 0-360
-            point_angles.append((p, angle_deg))
+            stop_angles.append((s, angle_deg))
         
         # Ordena por ângulo (sentido horário a partir do norte)
-        point_angles.sort(key=lambda x: x[1])
+        stop_angles.sort(key=lambda x: x[1])
 
-        # Cada ponto aqui é um REPRESENTANTE (parada). Para garantir que a
-        # divisão 50/50 considere paradas (1 parada = 1), usamos peso = 1
-        # por representante, ignorando `group_size` (nº de pacotes por parada).
-        weights = [1 for _ in point_angles]
+        # Pesos baseados no número de pacotes da parada (para balanceamento justo de volume)
+        weights = [getattr(s, 'package_count', 1) for s, _ in stop_angles]
         total_weight = sum(weights)
         target_per_sector = float(total_weight) / max(1, k)
 
-        # Particiona por quantis usando soma cumulativa de pesos.
-        clusters = [[] for _ in range(k)]
+        # Particiona por quantis usando soma cumulativa de pacotes
+        clusters_stops = [[] for _ in range(k)]
         cum = 0.0
-        for (p, angle), w in zip(point_angles, weights):
-            # determina índice do cluster baseado no ponto cumulativo
+        for (s, angle), w in zip(stop_angles, weights):
             idx = int(min(math.floor(cum / max(1e-9, target_per_sector)), k - 1))
-            clusters[idx].append(p)
+            clusters_stops[idx].append(s)
             cum += w
 
-        # Constrói objetos Cluster com centróides calculados
+        # Constrói objetos Cluster com centróides calculados, expandindo as paradas em pontos
         result_clusters: List[Cluster] = []
         for i in range(k):
-            pts = clusters[i]
+            # Expande os pontos
+            pts = []
+            for stop in clusters_stops[i]:
+                if hasattr(stop, 'packages'):
+                    pts.extend(stop.packages)
+                else:
+                    pts.append(stop)
+                    
             if pts:
                 center_lat = sum(pt.lat for pt in pts) / len(pts)
+                center_lng = sum(pt.lng for pt in pts) / len(pts)
+            else:
+                center_lat, center_lng = self.base_lat, self.base_lng
+                
+            result_clusters.append(Cluster(id=i, center_lat=center_lat, center_lng=center_lng, points=pts))
+
+        logger.info(f"🗺️ Divisão Radial (Fatias): {len(points)} pacotes -> {k} clusters. Balance: {[len(c.points) for c in result_clusters]}")
+        return result_clusters
                 center_lng = sum(pt.lng for pt in pts) / len(pts)
             else:
                 center_lat = self.base_lat
@@ -362,35 +294,7 @@ class TerritoryDivider:
         
         logger.info(f"🔍 Otimizando {len(stops)} paradas (estratégia: {BotConfig.ROUTE_STRATEGY}, modo: {self.mode})...")
         
-        # Para modo pedestre, usamos Haversine (linha reta) para a matriz de custo.
-        if self.mode == 'pedestrian':
-            logger.info("🚶 Modo pedestre: usando matriz de distância Haversine (linha reta).")
-            coords = [(s.lat, s.lng) for s in stops]
-            base_and_coords = [(self.base_lat, self.base_lng)] + coords
-            
-            # Construir matriz de custo com Haversine
-            n = len(base_and_coords)
-            cost_matrix = [[0.0] * n for _ in range(n)]
-            for i in range(n):
-                for j in range(i, n):
-                    dist = haversine_distance(base_and_coords[i][0], base_and_coords[i][1], base_and_coords[j][0], base_and_coords[j][1])
-                    cost_matrix[i][j] = dist
-                    cost_matrix[j][i] = dist
-            
-            # Usa os otimizadores mais robustos com a matriz Haversine
-            if len(stops) > 30 and is_ortools_available():
-                logger.info(f"🚀 Rota GRANDE ({len(stops)} paradas) - usando OR-Tools TSP industrial (Haversine)")
-                try:
-                    optimized = self._ortools_tsp_with_matrix(stops, cost_matrix)
-                    if optimized:
-                        return optimized
-                    logger.warning("⚠️ OR-Tools falhou, usando multi-start heurístico")
-                except Exception as e:
-                    logger.error(f"❌ Erro no OR-Tools: {e} - fallback para heurística")
-            
-            return self._multi_start_tsp_with_matrix(stops, cost_matrix)
-
-        # Para modo 'vehicle', tenta usar OSRM para matriz de distâncias
+        # Usa OSRM para matriz de distâncias (agora configurado com perfil foot/car no backend)
         try:
             coords = [(s.lat, s.lng) for s in stops]
             base_and_coords = [(self.base_lat, self.base_lng)] + coords

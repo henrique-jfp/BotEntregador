@@ -86,7 +86,7 @@ Solução enterprise-grade para gestão completa de operações logísticas, des
 
 **Passo 2: Dividir em Rotas**
 - 🧠 Algoritmo de Clustering Geográfico:
-  - K-Means para agrupar por proximidade
+  - Setores Radiais (Fatias de Pizza) para áreas não-sobrepostas
   - Balanceamento de carga entre entregadores
   - Respeito a limites de capacidade
 - 🎨 Cada rota recebe cor única (Azul, Verde, Vermelho, Roxo...)
@@ -224,7 +224,7 @@ BotEntregador/
 │   ├── models.py              # 🗄️ Models SQLAlchemy
 │   ├── database.py            # 💾 Conexão PostgreSQL
 │   ├── session.py             # 📊 SessionManager singleton
-│   ├── clustering.py          # 🧠 Algoritmo K-Means
+│   ├── clustering.py          # 🧠 Algoritmo Setores Radiais
 │   ├── bot.py                 # 🤖 Telegram Bot Handlers
 │   └── config.py              # ⚙️ Configurações
 ├── webapp/                    # ⚛️ Frontend React
@@ -427,7 +427,7 @@ railway logs
 | **SQLAlchemy** | 2.0+ | ORM para PostgreSQL |
 | **PostgreSQL** | 15+ | Banco de dados relacional |
 | **Alembic** | 1.13+ | Migrações de schema |
-| **scikit-learn** | 1.5+ | Algoritmo K-Means para clustering |
+| **scikit-learn** | 1.5+ | Algoritmos de aprendizado de máquina |
 | **Pillow** | 10.0+ | Processamento de imagens |
 | **openpyxl** | 3.1+ | Parser de arquivos Excel |
 | **PyPDF2** | 3.0+ | Parser de PDFs |
@@ -578,7 +578,7 @@ DEBUG=False
 
 - [x] Bot Telegram básico com comandos `/start` e `/saldo`
 - [x] Importação de romaneios (PDF/CSV/Texto)
-- [x] Algoritmo K-Means para divisão de rotas
+- [x] Algoritmo de Setores Radiais para divisão de rotas a pé
 - [x] WebApp React com mapa individual
 - [x] PostgreSQL para persistência
 
@@ -626,7 +626,7 @@ Este é o **build final e pronto para produção**. Todos os componentes foram t
 |-----------|--------|----------|
 | **Frontend** | ✅ | Build otimizado em `webapp/dist` |
 | **Backend API** | ✅ | 42 endpoints em 12 routers |
-| **Clustering IA** | ✅ | K-Means geográfico balanceado |
+| **Clustering IA** | ✅ | Setores radiais a pé sem sobreposição |
 | **Route Analyzer** | ✅ | Análise com recomendações em IA |
 | **Parsers** | ✅ | PDF, CSV, Shopee funcionando |
 | **Telegram Bot** | ✅ | Notificações e comandos |
